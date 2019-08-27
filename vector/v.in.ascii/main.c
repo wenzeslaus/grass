@@ -495,7 +495,7 @@ int main(int argc, char *argv[])
 			}
 			else if (ctype == DB_C_TYPE_STRING) {
 			    G_warning(_("Column number %d <%s> defined as string "
-				       "has double values"), i + 1,
+				       "has only double values"), i + 1,
 				      db_get_column_name(column));
 			}
 			break;
