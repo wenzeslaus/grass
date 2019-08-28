@@ -256,15 +256,13 @@ int main(int argc, char *argv[])
 			key, meta_name);
 		}
 
+		/* We do the other checks first to potentially give a
+		 * better error message. If the below checks won't catch
+		 * anything (case for additonal columns in the "in"
+		 * table), we report just the numbers. */
 		ncols = db_get_table_number_of_columns(table_out);
-
-		if (ncols != db_get_table_number_of_columns(table_in)) {
-		    G_fatal_error(
-			_("Number of columns differ:"
-			  " %d in <%s> and %d in <%s>"),
-			db_get_table_number_of_columns(table_in),
-			in_name, ncols, meta_name);
-		}
+		/* TODO: define above */
+		int ncols_in = db_get_table_number_of_columns(table_in);
 
 		for (col = 0; col < ncols; col++) {
 		    int col2, colmatch;
@@ -276,7 +274,7 @@ int main(int argc, char *argv[])
 		    colmatch = -1;
 		    column_in = NULL;
 		    /* find column with same name */
-		    while (colmatch < 0 && col2 < ncols) {
+		    while (colmatch < 0 && col2 < ncols_in) {
 			column_in = db_get_table_column(table_in, col2);
 
 			if (G_strcasecmp(db_get_column_name(column_in),
@@ -317,6 +315,14 @@ int main(int argc, char *argv[])
 				     db_get_column_name(column_out)) == 0) {
 			keycol = col;
 		    }
+		}
+
+		if (ncols != ncols_in) {
+		    G_fatal_error(
+			_("Number of columns differ:"
+			  " %d in <%s> and %d in <%s>"),
+			db_get_table_number_of_columns(table_in),
+			in_name, ncols, meta_name);
 		}
 	    }
 
