@@ -58,6 +58,7 @@ int main(int argc, char *argv[])
     struct line_cats *Cats;
     struct field_info *Fi;
     struct cat_list *Clist;
+    struct cat_list *cat_option_list;
     int i, j, ret, option, otype, type, with_z, step, id;
     int n_areas, centr, new_centr, nmodified;
     int open_level;
@@ -208,8 +209,24 @@ int main(int argc, char *argv[])
 	G_fatal_error(_("Invalid category number (must be equal to or greater than 0). "
 			"Normally category number starts at 1."));
 
+    if (cat_opt->answer) {
+	G_message("cats=%s (layer=%s)", cat_opt->answer, field_opt->answer);
+	cat_option_list = Vect_new_cat_list();
+	cat_option_list->field = atoi(field_opt->answer);
+	ret = Vect_str_to_cat_list(cat_opt->answer, cat_option_list);
+	if (ret > 0) {
+	    G_warning(n_("%d error in %s option",
+                         "%d errors in %s option",
+                         ret), ret, cat_opt->key);
+	}
+    }
+    else {
+	cat_option_list = NULL;
+    }
+
     /* collect ids */
     if (id_opt->answer) {
+	G_message("ids=%s (layer=%s)", id_opt->answer, field_opt->answer);
 	Clist = Vect_new_cat_list();
 	Clist->field = atoi(field_opt->answer);
 	ret = Vect_str_to_cat_list(id_opt->answer, Clist);
@@ -727,6 +744,8 @@ int main(int argc, char *argv[])
 	    for (i = 0; i < nfields; i++) {
 		for (j = 0; j < Cats->n_cats; j++) {
 		    if (Cats->field[j] == fields[i]) {
+			if (cat_option_list && Vect_cat_in_cat_list(Cats->cat[j], cat_option_list) == FALSE)
+			    continue;
 			has = 1;
 			break;
 		    }
