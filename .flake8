@@ -1,0 +1,21 @@
+[flake8]
+max-line-length = 88
+
+# We skip directories tested separately and tests.
+exclude =
+    .git,
+    __pycache__,
+    .env,
+    .venv,
+    env,
+    venv,
+    ENV,
+    env.bak,
+    venv.bak,
+    bin.*,
+    dist.*,
+    testsuite,
+    gui/wxpython,
+    lib/python,
+    scripts,
+    temporal,
