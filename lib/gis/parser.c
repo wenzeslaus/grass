@@ -639,8 +639,12 @@ int G_parser(int argc, char **argv)
             fprintf(stderr, "\n");
             for (i = 0; i < st->n_errors; i++) {
                 fprintf(stderr, "%s: %s\n", _("ERROR"), st->error[i]);
+                if (print_json == 1) {
+                    fprintf(stdout, "%s: %s\n", _("ERROR"), st->error[i]);
+                }
             }
         }
+
         return -1;
     }
 

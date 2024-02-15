@@ -1,4 +1,5 @@
 from multiprocessing import cpu_count, Process, Queue
+import subprocess
 import time
 from xml.etree.ElementTree import fromstring
 
@@ -658,7 +659,22 @@ class Module(object):
                 # verbose and quiet) work like parameters
                 self.flags[key].value = val
             else:
-                raise ParameterError("%s is not a valid parameter." % key)
+                # Before marking parameter as invalid, ask the underlying tool.
+                if not self._ask_if_parameters_are_valid():
+                    raise ParameterError("%s is not a valid parameter." % key)
+
+    def _ask_if_parameters_are_valid(self):
+        """Ask the underlying tool whether the parameters are valid or not"""
+        cmd = self.make_cmd()
+        cmd.append("--json")
+        cmd.append("--qq")
+        self.start_time = time.time()
+        process = subprocess.run(
+            cmd,
+            capture_output=True,
+            env=self.env_,
+        )
+        return process.returncode == 0, process.stderr
 
     def get_bash(self):
         """Return a BASH representation of the Module."""
