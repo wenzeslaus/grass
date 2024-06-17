@@ -23,7 +23,7 @@ class TestNewlinesWithGetlFunctions(TestCase):
     def tearDown(self):
         self.file_path.unlink()
 
-    def read_lines_and_assert(self, get_line_function, newline):
+    def read_lines_and_assert(self, get_line, newline):
         """Write and read lines and then assert they are as expected"""
         lines = ["Line 1", "Line 2", "Line 3"]
         with open(self.file_path, mode="w", newline=newline) as stream:
@@ -40,10 +40,9 @@ class TestNewlinesWithGetlFunctions(TestCase):
         buffer = ctypes.create_string_buffer(buffer_size)
 
         for line in lines:
-            get_line_function(buffer, ctypes.sizeof(buffer), file_ptr)
+            get_line(buffer, ctypes.sizeof(buffer), file_ptr)
             result = buffer.value.decode("utf-8") if buffer else None
             self.assertEqual(line, result)
-        self.libc.fclose(file_ptr)
 
     def test_getl_lf(self):
         r"""Check G_getl() with LF (\n)"""
