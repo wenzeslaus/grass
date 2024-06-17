@@ -36,16 +36,14 @@ class TestNewlinesWithGetlFunctions(TestCase):
         if not file_ptr:
             raise FileNotFoundError(f"Could not open file: {self.file_path}")
 
-        try:
-            buffer_size = 50
-            buffer = ctypes.create_string_buffer(buffer_size)
+        buffer_size = 50
+        buffer = ctypes.create_string_buffer(buffer_size)
 
-            for line in lines:
-                get_line_function(buffer, ctypes.sizeof(buffer), file_ptr)
-                result = buffer.value.decode("utf-8") if buffer else None
-                self.assertEqual(line, result)
-        finally:
-            self.libc.fclose(file_ptr)
+        for line in lines:
+            get_line_function(buffer, ctypes.sizeof(buffer), file_ptr)
+            result = buffer.value.decode("utf-8") if buffer else None
+            self.assertEqual(line, result)
+        self.libc.fclose(file_ptr)
 
     def test_getl_lf(self):
         r"""Check G_getl() with LF (\n)"""
