@@ -100,7 +100,7 @@ jobs:
       - name: Get dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y wget git gawk findutils
+          sudo apt-get install -y wget git gawk findutils valgrind
           xargs -a <(awk '! /^ *(#|$)/' ".github/workflows/apt.txt") -r -- \
               sudo apt-get install -y --no-install-recommends --no-install-suggests
 
@@ -143,7 +143,7 @@ jobs:
         run: .github/workflows/test_simple.sh
 
       - name: Run tests
-        run: grass --tmp-project XY --exec python lib/gis/testsuite/test_gis_lib_getl.py ; echo $?
+        run: grass --tmp-project XY --exec valgrind python lib/gis/testsuite/test_gis_lib_getl.py ; echo $?
 
       - name: Run tests
         run: .github/workflows/test_thorough.sh --config .gunittest.extra.cfg
