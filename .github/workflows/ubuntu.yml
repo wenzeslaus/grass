@@ -144,6 +144,7 @@ jobs:
 
       - name: Run tests
         run: grass --tmp-project XY --exec python lib/gis/testsuite/test_gis_lib_getl.py ; echo $?
+
       - name: Run tests
         run: .github/workflows/test_thorough.sh --config .gunittest.extra.cfg
 
