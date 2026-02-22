@@ -167,8 +167,10 @@ Each tool (e.g., `raster/r.slope.aspect/`) contains:
   `raster/r.colors.out/CMakeLists.txt` for an example
 - `<name>.md` — documentation source (no header/footer; Markdown rendered by
   MkDocs)
-- `<name>.html` — documentation in HTML format; must be committed alongside
-  the `.md` file to provide basic HTML access
+- `<name>.html` — supports a legacy documentation system; uses HTML markup
+  for formatting but is not a complete HTML document (only the translated
+  Markdown into corresponding HTML tags). Must be committed alongside the
+  `.md` file.
 - `tests/` — pytest tests
 - `testsuite/` — gunittest tests (legacy)
 
@@ -179,9 +181,13 @@ Python-based tools (e.g., `scripts/r.mask/`) use `grass.script` and
 
 ### GUI (`gui/wxpython/`)
 
-wxPython desktop application. Large, mostly independent from core libraries.
-Follows wxPython style guide rather than standard GRASS Python conventions in
-some areas.
+wxPython desktop application. The GUI uses tools and libraries (Python and
+C) to do geospatial and data work, so anything available in the GUI can
+also be done with tools, the command line, or the Python and C APIs. Other
+code should not depend on the GUI at runtime or during compilation, except
+for unavoidable cases like starting the GUI from the command line. For
+classes and code that inherit from wxPython classes or use their interface,
+wxPython conventions are used rather than standard GRASS Python conventions.
 
 ## Key Coding Conventions
 
@@ -228,7 +234,6 @@ miss.
   (`grass/gis.h`, etc.), then local headers; groups alphabetically sorted,
   separated by blank lines
 - Snake case for function names (GNU naming convention)
-- All new/modified C files formatted with `clang-format`
 
 ### Documentation (tool doc files)
 
@@ -272,7 +277,10 @@ message rules:
   identifier that is conventionally lowercase (e.g., `r.info` or `gs`)
 - Use plain ASCII only, no double spaces after periods
 - Write in imperative mood (e.g., "Add support for X", not "Added" or "Adds")
-- Do not add AI co-authors; the human author is responsible for the code
+- Do not add AI co-authors; the human author is responsible for the code.
+  However, larger use of AI should be acknowledged in the commit message
+  and/or PR description, similarly to how a book or a discussion with a
+  human collaborator would be acknowledged.
 
 ## AI Use Policy
 
