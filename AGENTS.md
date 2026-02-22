@@ -117,10 +117,7 @@ See `doc/development/style_guide.md` for full formatting and style rules.
 Quick reference:
 
 ```bash
-ruff format                       # format Python files
-ruff check . --fix                # lint and auto-fix
-clang-format -i <file.c>         # format a C file
-pre-commit run --all-files        # run all checks (recommended)
+pre-commit run --all-files  # run all checks
 ```
 
 ## Architecture
