@@ -4,7 +4,9 @@ Tests use small, hand-crafted domains where expected output can be reasoned
 about from first principles rather than from pre-computed reference values.
 """
 
+import io
 import os
+import pathlib
 
 import numpy as np
 import pytest
@@ -38,6 +40,8 @@ def run_sim(session, *, random_seed=SEED, **kwargs):
         "infil_value": 0,
         "man_value": 0.1,
         "nwalkers": NWALKERS,
+        "nprocs": NPROCS,
+        "niterations": NITERATIONS,
     }
     defaults.update(kwargs)
     # On the command line, an unwanted parameter is simply omitted, so we
@@ -49,9 +53,7 @@ def run_sim(session, *, random_seed=SEED, **kwargs):
         dx="dx",
         dy="dy",
         depth=np.array,
-        niterations=NITERATIONS,
         random_seed=random_seed,
-        nprocs=NPROCS,
         **defaults,
     )
     return np.asarray(result)
@@ -318,6 +320,108 @@ def test_mintimestep(east_slope_session):
     )
 
 
+def test_longer_simulation_larger_domain(tmp_path):
+    """More iterations must increase total water depth on a larger domain.
+
+    On a larger domain with slower drainage, longer simulations accumulate
+    more water. Uses a 200-cell domain at 10 m resolution so that walkers
+    remain within the domain for the full duration.
+    """
+    project = tmp_path / "simwe"
+    gs.create_project(project)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        tools = Tools(session=session)
+        tools.g_region(w=0, e=2000, s=0, n=10, res=10)
+        tools.r_mapcalc(expression="elevation = 201 - col()")
+        tools.r_mapcalc(expression="dx = 1.0")
+        tools.r_mapcalc(expression="dy = 0.0")
+
+        sum_short = float(
+            np.sum(run_sim(session, rain_value=RAIN, man_value=0.3, niterations=5))
+        )
+        sum_long = float(
+            np.sum(run_sim(session, rain_value=RAIN, man_value=0.3, niterations=20))
+        )
+        assert sum_long > sum_short, (
+            f"Longer simulation should produce more depth: "
+            f"sum(5 min)={sum_short:.3e}, sum(20 min)={sum_long:.3e}"
+        )
+        ratio = sum_long / sum_short
+        assert ratio >= 1.05, (
+            f"20-min simulation should produce at least 5% more depth than 5-min "
+            f"(ratio={ratio:.2f})"
+        )
+
+
+def test_niterations_affects_time_series_progression(tmp_path):
+    """More iterations must create more time-series output maps.
+
+    With output_step=5, niterations=10 produces maps at t=5,10 while
+    niterations=20 produces maps at t=5,10,15. More time-series maps
+    indicate longer simulation duration.
+    """
+    project = tmp_path / "simwe"
+    gs.create_project(project)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        tools = Tools(session=session)
+        tools.g_region(w=0, e=2000, s=0, n=10, res=10)
+        tools.r_mapcalc(expression="elevation = 201 - col()")
+        tools.r_mapcalc(expression="dx = 1.0")
+        tools.r_mapcalc(expression="dy = 0.0")
+
+        # niterations=10 with output_step=5 produces maps at t=5,10
+        tools.r_sim_water(
+            elevation="elevation",
+            dx="dx",
+            dy="dy",
+            depth="depth_10min",
+            rain_value=RAIN,
+            man_value=0.3,
+            nwalkers=NWALKERS,
+            niterations=10,
+            output_step=5,
+            random_seed=SEED,
+            nprocs=NPROCS,
+            flags="t",
+        )
+
+        # niterations=20 with output_step=5 produces maps at t=5,10,15
+        tools.r_sim_water(
+            elevation="elevation",
+            dx="dx",
+            dy="dy",
+            depth="depth_20min",
+            rain_value=RAIN,
+            man_value=0.3,
+            nwalkers=NWALKERS,
+            niterations=20,
+            output_step=5,
+            random_seed=SEED,
+            nprocs=NPROCS,
+            flags="t",
+        )
+
+        # 10-min run should produce 2 time-series maps (t=5, t=10)
+        maps_10 = list(
+            tools.g_list(type="raster", pattern="depth_10min*", format="json")
+        )
+        assert len(maps_10) == 2, (
+            f"10-min simulation with output_step=5 should produce 2 maps, got {len(maps_10)}"
+        )
+
+        # 20-min run should produce 3 time-series maps (t=5, t=10, t=15)
+        maps_20 = list(
+            tools.g_list(type="raster", pattern="depth_20min*", format="json")
+        )
+        assert len(maps_20) == 3, (
+            f"20-min simulation with output_step=5 should produce 3 maps, got {len(maps_20)}"
+        )
+        assert len(maps_20) > len(maps_10), (
+            f"Longer simulation should produce more time-series maps: "
+            f"20-min has {len(maps_20)} maps, 10-min has {len(maps_10)} maps"
+        )
+
+
 def test_higher_diffusion_coeff_reduces_depth(east_slope_session):
     """Higher diffusion coefficient must reduce total water depth.
 
@@ -568,3 +672,153 @@ def test_time_series_output(tmp_path):
         assert sum_10 >= sum_05, (
             f"Depth at t=10 ({sum_10:.3e}) should be >= depth at t=5 ({sum_05:.3e})"
         )
+
+
+def test_observation_logfile(east_slope_session, tmp_path):
+    """Observation points must log water depth at each time step.
+
+    Three observation points are placed on the east_slope_session domain
+    at upslope, midslope, and downslope positions. The logfile must contain
+    a header with category numbers and data lines with depth values.
+    Depth should increase from upslope to downslope.
+    """
+    tools = Tools(session=east_slope_session)
+
+    points_data = io.StringIO("0.5|0.5|1\n2.5|0.5|2\n4.5|0.5|3\n")
+    tools.v_in_ascii(input=points_data, output="points", cat=3)
+
+    logfile = str(tmp_path / "obs_log.txt")
+    tools.r_sim_water(
+        elevation="elevation",
+        dx="dx",
+        dy="dy",
+        depth=np.array,
+        rain_value=RAIN,
+        man_value=0.1,
+        nwalkers=NWALKERS,
+        niterations=NITERATIONS,
+        random_seed=SEED,
+        nprocs=NPROCS,
+        observation="points",
+        logfile=logfile,
+    )
+
+    lines = pathlib.Path(logfile).read_text(encoding="utf-8").strip().split("\n")
+
+    # Header: "STEP   CAT0001 CAT0002 CAT0003"
+    header = lines[0].split()
+    assert header[0] == "STEP"
+    assert "CAT0001" in header
+    assert "CAT0002" in header
+    assert "CAT0003" in header
+
+    # Must have at least one data line after the header.
+    assert len(lines) > 1, "Logfile should contain data lines after the header"
+
+    # Data line: "000028 0.0000 0.0001 0.0001" (step, then one depth per point)
+    last_vals = [float(v) for v in lines[-1].split()[1:]]
+    upslope = last_vals[0]
+    midslope = last_vals[1]
+    downslope = last_vals[2]
+    assert downslope >= midslope >= upslope, (
+        f"Depth should increase downstream: "
+        f"upslope={upslope:.4f}, midslope={midslope:.4f}, downslope={downslope:.4f}"
+    )
+
+
+def test_walkers_output(tmp_path):
+    """The walkers_output parameter must produce a vector point map.
+
+    Each surviving walker position is written as a 3D point. The number
+    of points should not exceed nwalkers.
+
+    Uses a large domain (200 cells) to give walkers sufficient residence
+    time before exiting. High roughness (0.3) further increases walker
+    retention; small domains produce no walker output regardless of roughness.
+    """
+    project = tmp_path / "simwe"
+    gs.create_project(project)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        tools = Tools(session=session)
+        tools.g_region(w=0, e=2000, s=0, n=10, res=10)
+        tools.r_mapcalc(expression="elevation = 201 - col()")
+        tools.r_mapcalc(expression="dx = 1.0")
+        tools.r_mapcalc(expression="dy = 0.0")
+
+        tools.r_sim_water(
+            elevation="elevation",
+            dx="dx",
+            dy="dy",
+            depth=np.array,
+            rain_value=RAIN,
+            man_value=0.3,
+            nwalkers=NWALKERS,
+            niterations=NITERATIONS,
+            random_seed=SEED,
+            nprocs=NPROCS,
+            walkers_output="walkers",
+        )
+
+        info = tools.v_info(map="walkers", flags="t", format="json")
+        npoints = int(info["points"])
+        assert npoints > 0, "Expected at least one walker point"
+        assert npoints <= NWALKERS, (
+            f"Number of walker points ({npoints}) should not exceed "
+            f"nwalkers ({NWALKERS})"
+        )
+
+
+def test_walkers_output_time_series(tmp_path):
+    """With -t, walkers_output must produce per-step vector maps.
+
+    The maps use an underscore-separated time suffix (e.g., walkers_05)
+    unlike raster outputs which use a dot (e.g., depth.05).
+
+    Uses a large domain (200 cells) with high roughness (0.3) so walkers
+    survive long enough to generate multiple time-series outputs.
+    """
+    project = tmp_path / "simwe"
+    gs.create_project(project)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        tools = Tools(session=session)
+        tools.g_region(w=0, e=2000, s=0, n=10, res=10)
+        tools.r_mapcalc(expression="elevation = 201 - col()")
+        tools.r_mapcalc(expression="dx = 1.0")
+        tools.r_mapcalc(expression="dy = 0.0")
+
+        tools.r_sim_water(
+            elevation="elevation",
+            dx="dx",
+            dy="dy",
+            depth="ts_depth",
+            rain_value=RAIN,
+            man_value=0.3,
+            nwalkers=NWALKERS,
+            niterations=NITERATIONS,
+            output_step=5,
+            random_seed=SEED,
+            nprocs=NPROCS,
+            walkers_output="walkers",
+            flags="t",
+        )
+
+        info_05 = tools.v_info(map="walkers_05", flags="t", format="json")
+        info_10 = tools.v_info(map="walkers_10", flags="t", format="json")
+        assert int(info_05["points"]) > 0, "Expected walker points at t=5"
+        assert int(info_10["points"]) > 0, "Expected walker points at t=10"
+
+
+def test_nprocs_gives_same_result(east_slope_session):
+    """Multiple threads produce a result close to a single thread.
+
+    Thread-level partitioning changes walker ordering and random draws,
+    so results are not bitwise identical, but total depth should agree
+    within a few percent.
+    """
+    sum_single = float(np.sum(run_sim(east_slope_session)))
+    sum_multi = float(np.sum(run_sim(east_slope_session, nprocs=4)))
+    tolerance = 0.05
+    assert sum_multi == pytest.approx(sum_single, rel=tolerance), (
+        f"nprocs=4 result ({sum_multi:.3e}) should match "
+        f"nprocs=1 result ({sum_single:.3e}) within {tolerance:.0%}"
+    )
