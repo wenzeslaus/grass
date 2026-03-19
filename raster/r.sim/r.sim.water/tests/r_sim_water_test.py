@@ -70,7 +70,10 @@ def test_no_rain_produces_no_depth(east_slope_session):
 
 
 def test_rain_produces_positive_depth(east_slope_session):
-    """Rainfall on a slope must create positive water depth somewhere."""
+    """Rainfall on a slope must create positive water depth somewhere.
+
+    See test_north_slope_rain_produces_positive_depth for the north-south variant.
+    """
     depth = run_sim(east_slope_session)
     assert np.sum(depth) > 0, "Expected positive total depth with rainfall on a slope"
 
@@ -125,9 +128,9 @@ def test_depth_increases_downstream(tmp_path):
     from the divide. Manning's kinematic wave then gives h(x) proportional
     to x^(3/5), also increasing downstream.
 
-    Uses a 1-row x 6-column domain (instead of the standard 5-column one)
-    so the strip splits cleanly into an upslope half (cols 0-2) and a
-    downslope half (cols 3-5).
+    Uses a 1-row x 6-column domain to split cleanly into an upslope half
+    (cols 0-2) and a downslope half (cols 3-5). See
+    test_north_slope_depth_increases_downstream for the north-south variant.
     """
     project = tmp_path / "simwe"
     gs.create_project(project)
@@ -680,7 +683,8 @@ def test_observation_logfile(east_slope_session, tmp_path):
     Three observation points are placed on the east_slope_session domain
     at upslope, midslope, and downslope positions. The logfile must contain
     a header with category numbers and data lines with depth values.
-    Depth should increase from upslope to downslope.
+    Depth should increase from upslope to downslope. See
+    test_north_slope_observation_logfile for the north-south variant.
     """
     tools = Tools(session=east_slope_session)
 
@@ -822,3 +826,117 @@ def test_nprocs_gives_same_result(east_slope_session):
         f"nprocs=4 result ({sum_multi:.3e}) should match "
         f"nprocs=1 result ({sum_single:.3e}) within {tolerance:.0%}"
     )
+
+
+def test_north_slope_rain_produces_positive_depth(tmp_path):
+    """Rainfall on a north-south slope must create positive water depth.
+
+    Mirrors test_rain_produces_positive_depth with dy instead of dx, verifying
+    flow direction when dy != 0 and dx = 0.
+    """
+    project = tmp_path / "simwe_north"
+    gs.create_project(project)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        tools = Tools(session=session)
+        tools.g_region(w=0, e=1, s=0, n=5, res=1)
+        tools.r_mapcalc(expression="elevation = row()")
+        tools.r_mapcalc(expression="dx = 0.0")
+        tools.r_mapcalc(expression="dy = 1.0")
+
+        depth = run_sim(session)
+        assert np.sum(depth) > 0, (
+            "Expected positive total depth with rainfall on north-south slope"
+        )
+
+
+def test_north_slope_depth_increases_downstream(tmp_path):
+    """Water must be deeper in the downslope (northward) half of a north-south slope.
+
+    By continuity, discharge q(y) = R * y grows linearly with distance y
+    from the divide. Manning's kinematic wave then gives h(y) proportional
+    to y^(3/5), increasing toward the northern boundary.
+
+    Uses a 6-row x 1-column domain to split cleanly into a downslope half
+    (rows 0-2, north) and an upslope half (rows 3-5, south). Mirrors
+    test_depth_increases_downstream with dy instead of dx.
+
+    Note: dy = 1.0 because elevation increases southward (with increasing row).
+    """
+    project = tmp_path / "simwe_north_grad"
+    gs.create_project(project)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        tools = Tools(session=session)
+        tools.g_region(w=0, e=1, s=0, n=6, res=1)
+        # elevation = row() gives [1, 2, 3, 4, 5, 6] north to south
+        # North (low row index) has low elevation, water flows north
+        tools.r_mapcalc(expression="elevation = row()")
+        tools.r_mapcalc(expression="dx = 0.0")
+        tools.r_mapcalc(expression="dy = 1.0")
+
+        depth = run_sim(session).flatten()  # shape (6,) for a 1-column raster
+        upslope_sum = float(np.sum(depth[3:]))  # rows 3-5 (south, high elevation)
+        downslope_sum = float(np.sum(depth[:3]))  # rows 0-2 (north, low elevation)
+        assert downslope_sum > upslope_sum, (
+            f"Downslope total depth ({downslope_sum:.3e}) should exceed "
+            f"upslope total depth ({upslope_sum:.3e})"
+        )
+
+
+def test_north_slope_observation_logfile(tmp_path):
+    """Observation parameter works with north-south (dy != 0) flow.
+
+    Mirrors test_observation_logfile with dy instead of dx. Water flows north
+    (downhill), so observation points should show increasing depth from south
+    (cat0001) to north (cat0003). Uses a 10-row x 1-column domain for adequate
+    water flow to observation points.
+    """
+    project = tmp_path / "simwe_north_obs"
+    gs.create_project(project)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        tools = Tools(session=session)
+        tools.g_region(w=0, e=1, s=0, n=10, res=1)
+        tools.r_mapcalc(expression="elevation = row()")
+        tools.r_mapcalc(expression="dx = 0.0")
+        tools.r_mapcalc(expression="dy = 1.0")
+
+        # Three observation points along the north-south axis.
+        points_data = io.StringIO("0.5|1.5|1\n0.5|5.5|2\n0.5|9.5|3\n")
+        tools.v_in_ascii(input=points_data, output="points", cat=3)
+
+        logfile = str(tmp_path / "obs_log_north.txt")
+        tools.r_sim_water(
+            elevation="elevation",
+            dx="dx",
+            dy="dy",
+            depth=np.array,
+            rain_value=RAIN,
+            man_value=0.1,
+            nwalkers=NWALKERS,
+            niterations=NITERATIONS,
+            random_seed=SEED,
+            nprocs=NPROCS,
+            observation="points",
+            logfile=logfile,
+        )
+
+        lines = pathlib.Path(logfile).read_text(encoding="utf-8").strip().split("\n")
+
+        # Header: "STEP   CAT0001 CAT0002 CAT0003"
+        header = lines[0].split()
+        assert header[0] == "STEP"
+        assert "CAT0001" in header
+        assert "CAT0002" in header
+        assert "CAT0003" in header
+
+        # Must have at least one data line after the header.
+        assert len(lines) > 1, "Logfile should contain data lines after the header"
+
+        # Data line: depth increases from south (cat0001) to north (cat0003)
+        last_vals = [float(v) for v in lines[-1].split()[1:]]
+        south = last_vals[0]
+        mid = last_vals[1]
+        north = last_vals[2]
+        assert north >= mid >= south, (
+            f"Depth should increase downstream (northward): "
+            f"south={south:.4f}, mid={mid:.4f}, north={north:.4f}"
+        )
