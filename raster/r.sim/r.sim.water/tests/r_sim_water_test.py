@@ -18,12 +18,10 @@ from grass.tools import Tools
 SEED = 42
 NPROCS = 1
 
-# 10000 walkers on a 1-row x 5-column domain gives 2000 walkers/cell.
-# The default (2 x cells) would be 10, which is too noisy for aggregate
-# comparisons. Unless otherwise noted, tests use this domain and walker count.
-NWALKERS = 10000
-
-NITERATIONS = 10  # minutes; long enough for near-steady state on a small domain
+# With default walkers and niterations=2, small domains reach
+# near-steady state in ~0.2 s per run while keeping Monte Carlo noise low
+# enough for structural assertions.
+NITERATIONS = 2  # minutes; sufficient for near-steady state on a small domain
 RAIN = 100  # mm/hr; generous signal-to-noise ratio on a small domain
 
 
@@ -39,7 +37,6 @@ def run_sim(session, *, random_seed=SEED, **kwargs):
         "rain_value": RAIN,
         "infil_value": 0,
         "man_value": 0.1,
-        "nwalkers": NWALKERS,
         "nprocs": NPROCS,
         "niterations": NITERATIONS,
     }
@@ -195,7 +192,6 @@ def test_discharge_positive_with_rain(east_slope_session):
             dy="dy",
             discharge=np.array,
             rain_value=RAIN,
-            nwalkers=NWALKERS,
             niterations=NITERATIONS,
             random_seed=SEED,
             nprocs=NPROCS,
@@ -207,11 +203,14 @@ def test_discharge_positive_with_rain(east_slope_session):
 def test_results_consistent_across_seeds(east_slope_session):
     """Different random seeds must produce similar total depth.
 
-    The Monte Carlo result converges as nwalkers grows. With 10000 walkers
+    The Monte Carlo result converges as nwalkers grows. With enough walkers
     the total depth should be stable across seeds within a few percent.
     """
     seeds = [1, 7, 42, 99, 123]
-    sums = [float(np.sum(run_sim(east_slope_session, random_seed=s))) for s in seeds]
+    sums = [
+        float(np.sum(run_sim(east_slope_session, nwalkers=1000, random_seed=s)))
+        for s in seeds
+    ]
     mean_sum = np.mean(sums)
     for seed, total in zip(seeds, sums, strict=True):
         assert total == pytest.approx(mean_sum, rel=0.1), (
@@ -244,7 +243,6 @@ def test_random_seed_flag(east_slope_session):
         "depth": np.array,
         "rain_value": RAIN,
         "man_value": 0.1,
-        "nwalkers": NWALKERS,
         "niterations": NITERATIONS,
         "nprocs": NPROCS,
         "flags": "s",
@@ -258,9 +256,14 @@ def test_random_seed_flag(east_slope_session):
     )
 
 
-def run_sim_error(session, *, nwalkers=NWALKERS, **kwargs):
+def run_sim_error(session, **kwargs):
     """Run r.sim.water and return the error output as ndarray."""
-    defaults = {"rain_value": RAIN, "infil_value": 0, "man_value": 0.1}
+    defaults = {
+        "rain_value": RAIN,
+        "infil_value": 0,
+        "man_value": 0.1,
+        "niterations": NITERATIONS,
+    }
     defaults.update(kwargs)
     defaults = {k: v for k, v in defaults.items() if v is not None}
     tools = Tools(session=session)
@@ -270,8 +273,6 @@ def run_sim_error(session, *, nwalkers=NWALKERS, **kwargs):
             dx="dx",
             dy="dy",
             error=np.array,
-            nwalkers=nwalkers,
-            niterations=NITERATIONS,
             random_seed=SEED,
             nprocs=NPROCS,
             **defaults,
@@ -297,11 +298,13 @@ def test_more_walkers_reduces_error(east_slope_session):
     The error scales as 1/sqrt(N), so quadrupling walkers should
     roughly halve the total error.
     """
-    error_few = float(np.sum(run_sim_error(east_slope_session, nwalkers=NWALKERS)))
-    error_many = float(np.sum(run_sim_error(east_slope_session, nwalkers=4 * NWALKERS)))
+    few = 10000
+    many = 40000
+    error_few = float(np.sum(run_sim_error(east_slope_session, nwalkers=few)))
+    error_many = float(np.sum(run_sim_error(east_slope_session, nwalkers=many)))
     assert error_many < error_few, (
         f"Total error should decrease with more walkers: "
-        f"sum({NWALKERS})={error_few:.3e}, sum({4 * NWALKERS})={error_many:.3e}"
+        f"sum({few})={error_few:.3e}, sum({many})={error_many:.3e}"
     )
 
 
@@ -380,7 +383,7 @@ def test_niterations_affects_time_series_progression(tmp_path):
             depth="depth_10min",
             rain_value=RAIN,
             man_value=0.3,
-            nwalkers=NWALKERS,
+            nwalkers=10000,
             niterations=10,
             output_step=5,
             random_seed=SEED,
@@ -396,7 +399,7 @@ def test_niterations_affects_time_series_progression(tmp_path):
             depth="depth_20min",
             rain_value=RAIN,
             man_value=0.3,
-            nwalkers=NWALKERS,
+            nwalkers=10000,
             niterations=20,
             output_step=5,
             random_seed=SEED,
@@ -597,7 +600,6 @@ def test_dx_dy_optional(tmp_path):
                 depth=np.array,
                 rain_value=RAIN,
                 man_value=0.1,
-                nwalkers=NWALKERS,
                 niterations=NITERATIONS,
                 random_seed=SEED,
                 nprocs=NPROCS,
@@ -661,8 +663,7 @@ def test_time_series_output(tmp_path):
             depth="ts_depth",
             rain_value=RAIN,
             man_value=0.3,
-            nwalkers=NWALKERS,
-            niterations=NITERATIONS,
+            niterations=10,
             output_step=5,
             random_seed=SEED,
             nprocs=NPROCS,
@@ -699,7 +700,7 @@ def test_observation_logfile(east_slope_session, tmp_path):
         depth=np.array,
         rain_value=RAIN,
         man_value=0.1,
-        nwalkers=NWALKERS,
+        nwalkers=1000,
         niterations=NITERATIONS,
         random_seed=SEED,
         nprocs=NPROCS,
@@ -749,6 +750,7 @@ def test_walkers_output(tmp_path):
         tools.r_mapcalc(expression="dx = 1.0")
         tools.r_mapcalc(expression="dy = 0.0")
 
+        nwalkers = 500
         tools.r_sim_water(
             elevation="elevation",
             dx="dx",
@@ -756,7 +758,7 @@ def test_walkers_output(tmp_path):
             depth=np.array,
             rain_value=RAIN,
             man_value=0.3,
-            nwalkers=NWALKERS,
+            nwalkers=nwalkers,
             niterations=NITERATIONS,
             random_seed=SEED,
             nprocs=NPROCS,
@@ -766,9 +768,9 @@ def test_walkers_output(tmp_path):
         info = tools.v_info(map="walkers", flags="t", format="json")
         npoints = int(info["points"])
         assert npoints > 0, "Expected at least one walker point"
-        assert npoints <= NWALKERS, (
+        assert npoints <= nwalkers, (
             f"Number of walker points ({npoints}) should not exceed "
-            f"nwalkers ({NWALKERS})"
+            f"nwalkers ({nwalkers})"
         )
 
 
@@ -797,8 +799,7 @@ def test_walkers_output_time_series(tmp_path):
             depth="ts_depth",
             rain_value=RAIN,
             man_value=0.3,
-            nwalkers=NWALKERS,
-            niterations=NITERATIONS,
+            niterations=10,
             output_step=5,
             random_seed=SEED,
             nprocs=NPROCS,
@@ -819,8 +820,8 @@ def test_nprocs_gives_same_result(east_slope_session):
     so results are not bitwise identical, but total depth should agree
     within a few percent.
     """
-    sum_single = float(np.sum(run_sim(east_slope_session)))
-    sum_multi = float(np.sum(run_sim(east_slope_session, nprocs=4)))
+    sum_single = float(np.sum(run_sim(east_slope_session, nwalkers=1000)))
+    sum_multi = float(np.sum(run_sim(east_slope_session, nwalkers=1000, nprocs=4)))
     tolerance = 0.05
     assert sum_multi == pytest.approx(sum_single, rel=tolerance), (
         f"nprocs=4 result ({sum_multi:.3e}) should match "
@@ -911,7 +912,7 @@ def test_north_slope_observation_logfile(tmp_path):
             depth=np.array,
             rain_value=RAIN,
             man_value=0.1,
-            nwalkers=NWALKERS,
+            nwalkers=1000,
             niterations=NITERATIONS,
             random_seed=SEED,
             nprocs=NPROCS,
