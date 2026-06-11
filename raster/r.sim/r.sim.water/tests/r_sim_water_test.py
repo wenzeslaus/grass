@@ -18,10 +18,10 @@ from grass.tools import Tools
 SEED = 42
 NPROCS = 1
 
-# With default walkers and niterations=2, small domains reach
+# With default walkers and duration=2, small domains reach
 # near-steady state in ~0.2 s per run while keeping Monte Carlo noise low
 # enough for structural assertions.
-NITERATIONS = 2  # minutes; sufficient for near-steady state on a small domain
+DURATION = 2  # minutes; sufficient for near-steady state on a small domain
 RAIN = 100  # mm/hr; generous signal-to-noise ratio on a small domain
 
 
@@ -38,7 +38,7 @@ def run_sim(session, *, random_seed=SEED, **kwargs):
         "infil_value": 0,
         "man_value": 0.1,
         "nprocs": NPROCS,
-        "niterations": NITERATIONS,
+        "duration": DURATION,
     }
     defaults.update(kwargs)
     # On the command line, an unwanted parameter is simply omitted, so we
@@ -192,7 +192,7 @@ def test_discharge_positive_with_rain(east_slope_session):
             dy="dy",
             discharge=np.array,
             rain_value=RAIN,
-            niterations=NITERATIONS,
+            duration=DURATION,
             random_seed=SEED,
             nprocs=NPROCS,
         )
@@ -243,7 +243,7 @@ def test_random_seed_flag(east_slope_session):
         "depth": np.array,
         "rain_value": RAIN,
         "man_value": 0.1,
-        "niterations": NITERATIONS,
+        "duration": DURATION,
         "nprocs": NPROCS,
         "flags": "s",
     }
@@ -262,7 +262,7 @@ def run_sim_error(session, **kwargs):
         "rain_value": RAIN,
         "infil_value": 0,
         "man_value": 0.1,
-        "niterations": NITERATIONS,
+        "duration": DURATION,
     }
     defaults.update(kwargs)
     defaults = {k: v for k, v in defaults.items() if v is not None}
@@ -343,10 +343,10 @@ def test_longer_simulation_larger_domain(tmp_path):
         tools.r_mapcalc(expression="dy = 0.0")
 
         sum_short = float(
-            np.sum(run_sim(session, rain_value=RAIN, man_value=0.3, niterations=5))
+            np.sum(run_sim(session, rain_value=RAIN, man_value=0.3, duration=5))
         )
         sum_long = float(
-            np.sum(run_sim(session, rain_value=RAIN, man_value=0.3, niterations=20))
+            np.sum(run_sim(session, rain_value=RAIN, man_value=0.3, duration=20))
         )
         assert sum_long > sum_short, (
             f"Longer simulation should produce more depth: "
@@ -359,11 +359,11 @@ def test_longer_simulation_larger_domain(tmp_path):
         )
 
 
-def test_niterations_affects_time_series_progression(tmp_path):
+def test_duration_affects_time_series_progression(tmp_path):
     """More iterations must create more time-series output maps.
 
-    With output_step=5, niterations=10 produces maps at t=5,10 while
-    niterations=20 produces maps at t=5,10,15. More time-series maps
+    With output_step=5, duration=10 produces maps at t=5,10 while
+    duration=20 produces maps at t=5,10,15. More time-series maps
     indicate longer simulation duration.
     """
     project = tmp_path / "simwe"
@@ -375,7 +375,7 @@ def test_niterations_affects_time_series_progression(tmp_path):
         tools.r_mapcalc(expression="dx = 1.0")
         tools.r_mapcalc(expression="dy = 0.0")
 
-        # niterations=10 with output_step=5 produces maps at t=5,10
+        # duration=10 with output_step=5 produces maps at t=5,10
         tools.r_sim_water(
             elevation="elevation",
             dx="dx",
@@ -384,14 +384,14 @@ def test_niterations_affects_time_series_progression(tmp_path):
             rain_value=RAIN,
             man_value=0.3,
             nwalkers=10000,
-            niterations=10,
+            duration=10,
             output_step=5,
             random_seed=SEED,
             nprocs=NPROCS,
             flags="t",
         )
 
-        # niterations=20 with output_step=5 produces maps at t=5,10,15
+        # duration=20 with output_step=5 produces maps at t=5,10,15
         tools.r_sim_water(
             elevation="elevation",
             dx="dx",
@@ -400,7 +400,7 @@ def test_niterations_affects_time_series_progression(tmp_path):
             rain_value=RAIN,
             man_value=0.3,
             nwalkers=10000,
-            niterations=20,
+            duration=20,
             output_step=5,
             random_seed=SEED,
             nprocs=NPROCS,
@@ -600,7 +600,7 @@ def test_dx_dy_optional(tmp_path):
                 depth=np.array,
                 rain_value=RAIN,
                 man_value=0.1,
-                niterations=NITERATIONS,
+                duration=DURATION,
                 random_seed=SEED,
                 nprocs=NPROCS,
             )
@@ -639,7 +639,7 @@ def test_flow_control_increases_depth(east_slope_session):
 def test_time_series_output(tmp_path):
     """The -t flag with output_step must produce intermediate depth maps.
 
-    With niterations=10 and output_step=5, the tool should create depth
+    With duration=10 and output_step=5, the tool should create depth
     maps at minutes 5 and 10. The later time step should have greater or
     equal total depth as water accumulates over time.
 
@@ -663,7 +663,7 @@ def test_time_series_output(tmp_path):
             depth="ts_depth",
             rain_value=RAIN,
             man_value=0.3,
-            niterations=10,
+            duration=10,
             output_step=5,
             random_seed=SEED,
             nprocs=NPROCS,
@@ -701,7 +701,7 @@ def test_observation_logfile(east_slope_session, tmp_path):
         rain_value=RAIN,
         man_value=0.1,
         nwalkers=1000,
-        niterations=NITERATIONS,
+        duration=DURATION,
         random_seed=SEED,
         nprocs=NPROCS,
         observation="points",
@@ -759,7 +759,7 @@ def test_walkers_output(tmp_path):
             rain_value=RAIN,
             man_value=0.3,
             nwalkers=nwalkers,
-            niterations=NITERATIONS,
+            duration=DURATION,
             random_seed=SEED,
             nprocs=NPROCS,
             walkers_output="walkers",
@@ -799,7 +799,7 @@ def test_walkers_output_time_series(tmp_path):
             depth="ts_depth",
             rain_value=RAIN,
             man_value=0.3,
-            niterations=10,
+            duration=10,
             output_step=5,
             random_seed=SEED,
             nprocs=NPROCS,
@@ -913,7 +913,7 @@ def test_north_slope_observation_logfile(tmp_path):
             rain_value=RAIN,
             man_value=0.1,
             nwalkers=1000,
-            niterations=NITERATIONS,
+            duration=DURATION,
             random_seed=SEED,
             nprocs=NPROCS,
             observation="points",

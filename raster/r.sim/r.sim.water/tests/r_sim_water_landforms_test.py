@@ -17,7 +17,7 @@ from grass.tools import Tools
 SEED = 42
 NPROCS = 1
 
-NITERATIONS = 2  # minutes; enough for near-steady state on small domains
+DURATION = 2  # minutes; enough for near-steady state on small domains
 RAIN = 100  # mm/hr
 
 
@@ -31,7 +31,7 @@ def run_sim(session, *, random_seed=SEED, **kwargs):
         "infil_value": 0,
         "man_value": 0.1,
         "nprocs": NPROCS,
-        "niterations": NITERATIONS,
+        "duration": DURATION,
     }
     defaults.update(kwargs)
     defaults = {k: v for k, v in defaults.items() if v is not None}
