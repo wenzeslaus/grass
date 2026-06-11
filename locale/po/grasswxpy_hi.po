@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-14 15:46+0000\n"
+"POT-Creation-Date: 2026-05-23 16:07+0000\n"
 "PO-Revision-Date: 2026-03-05 11:44+0000\n"
 "Last-Translator: Abhimanyu  <abhimanyupg04@gmail.com>\n"
 "Language-Team: Hindi <https://weblate.osgeo.org/projects/grass-gis/grasswxpy/hi/>\n"
@@ -740,6 +740,21 @@ msgstr "चयनित रिकॉर्ड को संपादित क�
 msgid "Display selected"
 msgstr "चयनित को प्रदर्शित करें"
 
+#, fuzzy
+#| msgid "Tools"
+msgid "Tools API"
+msgstr "औजार"
+
+#, fuzzy
+#| msgid "Script editor"
+msgid "Script API"
+msgstr "स्क्रिप्ट संपादक"
+
+#, fuzzy
+#| msgid "GRASS API:"
+msgid "PyGRASS API"
+msgstr "घास एपीआई:"
+
 msgid "Classic (labels only)"
 msgstr "क्लासिक (केवल लेबल)"
 
@@ -1303,7 +1318,14 @@ msgstr "&मैपसेट का नाम बदलें"
 msgid "Re&load maps"
 msgstr "RRee&&llooaadd  mmaappss"
 
-msgid "&Copy path to mapset"
+#, fuzzy
+#| msgid "Show computational region extent"
+msgid "Show computational region"
+msgstr "कम्प्यूटेशनल क्षेत्र की सीमा दिखाएँ"
+
+#, fuzzy
+#| msgid "&Copy path to mapset"
+msgid "&Copy path"
 msgstr "&म्यापसेट के पॅंथ की कांपी करें"
 
 msgid "&Create mapset"
@@ -1314,6 +1336,16 @@ msgstr "&प्रोजेक्ट हटाएं"
 
 msgid "&Rename project"
 msgstr "&प्रोजेक्ट का नाम बदलें"
+
+#, fuzzy
+#| msgid "Source projection:"
+msgid "Show projection info"
+msgstr "स्रोत प्रक्षेपण:"
+
+#, fuzzy
+#| msgid "CVS path"
+msgid "Copy path"
+msgstr "सीवीएस पथ"
 
 msgid "Change Label"
 msgstr "लेबल बदलें"
@@ -1339,11 +1371,18 @@ msgstr "&GRASS डेटाबेस को डिस्क से हटाए�
 msgid "&Delete projects (locations)"
 msgstr "&प्रोजेक्ट्स (लोकेशन) हटाएं"
 
+#, fuzzy
+#| msgid "&Copy path to mapset"
+msgid "Copy paths"
+msgstr "&म्यापसेट के पॅंथ की कांपी करें"
+
 msgid "&Delete mapsets"
 msgstr "&Delete mapsets"
 
-msgid "&Copy paths to mapsets"
-msgstr "&म्यापसेट्स के कांपी पॄंथ करें"
+#, fuzzy
+#| msgid "&Copy path to mapset"
+msgid "&Copy paths"
+msgstr "&म्यापसेट के पॅंथ की कांपी करें"
 
 #, python-brace-format
 msgid "Remove label '{label}' for this database?"
@@ -3153,10 +3192,37 @@ msgstr "कमांड निष्पादित किए बिना इ�
 msgid "Run the command (Ctrl+R)"
 msgstr "कमांड चलाएँ (Ctrl+R)"
 
+#, fuzzy
+#| msgid "Copy all to clipboard"
+msgid "Copy as Shell command"
+msgstr "सभी को क्लिपबोर्ड पर कॉपी करें"
+
+#, fuzzy
+#| msgid "CVS path"
+msgid "Copy as Python"
+msgstr "सीवीएस पथ"
+
+#, fuzzy
+#| msgid "Vector maps settings"
+msgid "Copy as JSON settings"
+msgstr "वेक्टर मानचित्र सेटिंग"
+
 msgid "Copy"
 msgstr "कॉपी करें"
 
-msgid "Copy the current command string to the clipboard"
+#, fuzzy
+#| msgid "Export common formats"
+msgid "More copy formats"
+msgstr "सामान्य प्रारूप निर्यात करें"
+
+#, fuzzy
+#| msgid "Raster map settings"
+msgid "Paste JSON settings"
+msgstr "रेखापुंज मानचित्र सेटिंग्स"
+
+#, fuzzy
+#| msgid "Copy the current command string to the clipboard"
+msgid "Paste parameters from JSON string in the clipboard"
 msgstr "वर्तमान कमांड स्ट्रिंग को क्लिपबोर्ड पर कॉपी करें"
 
 msgid "Show manual page of the command (Ctrl+H)"
@@ -3171,8 +3237,68 @@ msgstr "समाप्त होने पर डायलॉग बंद क�
 msgid "Close dialog when command is successfully finished. Change this settings in Preferences dialog ('Command' tab)."
 msgstr "कमांड सफलतापूर्वक समाप्त होने पर डायलॉग बंद करें। इस सेटिंग्स को प्राथमिकताएँ (Preferences) डायलॉग ('कमांड' टैब) में बदलें।"
 
+msgid "Copy as Python (Tools API)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Python script"
+msgid "Copy as Python (Script API)"
+msgstr "पायथन लिपि"
+
+#, fuzzy
+#| msgid "Python script"
+msgid "Copy as Python (PyGRASS API)"
+msgstr "पायथन लिपि"
+
 #, python-format
 msgid "'%s' copied to clipboard"
+msgstr "'%s' क्लिपबोर्ड पर कॉपी किया गया"
+
+#, fuzzy
+#| msgid "'{cmd}' copied to clipboard"
+msgid "Python code copied to clipboard"
+msgstr "'{cmd}' क्लिपबोर्ड पर कॉपी किया गया"
+
+#, fuzzy
+#| msgid "'%s' copied to clipboard"
+msgid "JSON copied to clipboard"
+msgstr "'%s' क्लिपबोर्ड पर कॉपी किया गया"
+
+msgid "Pasted data is not a valid JSON object."
+msgstr ""
+
+#, python-format
+msgid "You are pasting settings from module '%(pasted)s' into module '%(current)s'. Only matching parameters will be updated. Continue?"
+msgstr ""
+
+msgid "Module Mismatch"
+msgstr ""
+
+msgid "Pasted parameters are not a valid JSON object."
+msgstr ""
+
+msgid "Parameters pasted from clipboard."
+msgstr ""
+
+msgid "No matching parameters found in clipboard."
+msgstr ""
+
+msgid "The clipboard does not contain valid JSON data. Please ensure you have copied the settings correctly."
+msgstr ""
+
+#, fuzzy
+#| msgid "Invalid name"
+msgid "Invalid Data"
+msgstr "अमान्य नाम"
+
+#, fuzzy
+#| msgid "Error"
+msgid "Paste Error"
+msgstr "त्रुटि"
+
+#, fuzzy, python-format
+#| msgid "'%s' copied to clipboard"
+msgid "%s copied to clipboard"
 msgstr "'%s' क्लिपबोर्ड पर कॉपी किया गया"
 
 msgid "Required"
@@ -3772,6 +3898,9 @@ msgstr "संवादात्मक इनपुट की अनुमति
 
 msgid "Verbosity level:"
 msgstr "वाचालता स्तर:"
+
+msgid "Default Python API for copied commands:"
+msgstr ""
 
 msgid "Number of threads for parallel computing (supported tools only):"
 msgstr "समानांतर कंप्यूटिंग के लिए थ्रेड्स की संख्या (केवल समर्थित उपकरण):"
@@ -5648,6 +5777,16 @@ msgstr "क्या आप वाकई वर्तमान रास्ट�
 msgid "Remove raster mask"
 msgstr "रैस्टर मास्क हटाएँ"
 
+#, fuzzy
+#| msgid "Custom min"
+msgid "Custom CRS"
+msgstr "कस्टम न्यूनतम (Custom min)"
+
+#, fuzzy
+#| msgid "Left mouse click to remove the raster mask"
+msgid "Left mouse click to print detailed projection info"
+msgstr "रैस्टर मास्क को हटाने के लिए बायाँ माउस क्लिक करें"
+
 msgid "Create new workspace (Ctrl+N)"
 msgstr "नया वर्कस्पेस बनाएं (Ctrl+N)"
 
@@ -6947,6 +7086,9 @@ msgstr "फ़ाइल में अभिव्यक्ति सहेजे
 
 msgid "Load expression from file"
 msgstr "फ़ाइल से अभिव्यक्ति लोड करें"
+
+msgid "Copy the current command string to the clipboard"
+msgstr "वर्तमान कमांड स्ट्रिंग को क्लिपबोर्ड पर कॉपी करें"
 
 msgid "exponent"
 msgstr "प्रतिपादक"
@@ -10902,3 +11044,6 @@ msgid ""
 msgstr ""
 "रेखापुंज मानचित्र <%(rast1)s> बनाम <%(rast2)s> के लिए प्रतिगमन समीकरण:\\n\\n\n"
 "\n"
+
+#~ msgid "&Copy paths to mapsets"
+#~ msgstr "&म्यापसेट्स के कांपी पॄंथ करें"

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: grasswxpy_ru\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-14 15:46+0000\n"
+"POT-Creation-Date: 2026-05-23 16:07+0000\n"
 "PO-Revision-Date: 2023-06-28 19:08+0000\n"
 "Last-Translator: Sergey Kazorin <kazorin@basealt.ru>\n"
 "Language-Team: Russian <https://weblate.osgeo.org/projects/grass-gis/grasswxpy/ru/>\n"
@@ -752,6 +752,19 @@ msgstr "Редактировать выбранную запись"
 msgid "Display selected"
 msgstr "Отобразить выбранные объекты"
 
+#, fuzzy
+#| msgid "Tools"
+msgid "Tools API"
+msgstr "Инструменты"
+
+#, fuzzy
+msgid "Script API"
+msgstr "Простой &редактор"
+
+#, fuzzy
+msgid "PyGRASS API"
+msgstr "ГИС GRASS"
+
 msgid "Classic (labels only)"
 msgstr "Классический (только подписи)"
 
@@ -1346,7 +1359,12 @@ msgid "Re&load maps"
 msgstr "Пере&загрузить карты"
 
 #, fuzzy
-msgid "&Copy path to mapset"
+#| msgid "Show computational region extent"
+msgid "Show computational region"
+msgstr "Показать размер расчётного фрагмента"
+
+#, fuzzy
+msgid "&Copy path"
 msgstr "&Создать набор"
 
 msgid "&Create mapset"
@@ -1359,6 +1377,16 @@ msgstr "&Удалить набор"
 #, fuzzy
 msgid "&Rename project"
 msgstr "&Переименовать набор"
+
+#, fuzzy
+#| msgid "Choose projection"
+msgid "Show projection info"
+msgstr "Выберите проекцию"
+
+#, fuzzy
+#| msgid "CVS path"
+msgid "Copy path"
+msgstr "Путь к CVS"
 
 #, fuzzy
 #| msgid "Change mapset"
@@ -1393,11 +1421,15 @@ msgstr "&Удалить базу данных GRASS с диска"
 msgid "&Delete projects (locations)"
 msgstr "&Удалить области"
 
+#, fuzzy
+msgid "Copy paths"
+msgstr "&Создать набор"
+
 msgid "&Delete mapsets"
 msgstr "&Удалить наборы"
 
 #, fuzzy
-msgid "&Copy paths to mapsets"
+msgid "&Copy paths"
 msgstr "&Создать набор"
 
 #, fuzzy, python-brace-format
@@ -3296,10 +3328,37 @@ msgstr "Закрыть это окно без выполнения команд�
 msgid "Run the command (Ctrl+R)"
 msgstr "Запустить команду (Ctrl+R)"
 
+#, fuzzy
+#| msgid "Copy all to clipboard"
+msgid "Copy as Shell command"
+msgstr "Скопировать всё в буфер обмена"
+
+#, fuzzy
+#| msgid "CVS path"
+msgid "Copy as Python"
+msgstr "Путь к CVS"
+
+#, fuzzy
+#| msgid "Vector maps settings"
+msgid "Copy as JSON settings"
+msgstr "Параметры векторной карты"
+
 msgid "Copy"
 msgstr "Копировать"
 
-msgid "Copy the current command string to the clipboard"
+#, fuzzy
+#| msgid "Export common formats"
+msgid "More copy formats"
+msgstr "Экспортировать распространённые форматы"
+
+#, fuzzy
+#| msgid "Raster map settings"
+msgid "Paste JSON settings"
+msgstr "Параметры растровой карты"
+
+#, fuzzy
+#| msgid "Copy the current command string to the clipboard"
+msgid "Paste parameters from JSON string in the clipboard"
 msgstr "Копировать текущую командную строку в буфер обмена"
 
 msgid "Show manual page of the command (Ctrl+H)"
@@ -3314,8 +3373,70 @@ msgstr "Закрыть окно после окончания операции"
 msgid "Close dialog when command is successfully finished. Change this settings in Preferences dialog ('Command' tab)."
 msgstr "Закрыть диалоговое окно при успешном завершении команды. Этипараметры можно настроить в диалоговом окне «Параметры» (вкладка «Команда»)."
 
+msgid "Copy as Python (Tools API)"
+msgstr ""
+
+#, fuzzy
+#| msgid "Python script"
+msgid "Copy as Python (Script API)"
+msgstr "Сценарий Python"
+
+#, fuzzy
+#| msgid "Python script"
+msgid "Copy as Python (PyGRASS API)"
+msgstr "Сценарий Python"
+
 #, python-format
 msgid "'%s' copied to clipboard"
+msgstr "«%s» скопировано в буфер обмена"
+
+#, fuzzy
+#| msgid "'{cmd}' copied to clipboard"
+msgid "Python code copied to clipboard"
+msgstr "«{cmd}» скопировано в буфер обмена"
+
+#, fuzzy
+#| msgid "'%s' copied to clipboard"
+msgid "JSON copied to clipboard"
+msgstr "«%s» скопировано в буфер обмена"
+
+msgid "Pasted data is not a valid JSON object."
+msgstr ""
+
+#, python-format
+msgid "You are pasting settings from module '%(pasted)s' into module '%(current)s'. Only matching parameters will be updated. Continue?"
+msgstr ""
+
+#, fuzzy
+#| msgid "%d modules match"
+msgid "Module Mismatch"
+msgstr "Число совпадений по модулям: %d"
+
+msgid "Pasted parameters are not a valid JSON object."
+msgstr ""
+
+msgid "Parameters pasted from clipboard."
+msgstr ""
+
+msgid "No matching parameters found in clipboard."
+msgstr ""
+
+msgid "The clipboard does not contain valid JSON data. Please ensure you have copied the settings correctly."
+msgstr ""
+
+#, fuzzy
+#| msgid "Invalid name"
+msgid "Invalid Data"
+msgstr "Недопустимое имя"
+
+#, fuzzy
+#| msgid "Error"
+msgid "Paste Error"
+msgstr "Ошибка"
+
+#, fuzzy, python-format
+#| msgid "'%s' copied to clipboard"
+msgid "%s copied to clipboard"
 msgstr "«%s» скопировано в буфер обмена"
 
 msgid "Required"
@@ -3939,6 +4060,9 @@ msgstr "Разрешить интерактивный ввод"
 
 msgid "Verbosity level:"
 msgstr "Уровень избыточности информации:"
+
+msgid "Default Python API for copied commands:"
+msgstr ""
 
 msgid "Number of threads for parallel computing (supported tools only):"
 msgstr ""
@@ -5976,6 +6100,16 @@ msgstr ""
 msgid "Remove raster mask"
 msgstr "Сохранить растровую карту"
 
+#, fuzzy
+#| msgid "Custom min"
+msgid "Custom CRS"
+msgstr "Заданный минимум"
+
+#, fuzzy
+#| msgid "Please select first the raster map"
+msgid "Left mouse click to print detailed projection info"
+msgstr "Сначала выберите растровую карту"
+
 msgid "Create new workspace (Ctrl+N)"
 msgstr "Создать новый проект (Ctrl+N)"
 
@@ -7346,6 +7480,9 @@ msgstr "Сохранить выражение в файл"
 
 msgid "Load expression from file"
 msgstr "Загрузить выражение из файла"
+
+msgid "Copy the current command string to the clipboard"
+msgstr "Копировать текущую командную строку в буфер обмена"
 
 msgid "exponent"
 msgstr "возвести в степень"
@@ -11488,6 +11625,10 @@ msgstr ""
 "Уравнение регрессии для растровых карт <%(rast1)s> и <%(rast2)s>:\n"
 "\n"
 
+#, fuzzy
+#~ msgid "&Copy paths to mapsets"
+#~ msgstr "&Создать набор"
+
 #~ msgid "Generate random seed for rand()"
 #~ msgstr "Сгенерируйте случайное значение для rand()"
 
@@ -11524,10 +11665,6 @@ msgstr ""
 
 #~ msgid " Feature type: "
 #~ msgstr " Тип объекта: "
-
-#, python-format
-#~ msgid "%d modules match"
-#~ msgstr "Число совпадений по модулям: %d"
 
 #, python-format
 #~ msgid "%s. cleaning tool moved down"
@@ -12092,9 +12229,6 @@ msgstr ""
 
 #~ msgid "Choose method of specifying georeferencing parameters"
 #~ msgstr "Выберите метод определения параметров привязки"
-
-#~ msgid "Choose projection"
-#~ msgstr "Выберите проекцию"
 
 #~ msgid "Classifies attribute data, e.g. for thematic mapping"
 #~ msgstr "Классификация атрибутивных данных. Например, для тематического отображения"
