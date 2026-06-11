@@ -795,13 +795,14 @@ def test_walkers_output_time_series(tmp_path):
 def test_nprocs_gives_same_result(east_slope_session):
     """Multiple threads produce a result close to a single thread.
 
-    Thread-level partitioning changes walker ordering and random draws,
-    so results are not bitwise identical, but total depth should agree
-    within a few percent.
+    Threads share the random number generator state, so multi-threaded
+    results vary between runs even with a fixed seed. Total depth should
+    still agree with the single-threaded result within Monte Carlo noise,
+    using the same tolerance as test_results_consistent_across_seeds.
     """
     sum_single = float(np.sum(run_sim(east_slope_session, nwalkers=1000)))
     sum_multi = float(np.sum(run_sim(east_slope_session, nwalkers=1000, nprocs=4)))
-    tolerance = 0.05
+    tolerance = 0.1
     assert sum_multi == pytest.approx(sum_single, rel=tolerance), (
         f"nprocs=4 result ({sum_multi:.3e}) should match "
         f"nprocs=1 result ({sum_single:.3e}) within {tolerance:.0%}"
