@@ -251,7 +251,27 @@ def test_steeper_slope_gives_less_depth(tmp_path):
 
 
 def test_discharge_positive_with_rain(east_slope_session):
-    """Rainfall on a slope must produce positive water discharge."""
+    """Rainfall on a slope must produce discharge consistent with mass balance.
+
+    Discharge is output in m3/s. By steady-state continuity, the total
+    discharge summed over the domain cannot exceed the rainfall caught by the
+    contributing area: sum(q) <= R * total_contributing_area. On the
+    east_slope_session domain (1 row x 5 cols, res=1, elevation = 6 - col()),
+    the cell at column x (x = 0,...,4) sits (x + 0.5) m downslope of the divide
+    and is 1 m wide, so its contributing area is (x + 0.5) m^2 and the analytic
+    steady-state total is analytic_sum = R * sum(x + 0.5).
+
+    This is an order-of-magnitude mass-balance bound, not the exact q = R * x
+    relation: on this tiny domain boundary and diffusion effects make the
+    simulated total only a fraction (empirically ~0.4-0.7 across seeds) of the
+    analytic steady-state total. We therefore bracket the simulated sum between
+    analytic_sum/3 and analytic_sum. The lower bound already implies that
+    discharge is positive, while the bracket also catches gross unit errors
+    (e.g. a mm/hr or l/s confusion would be off by ~1000x).
+    """
+    rain_rate = RAIN / 1000.0 / 3600.0  # mm/hr -> m/s
+    analytic_sum = rain_rate * sum(x + 0.5 for x in range(5))
+
     tools = Tools(session=east_slope_session)
     discharge = np.asarray(
         tools.r_sim_water(
@@ -265,7 +285,11 @@ def test_discharge_positive_with_rain(east_slope_session):
             nprocs=NPROCS,
         )
     )
-    assert np.sum(discharge) > 0, "Expected positive discharge with rainfall on a slope"
+    total = float(np.sum(discharge))
+    assert analytic_sum / 3 < total < analytic_sum, (
+        f"Total discharge {total:.3e} m3/s should fall within the mass-balance "
+        f"bracket ({analytic_sum / 3:.3e}, {analytic_sum:.3e}) m3/s"
+    )
 
 
 def test_results_consistent_across_seeds(east_slope_session):
@@ -343,20 +367,29 @@ def test_error_output_is_zero(east_slope_session):
 
 
 def test_mintimestep(east_slope_session):
-    """A larger minimum time step must still produce valid positive depth.
+    """A larger minimum time step inflates depth by a bounded, measurable amount.
 
-    Increasing mintimestep reduces accuracy but speeds up the simulation.
-    The result should still be positive and in the same order of magnitude.
+    mintimestep sets a floor on the integration time step: a larger value
+    speeds up the simulation at the cost of accuracy. On these 1 m cells a
+    1 s floor lets walkers overshoot roughly one cell per step, so total depth
+    increases rather than staying the same. Measured across 12 seeds the ratio
+    sum_large_step / sum_default stayed in 1.88-2.51 (mean ~2.1, "roughly
+    doubling"); the large-step sum was effectively seed-independent while the
+    default sum carried the Monte Carlo variation. The same 1 s floor on 10 m
+    cells would have a negligible effect.
+
+    The bound is two-sided: the lower bound (1.3) enforces the documented
+    upward direction (and subsumes positivity), while the upper bound (3.0)
+    caps the inflation. Both lie well outside the observed range, so the test
+    passes for the real ~2x effect but fails if depth were off by an order of
+    magnitude in either direction (e.g. a vanishing or a 10x result).
     """
     sum_default = float(np.sum(run_sim(east_slope_session)))
     sum_large_step = float(np.sum(run_sim(east_slope_session, mintimestep=1.0)))
-    assert sum_large_step > 0, "Expected positive depth with large mintimestep"
-    # With 1 m cells, a 1-second minimum step lets walkers overshoot multiple
-    # cells, roughly doubling the total depth. On 10 m cells the same step has
-    # negligible effect (~2%). We only check same order of magnitude here.
-    assert sum_large_step == pytest.approx(sum_default, rel=2.0), (
-        f"Large mintimestep result ({sum_large_step:.3e}) deviates too far "
-        f"from default ({sum_default:.3e})"
+    ratio = sum_large_step / sum_default
+    assert 1.3 < ratio < 3.0, (
+        f"Large mintimestep depth ({sum_large_step:.3e}) relative to default "
+        f"({sum_default:.3e}) gives ratio {ratio:.3f}, outside expected (1.3, 3.0)"
     )
 
 
@@ -388,8 +421,12 @@ def test_duration_affects_time_series_progression(long_slope_session):
     """More iterations must create more time-series output maps.
 
     With output_step=5, duration=10 produces maps at t=5,10 while
-    duration=20 produces maps at t=5,10,15. More time-series maps
-    indicate longer simulation duration.
+    duration=20 produces maps at t=5,10,15 and, if walkers survive to the
+    end, also t=20. The exact count of the longer run is not pinned: whether
+    the final t=20 map appears depends on whether the last walkers leave the
+    domain before the final step, which varies with seed and platform. We
+    assert the robust lower bound (at least three maps) and that the longer
+    simulation yields strictly more maps than the shorter one.
     """
     tools = Tools(session=long_slope_session)
 
@@ -431,10 +468,12 @@ def test_duration_affects_time_series_progression(long_slope_session):
         f"10-min simulation with output_step=5 should produce 2 maps, got {len(maps_10)}"
     )
 
-    # 20-min run should produce 3 time-series maps (t=5, t=10, t=15)
+    # 20-min run should produce at least 3 time-series maps (t=5, t=10, t=15;
+    # t=20 as well when the last walkers survive to the final step).
     maps_20 = list(tools.g_list(type="raster", pattern="depth_20min*", format="json"))
-    assert len(maps_20) == 3, (
-        f"20-min simulation with output_step=5 should produce 3 maps, got {len(maps_20)}"
+    assert len(maps_20) >= 3, (
+        f"20-min simulation with output_step=5 should produce at least 3 maps, "
+        f"got {len(maps_20)}"
     )
     assert len(maps_20) > len(maps_10), (
         f"Longer simulation should produce more time-series maps: "
