@@ -20,6 +20,37 @@ NPROCS = 1
 DURATION = 2  # minutes; enough for near-steady state on small domains
 RAIN = 100  # mm/hr
 
+# Walker count for the rotation-invariance tests. r.sim.water defaults to
+# about twice the cell count, which is only ~70-240 walkers on these small
+# grids; at that count a single column total is dominated by Monte Carlo
+# noise. The rotation tests therefore run their own higher-walker
+# simulations for both orientations (the default-walker shape tests and
+# their pinned regression arrays are left unchanged). An empirical sweep
+# (10 seeds per landform at 2000, 5000, 10000, 20000 walkers) showed the
+# per-column profile spread leveling off around 10000: worst-case spread
+# fell from ~9-11% at 2000 to ~5% at 10000, with little further gain at
+# 20000 (~4%) for roughly double the runtime. 10000 is the chosen knee.
+ROTATION_NWALKERS = 10000
+
+# Shared tolerances for the rotation-invariance tests, derived from the
+# sweep at ROTATION_NWALKERS. r.sim.water is a stochastic Monte Carlo
+# walker simulation, so a landform and its 90-degree rotation produce
+# equivalent but not identical depth. One value is used per distinct
+# quantity because each comparison measures the same physical property
+# (rotational equivalence under walker noise).
+#
+# Worst-case orientation-to-orientation spread across 10 seeds at 10000
+# walkers: total depth <=1.3% (ridge, terrace), per-column profile <=5.0%
+# (valley), saddle edge-sum <=0.3%. TOTAL_REL and PROFILE_RTOL cover those
+# maxima with roughly 4x and 2x margin for variation across platforms and
+# compilers. The saddle's edge-sum aggregates whole row/column blocks (not
+# single columns), so it is far smoother than the per-column profiles and
+# uses its own tighter SADDLE_EDGE_REL (about 7x margin) rather than the
+# noisier PROFILE_RTOL.
+TOTAL_REL = 0.05
+PROFILE_RTOL = 0.1
+SADDLE_EDGE_REL = 0.02
+
 
 def run_sim(session, *, random_seed=SEED, **kwargs):
     """Run r.sim.water on a 2D domain; return depth as 2D ndarray.
@@ -294,6 +325,10 @@ def test_ridge_rotation_invariance(tmp_path):
 
     The E-W ridge is a 90-degree rotation of the N-S ridge. After rotating
     the E-W result back, total depth and cross-ridge profiles should match.
+
+    Both orientations are simulated here at ROTATION_NWALKERS rather than
+    reusing the default-walker shape fixture, so the per-column profile
+    comparison is meaningful (see ROTATION_NWALKERS for the rationale).
     """
     # N-S ridge: 5 rows x 7 cols, ridge along center column.
     project_ns = tmp_path / "ns"
@@ -302,7 +337,7 @@ def test_ridge_rotation_invariance(tmp_path):
         tools = Tools(session=session)
         tools.g_region(w=0, e=7, s=0, n=5, res=1)
         tools.r_mapcalc(expression="elevation = 3 - abs(col() - 4)")
-        depth_ns = run_sim(session)
+        depth_ns = run_sim(session, nwalkers=ROTATION_NWALKERS)
 
     # E-W ridge: 7 rows x 5 cols, ridge along center row.
     project_ew = tmp_path / "ew"
@@ -311,14 +346,14 @@ def test_ridge_rotation_invariance(tmp_path):
         tools = Tools(session=session)
         tools.g_region(w=0, e=5, s=0, n=7, res=1)
         tools.r_mapcalc(expression="elevation = 3 - abs(row() - 4)")
-        depth_ew = run_sim(session)
+        depth_ew = run_sim(session, nwalkers=ROTATION_NWALKERS)
 
-    # Total depth should be comparable. The ridge has only a 3 m
-    # elevation range on a small grid, so boundary effects and Monte
-    # Carlo noise cause ~10% variation between orientations.
+    # Total depth should be comparable between the two orientations.
+    # TOTAL_REL is shared by all four rotation tests; see its definition
+    # for the empirical basis (ridge total spread <=1.3% at 10000 walkers).
     total_ns = float(np.sum(depth_ns))
     total_ew = float(np.sum(depth_ew))
-    assert total_ns == pytest.approx(total_ew, rel=0.1), (
+    assert total_ns == pytest.approx(total_ew, rel=TOTAL_REL), (
         f"Total depth N-S ({total_ns:.6f}) vs E-W ({total_ew:.6f})"
     )
 
@@ -327,11 +362,12 @@ def test_ridge_rotation_invariance(tmp_path):
     depth_ew_rotated = np.rot90(depth_ew)
     assert depth_ew_rotated.shape == depth_ns.shape
 
-    # Cross-ridge profiles (summed along the ridge axis) should match.
-    # Monte Carlo noise on small grids requires generous tolerance.
+    # Cross-ridge profiles (per-column sums) should match within
+    # PROFILE_RTOL; at 10000 walkers the worst-case per-column spread was
+    # ~2.8% for the ridge across 10 seeds (see PROFILE_RTOL definition).
     profile_ns = np.sum(depth_ns, axis=0)
     profile_ew = np.sum(depth_ew_rotated, axis=0)
-    np.testing.assert_allclose(profile_ns, profile_ew, rtol=0.35)
+    np.testing.assert_allclose(profile_ns, profile_ew, rtol=PROFILE_RTOL)
 
 
 def test_valley_concentrates_flow_downstream(valley_ns_depth):
@@ -395,8 +431,12 @@ def test_valley_concentrates_flow_downstream(valley_ns_depth):
 
 
 def test_valley_rotation_invariance(tmp_path):
-    """A N-S valley and E-W valley must produce rotationally equivalent depth."""
-    # N-S valley: 10 rows x 7 cols.
+    """A N-S valley and E-W valley must produce rotationally equivalent depth.
+
+    Both orientations are simulated here at ROTATION_NWALKERS so the
+    per-column profile comparison is meaningful (see ROTATION_NWALKERS).
+    """
+    # N-S valley: 10 rows x 7 cols, V-section draining southward.
     project_ns = tmp_path / "ns"
     gs.create_project(project_ns)
     with gs.setup.init(project_ns, env=os.environ.copy()) as session:
@@ -405,7 +445,7 @@ def test_valley_rotation_invariance(tmp_path):
         tools.r_mapcalc(
             expression="elevation = abs(col() - 4) + (nrows() - row()) * 0.5"
         )
-        depth_ns = run_sim(session)
+        depth_ns = run_sim(session, nwalkers=ROTATION_NWALKERS)
 
     # E-W valley: 7 rows x 10 cols.
     project_ew = tmp_path / "ew"
@@ -416,19 +456,24 @@ def test_valley_rotation_invariance(tmp_path):
         tools.r_mapcalc(
             expression="elevation = abs(row() - 4) + (ncols() - col()) * 0.5"
         )
-        depth_ew = run_sim(session)
+        depth_ew = run_sim(session, nwalkers=ROTATION_NWALKERS)
 
+    # Total depth should be comparable between orientations; TOTAL_REL is
+    # shared across the rotation tests (see its definition). The valley
+    # total spread was <=0.5% at 10000 walkers across 10 seeds.
     total_ns = float(np.sum(depth_ns))
     total_ew = float(np.sum(depth_ew))
-    assert total_ns == pytest.approx(total_ew, rel=0.02), (
+    assert total_ns == pytest.approx(total_ew, rel=TOTAL_REL), (
         f"Total depth N-S ({total_ns:.6f}) vs E-W ({total_ew:.6f})"
     )
 
-    # Cross-valley profiles should match after rotation.
+    # Per-column cross-valley profiles should match within PROFILE_RTOL;
+    # the valley had the largest per-column spread of the three profile
+    # landforms (~5.0% at 10000 walkers), which PROFILE_RTOL covers ~2x.
     profile_ns = np.sum(depth_ns, axis=0)
     depth_ew_rotated = np.rot90(depth_ew)
     profile_ew = np.sum(depth_ew_rotated, axis=0)
-    np.testing.assert_allclose(profile_ns, profile_ew, rtol=0.15)
+    np.testing.assert_allclose(profile_ns, profile_ew, rtol=PROFILE_RTOL)
 
 
 def test_saddle_bifurcates_flow(saddle_depth):
@@ -492,8 +537,10 @@ def test_saddle_rotation_invariance(tmp_path):
 
     The original saddle has valleys along columns (left-right).
     A 90-degree rotation swaps row and column terms, putting valleys
-    along rows (top-bottom).
+    along rows (top-bottom). Both orientations are simulated here at
+    ROTATION_NWALKERS (see ROTATION_NWALKERS for the rationale).
     """
+    # Original saddle (7x7); hyperbolic paraboloid with E-W low axes.
     project_a = tmp_path / "a"
     gs.create_project(project_a)
     with gs.setup.init(project_a, env=os.environ.copy()) as session:
@@ -504,7 +551,7 @@ def test_saddle_rotation_invariance(tmp_path):
                 "elevation = (row() - 4)*(row() - 4) - (col() - 4)*(col() - 4) + 10"
             )
         )
-        depth_a = run_sim(session)
+        depth_a = run_sim(session, nwalkers=ROTATION_NWALKERS)
 
     project_b = tmp_path / "b"
     gs.create_project(project_b)
@@ -516,22 +563,27 @@ def test_saddle_rotation_invariance(tmp_path):
                 "elevation = (col() - 4)*(col() - 4) - (row() - 4)*(row() - 4) + 10"
             )
         )
-        depth_b = run_sim(session)
+        depth_b = run_sim(session, nwalkers=ROTATION_NWALKERS)
 
-    # Both are square so total depth should be comparable.
+    # Both are square so total depth should be comparable; TOTAL_REL is
+    # shared across the rotation tests (see its definition). The saddle
+    # total spread was <=0.4% at 10000 walkers across 10 seeds.
     total_a = float(np.sum(depth_a))
     total_b = float(np.sum(depth_b))
-    assert total_a == pytest.approx(total_b, rel=0.1), (
+    assert total_a == pytest.approx(total_b, rel=TOTAL_REL), (
         f"Total depth original ({total_a:.6f}) vs rotated ({total_b:.6f})"
     )
 
     # After rotation, the outer ring (excluding the noisy center row/col)
     # should have comparable depth distribution. Compare edge sums
     # excluding the center row/col (index 3) where the saddle singularity
-    # amplifies Monte Carlo noise.
+    # amplifies Monte Carlo noise. This aggregates whole row/column blocks,
+    # so it is far smoother than the per-column profiles of the other
+    # rotation tests (worst-case spread <=0.3% at 10000 walkers across 10
+    # seeds); it therefore uses the tighter SADDLE_EDGE_REL.
     edge_cols_a = float(np.sum(depth_a[:, :3]) + np.sum(depth_a[:, 4:]))
     edge_rows_b = float(np.sum(depth_b[:3, :]) + np.sum(depth_b[4:, :]))
-    assert edge_cols_a == pytest.approx(edge_rows_b, rel=0.2), (
+    assert edge_cols_a == pytest.approx(edge_rows_b, rel=SADDLE_EDGE_REL), (
         f"Edge depth original ({edge_cols_a:.6f}) vs rotated ({edge_rows_b:.6f})"
     )
 
@@ -805,8 +857,12 @@ def test_terrace_accumulates_on_steps(terrace_ew_depth):
 
 
 def test_terrace_rotation_invariance(tmp_path):
-    """E-W terraces and N-S terraces must produce rotationally equivalent depth."""
-    # E-W terraces: 10 rows x 12 cols.
+    """E-W terraces and N-S terraces must produce rotationally equivalent depth.
+
+    Both orientations are simulated here at ROTATION_NWALKERS so the
+    per-column profile comparison is meaningful (see ROTATION_NWALKERS).
+    """
+    # E-W terraces: 10 rows x 12 cols, three flat steps and drops.
     project_ew = tmp_path / "ew"
     gs.create_project(project_ew)
     with gs.setup.init(project_ew, env=os.environ.copy()) as session:
@@ -820,7 +876,7 @@ def test_terrace_rotation_invariance(tmp_path):
                 " if(col() == 9, 4, 3))))"
             )
         )
-        depth_ew = run_sim(session)
+        depth_ew = run_sim(session, nwalkers=ROTATION_NWALKERS)
 
     # N-S terraces: 12 rows x 10 cols.
     project_ns = tmp_path / "ns"
@@ -836,18 +892,21 @@ def test_terrace_rotation_invariance(tmp_path):
                 " if(row() == 9, 4, 3))))"
             )
         )
-        depth_ns = run_sim(session)
+        depth_ns = run_sim(session, nwalkers=ROTATION_NWALKERS)
 
-    # Total depth should be comparable.
+    # Total depth should be comparable; TOTAL_REL is shared across the
+    # rotation tests (see its definition). The terrace total spread was
+    # <=1.3% at 10000 walkers across 10 seeds.
     total_ew = float(np.sum(depth_ew))
     total_ns = float(np.sum(depth_ns))
-    assert total_ew == pytest.approx(total_ns, rel=0.02), (
+    assert total_ew == pytest.approx(total_ns, rel=TOTAL_REL), (
         f"Total depth E-W ({total_ew:.6f}) vs N-S ({total_ns:.6f})"
     )
 
-    # Cross-terrace profiles should match after rotation.
-    # Monte Carlo noise on small grids requires generous tolerance.
+    # Per-column cross-terrace profiles should match within PROFILE_RTOL;
+    # the terrace per-column spread was ~4.7% at 10000 walkers across 10
+    # seeds, which PROFILE_RTOL covers ~2x.
     profile_ew = np.sum(depth_ew, axis=0)
     depth_ns_rotated = np.rot90(depth_ns)
     profile_ns = np.sum(depth_ns_rotated, axis=0)
-    np.testing.assert_allclose(profile_ew, profile_ns, rtol=0.3)
+    np.testing.assert_allclose(profile_ew, profile_ns, rtol=PROFILE_RTOL)
