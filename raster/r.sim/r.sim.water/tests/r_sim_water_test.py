@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 import grass.script as gs
+from grass.experimental.mapset import TemporaryMapsetSession
 from grass.tools import Tools
 
 # Fixed seed and single thread make results fully deterministic.
@@ -45,7 +46,7 @@ def run_sim(session, *, random_seed=SEED, **kwargs):
     # simulate that.
     defaults = {k: v for k, v in defaults.items() if v is not None}
     tools = Tools(session=session)
-    result = tools.r_sim_water(
+    return tools.r_sim_water(
         elevation="elevation",
         dx="dx",
         dy="dy",
@@ -53,7 +54,74 @@ def run_sim(session, *, random_seed=SEED, **kwargs):
         random_seed=random_seed,
         **defaults,
     )
-    return np.asarray(result)
+
+
+@pytest.fixture(scope="module")
+def long_slope_project(tmp_path_factory):
+    """Module-scoped project with a 200-cell, 10 m-resolution eastward slope.
+
+    Several time-series and walker-output tests need a domain large enough
+    that walkers stay inside it for the full simulation. The terrain lives
+    in PERMANENT; each test gets its own temporary mapset via
+    long_slope_session so named outputs do not collide.
+    """
+    project = tmp_path_factory.mktemp("simwe_long") / "simwe"
+    gs.create_project(project)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        tools = Tools(session=session)
+        tools.g_region(w=0, e=2000, s=0, n=10, res=10, flags="s")
+        tools.r_mapcalc(expression="elevation = 201 - col()")
+        tools.r_mapcalc(expression="dx = 1.0")
+        tools.r_mapcalc(expression="dy = 0.0")
+        yield session
+
+
+@pytest.fixture
+def long_slope_session(long_slope_project):
+    with TemporaryMapsetSession(env=long_slope_project.env) as session:
+        yield session
+
+
+@pytest.fixture(scope="module")
+def diffusion_project(tmp_path_factory):
+    """Module-scoped project with a 200-cell, 1 m-resolution eastward slope.
+
+    Shared by the hmax/halpha/hbeta diffusion tests, which need high rain
+    and roughness on a long 1D domain so depths exceed the hmax threshold.
+    """
+    project = tmp_path_factory.mktemp("simwe_diffusion") / "simwe"
+    gs.create_project(project)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        tools = Tools(session=session)
+        tools.g_region(w=0, e=200, s=0, n=1, res=1, flags="s")
+        tools.r_mapcalc(expression="elevation = 201 - col()")
+        tools.r_mapcalc(expression="dx = 1.0")
+        tools.r_mapcalc(expression="dy = 0.0")
+        yield session
+
+
+@pytest.fixture
+def diffusion_session(diffusion_project):
+    with TemporaryMapsetSession(env=diffusion_project.env) as session:
+        yield session
+
+
+@pytest.fixture(scope="module")
+def diffusion_low_hmax_depth(diffusion_project):
+    """Depth for the low-hmax (high-diffusion) reference run.
+
+    The hmax=0.001 run with 400000 walkers is the most expensive simulation
+    in the suite and is the shared reference for both the hmax and hbeta
+    tests (hbeta=0.5 is the tool default, so test_hbeta's baseline run is
+    identical to this one). Computed once and returned read-only so
+    consumers cannot mutate the shared array.
+    """
+    with TemporaryMapsetSession(env=diffusion_project.env) as session:
+        depth = run_sim(
+            session, rain_value=1000, man_value=0.5, hmax=0.001, nwalkers=400000
+        )
+    depth.flags.writeable = False
+    return depth
 
 
 def test_no_rain_produces_no_depth(east_slope_session):
@@ -256,33 +324,20 @@ def test_random_seed_flag(east_slope_session):
     )
 
 
-def run_sim_error(session, **kwargs):
-    """Run r.sim.water and return the error output as ndarray."""
-    defaults = {
-        "rain_value": RAIN,
-        "infil_value": 0,
-        "man_value": 0.1,
-        "duration": DURATION,
-    }
-    defaults.update(kwargs)
-    defaults = {k: v for k, v in defaults.items() if v is not None}
-    tools = Tools(session=session)
-    return np.asarray(
-        tools.r_sim_water(
-            elevation="elevation",
-            dx="dx",
-            dy="dy",
-            error=np.array,
-            random_seed=SEED,
-            nprocs=NPROCS,
-            **defaults,
-        )
-    )
-
-
 def test_error_output_is_zero(east_slope_session):
     """The error output is all zeros while its computation is disabled."""
-    error = run_sim_error(east_slope_session)
+    tools = Tools(session=east_slope_session)
+    error = tools.r_sim_water(
+        elevation="elevation",
+        dx="dx",
+        dy="dy",
+        error=np.array,
+        rain_value=RAIN,
+        man_value=0.1,
+        duration=DURATION,
+        random_seed=SEED,
+        nprocs=NPROCS,
+    )
     assert error.shape == (1, 5), f"Expected one error value per cell:\n{error}"
     assert np.all(error == 0), f"Expected all-zero error map:\n{error}"
 
@@ -305,106 +360,86 @@ def test_mintimestep(east_slope_session):
     )
 
 
-def test_longer_simulation_larger_domain(tmp_path):
+def test_longer_simulation_larger_domain(long_slope_session):
     """More iterations must increase total water depth on a larger domain.
 
     On a larger domain with slower drainage, longer simulations accumulate
     more water. Uses a 200-cell domain at 10 m resolution so that walkers
     remain within the domain for the full duration.
     """
-    project = tmp_path / "simwe"
-    gs.create_project(project)
-    with gs.setup.init(project, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=2000, s=0, n=10, res=10)
-        tools.r_mapcalc(expression="elevation = 201 - col()")
-        tools.r_mapcalc(expression="dx = 1.0")
-        tools.r_mapcalc(expression="dy = 0.0")
-
-        sum_short = float(
-            np.sum(run_sim(session, rain_value=RAIN, man_value=0.3, duration=5))
-        )
-        sum_long = float(
-            np.sum(run_sim(session, rain_value=RAIN, man_value=0.3, duration=20))
-        )
-        assert sum_long > sum_short, (
-            f"Longer simulation should produce more depth: "
-            f"sum(5 min)={sum_short:.3e}, sum(20 min)={sum_long:.3e}"
-        )
-        ratio = sum_long / sum_short
-        assert ratio >= 1.05, (
-            f"20-min simulation should produce at least 5% more depth than 5-min "
-            f"(ratio={ratio:.2f})"
-        )
+    sum_short = float(
+        np.sum(run_sim(long_slope_session, rain_value=RAIN, man_value=0.3, duration=5))
+    )
+    sum_long = float(
+        np.sum(run_sim(long_slope_session, rain_value=RAIN, man_value=0.3, duration=20))
+    )
+    assert sum_long > sum_short, (
+        f"Longer simulation should produce more depth: "
+        f"sum(5 min)={sum_short:.3e}, sum(20 min)={sum_long:.3e}"
+    )
+    ratio = sum_long / sum_short
+    assert ratio >= 1.05, (
+        f"20-min simulation should produce at least 5% more depth than 5-min "
+        f"(ratio={ratio:.2f})"
+    )
 
 
-def test_duration_affects_time_series_progression(tmp_path):
+def test_duration_affects_time_series_progression(long_slope_session):
     """More iterations must create more time-series output maps.
 
     With output_step=5, duration=10 produces maps at t=5,10 while
     duration=20 produces maps at t=5,10,15. More time-series maps
     indicate longer simulation duration.
     """
-    project = tmp_path / "simwe"
-    gs.create_project(project)
-    with gs.setup.init(project, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=2000, s=0, n=10, res=10)
-        tools.r_mapcalc(expression="elevation = 201 - col()")
-        tools.r_mapcalc(expression="dx = 1.0")
-        tools.r_mapcalc(expression="dy = 0.0")
+    tools = Tools(session=long_slope_session)
 
-        # duration=10 with output_step=5 produces maps at t=5,10
-        tools.r_sim_water(
-            elevation="elevation",
-            dx="dx",
-            dy="dy",
-            depth="depth_10min",
-            rain_value=RAIN,
-            man_value=0.3,
-            nwalkers=10000,
-            duration=10,
-            output_step=5,
-            random_seed=SEED,
-            nprocs=NPROCS,
-            flags="t",
-        )
+    # duration=10 with output_step=5 produces maps at t=5,10
+    tools.r_sim_water(
+        elevation="elevation",
+        dx="dx",
+        dy="dy",
+        depth="depth_10min",
+        rain_value=RAIN,
+        man_value=0.3,
+        nwalkers=10000,
+        duration=10,
+        output_step=5,
+        random_seed=SEED,
+        nprocs=NPROCS,
+        flags="t",
+    )
 
-        # duration=20 with output_step=5 produces maps at t=5,10,15
-        tools.r_sim_water(
-            elevation="elevation",
-            dx="dx",
-            dy="dy",
-            depth="depth_20min",
-            rain_value=RAIN,
-            man_value=0.3,
-            nwalkers=10000,
-            duration=20,
-            output_step=5,
-            random_seed=SEED,
-            nprocs=NPROCS,
-            flags="t",
-        )
+    # duration=20 with output_step=5 produces maps at t=5,10,15
+    tools.r_sim_water(
+        elevation="elevation",
+        dx="dx",
+        dy="dy",
+        depth="depth_20min",
+        rain_value=RAIN,
+        man_value=0.3,
+        nwalkers=10000,
+        duration=20,
+        output_step=5,
+        random_seed=SEED,
+        nprocs=NPROCS,
+        flags="t",
+    )
 
-        # 10-min run should produce 2 time-series maps (t=5, t=10)
-        maps_10 = list(
-            tools.g_list(type="raster", pattern="depth_10min*", format="json")
-        )
-        assert len(maps_10) == 2, (
-            f"10-min simulation with output_step=5 should produce 2 maps, got {len(maps_10)}"
-        )
+    # 10-min run should produce 2 time-series maps (t=5, t=10)
+    maps_10 = list(tools.g_list(type="raster", pattern="depth_10min*", format="json"))
+    assert len(maps_10) == 2, (
+        f"10-min simulation with output_step=5 should produce 2 maps, got {len(maps_10)}"
+    )
 
-        # 20-min run should produce 3 time-series maps (t=5, t=10, t=15)
-        maps_20 = list(
-            tools.g_list(type="raster", pattern="depth_20min*", format="json")
-        )
-        assert len(maps_20) == 3, (
-            f"20-min simulation with output_step=5 should produce 3 maps, got {len(maps_20)}"
-        )
-        assert len(maps_20) > len(maps_10), (
-            f"Longer simulation should produce more time-series maps: "
-            f"20-min has {len(maps_20)} maps, 10-min has {len(maps_10)} maps"
-        )
+    # 20-min run should produce 3 time-series maps (t=5, t=10, t=15)
+    maps_20 = list(tools.g_list(type="raster", pattern="depth_20min*", format="json"))
+    assert len(maps_20) == 3, (
+        f"20-min simulation with output_step=5 should produce 3 maps, got {len(maps_20)}"
+    )
+    assert len(maps_20) > len(maps_10), (
+        f"Longer simulation should produce more time-series maps: "
+        f"20-min has {len(maps_20)} maps, 10-min has {len(maps_10)} maps"
+    )
 
 
 def test_higher_diffusion_coeff_reduces_depth(east_slope_session):
@@ -421,120 +456,97 @@ def test_higher_diffusion_coeff_reduces_depth(east_slope_session):
     )
 
 
-def test_lower_hmax_increases_diffusion(tmp_path):
+def test_lower_hmax_increases_diffusion(diffusion_session, diffusion_low_hmax_depth):
     """A lower hmax threshold must increase diffusion, reducing total depth.
 
     When water depth exceeds hmax, diffusion is amplified by (halpha + 1).
     Lowering hmax causes this amplification to kick in sooner.
 
     Uses a 200-cell domain with high rain and roughness so that depths
-    exceed the hmax threshold.
+    exceed the hmax threshold. The low-hmax run is the shared
+    diffusion_low_hmax_depth reference.
     """
-    project = tmp_path / "simwe"
-    gs.create_project(project)
-    with gs.setup.init(project, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=200, s=0, n=1, res=1)
-        tools.r_mapcalc(expression="elevation = 201 - col()")
-        tools.r_mapcalc(expression="dx = 1.0")
-        tools.r_mapcalc(expression="dy = 0.0")
-
-        nw = 400000
-        sum_low_hmax = float(
-            np.sum(
-                run_sim(
-                    session, rain_value=1000, man_value=0.5, hmax=0.001, nwalkers=nw
-                )
+    sum_low_hmax = float(np.sum(diffusion_low_hmax_depth))
+    sum_default_hmax = float(
+        np.sum(
+            run_sim(
+                diffusion_session,
+                rain_value=1000,
+                man_value=0.5,
+                hmax=0.3,
+                nwalkers=400000,
             )
         )
-        sum_default_hmax = float(
-            np.sum(
-                run_sim(session, rain_value=1000, man_value=0.5, hmax=0.3, nwalkers=nw)
-            )
-        )
-        assert sum_low_hmax < sum_default_hmax, (
-            f"Lower hmax should increase diffusion and reduce depth: "
-            f"sum(hmax=0.001)={sum_low_hmax:.3e}, sum(hmax=0.3)={sum_default_hmax:.3e}"
-        )
+    )
+    assert sum_low_hmax < sum_default_hmax, (
+        f"Lower hmax should increase diffusion and reduce depth: "
+        f"sum(hmax=0.001)={sum_low_hmax:.3e}, sum(hmax=0.3)={sum_default_hmax:.3e}"
+    )
 
 
-def test_higher_halpha_reduces_depth(tmp_path):
+def test_higher_halpha_reduces_depth(diffusion_session):
     """A higher halpha must increase the diffusion boost above hmax.
 
     halpha controls how much extra diffusion is applied when depth exceeds
     hmax: diffusion is multiplied by (halpha + 1). A low hmax is needed
     so that depths actually exceed the threshold.
 
-    Uses a 200-cell domain with high rain and roughness.
+    Uses a 200-cell domain with high rain and roughness. Both runs use a
+    non-default halpha, so neither matches the shared low-hmax reference.
     """
-    project = tmp_path / "simwe"
-    gs.create_project(project)
-    with gs.setup.init(project, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=200, s=0, n=1, res=1)
-        tools.r_mapcalc(expression="elevation = 201 - col()")
-        tools.r_mapcalc(expression="dx = 1.0")
-        tools.r_mapcalc(expression="dy = 0.0")
-
-        nw = 400000
-        sum_low = float(
-            np.sum(
-                run_sim(
-                    session,
-                    rain_value=1000,
-                    man_value=0.5,
-                    hmax=0.001,
-                    halpha=0.5,
-                    nwalkers=nw,
-                )
+    nw = 400000
+    sum_low = float(
+        np.sum(
+            run_sim(
+                diffusion_session,
+                rain_value=1000,
+                man_value=0.5,
+                hmax=0.001,
+                halpha=0.5,
+                nwalkers=nw,
             )
         )
-        sum_high = float(
-            np.sum(
-                run_sim(
-                    session,
-                    rain_value=1000,
-                    man_value=0.5,
-                    hmax=0.001,
-                    halpha=50.0,
-                    nwalkers=nw,
-                )
+    )
+    sum_high = float(
+        np.sum(
+            run_sim(
+                diffusion_session,
+                rain_value=1000,
+                man_value=0.5,
+                hmax=0.001,
+                halpha=50.0,
+                nwalkers=nw,
             )
         )
-        assert sum_high < sum_low, (
-            f"Higher halpha should increase diffusion and reduce depth: "
-            f"sum(halpha=0.5)={sum_low:.3e}, sum(halpha=50)={sum_high:.3e}"
-        )
+    )
+    assert sum_high < sum_low, (
+        f"Higher halpha should increase diffusion and reduce depth: "
+        f"sum(halpha=0.5)={sum_low:.3e}, sum(halpha=50)={sum_high:.3e}"
+    )
 
 
-def test_hbeta_changes_result(tmp_path):
+def test_hbeta_changes_result(diffusion_session, diffusion_low_hmax_depth):
     """Changing hbeta must produce a different result when depth exceeds hmax.
 
     hbeta weights the running average of walker velocity above the hmax
     threshold. The effect is small on a 1D domain, so only inequality
     (not direction) is checked.
 
-    Uses a 200-cell domain with high rain, roughness, and low hmax.
+    Uses a 200-cell domain with high rain, roughness, and low hmax. The
+    default-hbeta run is the shared diffusion_low_hmax_depth reference
+    (hbeta=0.5 is the tool default).
     """
-    project = tmp_path / "simwe"
-    gs.create_project(project)
-    with gs.setup.init(project, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=200, s=0, n=1, res=1)
-        tools.r_mapcalc(expression="elevation = 201 - col()")
-        tools.r_mapcalc(expression="dx = 1.0")
-        tools.r_mapcalc(expression="dy = 0.0")
-
-        nw = 400000
-        depth_default = run_sim(
-            session, rain_value=1000, man_value=0.5, hmax=0.001, hbeta=0.5, nwalkers=nw
-        )
-        depth_high = run_sim(
-            session, rain_value=1000, man_value=0.5, hmax=0.001, hbeta=10.0, nwalkers=nw
-        )
-        assert not np.array_equal(depth_default, depth_high), (
-            "Changing hbeta should produce a different depth result"
-        )
+    depth_high = run_sim(
+        diffusion_session,
+        rain_value=1000,
+        man_value=0.5,
+        hmax=0.001,
+        hbeta=10.0,
+        nwalkers=400000,
+    )
+    assert not np.array_equal(diffusion_low_hmax_depth, depth_high), (
+        "Changing hbeta should produce a different depth result"
+    )
 
 
 def test_man_raster_matches_scalar(east_slope_session):
@@ -615,7 +627,7 @@ def test_flow_control_increases_depth(east_slope_session):
     )
 
 
-def test_time_series_output(tmp_path):
+def test_time_series_output(long_slope_session):
     """The -t flag with output_step must produce intermediate depth maps.
 
     With duration=10 and output_step=5, the tool should create depth
@@ -626,35 +638,27 @@ def test_time_series_output(tmp_path):
     walkers survive the full simulation. On small or steep domains walkers
     leave before the first output step, producing no time-series maps.
     """
-    project = tmp_path / "simwe"
-    gs.create_project(project)
-    with gs.setup.init(project, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=2000, s=0, n=10, res=10)
-        tools.r_mapcalc(expression="elevation = 201 - col()")
-        tools.r_mapcalc(expression="dx = 1.0")
-        tools.r_mapcalc(expression="dy = 0.0")
+    tools = Tools(session=long_slope_session)
+    tools.r_sim_water(
+        elevation="elevation",
+        dx="dx",
+        dy="dy",
+        depth="ts_depth",
+        rain_value=RAIN,
+        man_value=0.3,
+        duration=10,
+        output_step=5,
+        random_seed=SEED,
+        nprocs=NPROCS,
+        flags="t",
+    )
 
-        tools.r_sim_water(
-            elevation="elevation",
-            dx="dx",
-            dy="dy",
-            depth="ts_depth",
-            rain_value=RAIN,
-            man_value=0.3,
-            duration=10,
-            output_step=5,
-            random_seed=SEED,
-            nprocs=NPROCS,
-            flags="t",
-        )
-
-        sum_05 = tools.r_univar(map="ts_depth.05", format="json")["sum"]
-        sum_10 = tools.r_univar(map="ts_depth.10", format="json")["sum"]
-        assert sum_05 > 0, "Expected positive depth at t=5"
-        assert sum_10 >= sum_05, (
-            f"Depth at t=10 ({sum_10:.3e}) should be >= depth at t=5 ({sum_05:.3e})"
-        )
+    sum_05 = tools.r_univar(map="ts_depth.05", format="json")["sum"]
+    sum_10 = tools.r_univar(map="ts_depth.10", format="json")["sum"]
+    assert sum_05 > 0, "Expected positive depth at t=5"
+    assert sum_10 >= sum_05, (
+        f"Depth at t=10 ({sum_10:.3e}) should be >= depth at t=5 ({sum_05:.3e})"
+    )
 
 
 def test_observation_logfile(east_slope_session, tmp_path):
@@ -710,7 +714,7 @@ def test_observation_logfile(east_slope_session, tmp_path):
     )
 
 
-def test_walkers_output(tmp_path):
+def test_walkers_output(long_slope_session):
     """The walkers_output parameter must produce a vector point map.
 
     Each surviving walker position is written as a 3D point. The number
@@ -720,40 +724,31 @@ def test_walkers_output(tmp_path):
     time before exiting. High roughness (0.3) further increases walker
     retention; small domains produce no walker output regardless of roughness.
     """
-    project = tmp_path / "simwe"
-    gs.create_project(project)
-    with gs.setup.init(project, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=2000, s=0, n=10, res=10)
-        tools.r_mapcalc(expression="elevation = 201 - col()")
-        tools.r_mapcalc(expression="dx = 1.0")
-        tools.r_mapcalc(expression="dy = 0.0")
+    tools = Tools(session=long_slope_session)
+    nwalkers = 500
+    tools.r_sim_water(
+        elevation="elevation",
+        dx="dx",
+        dy="dy",
+        depth=np.array,
+        rain_value=RAIN,
+        man_value=0.3,
+        nwalkers=nwalkers,
+        duration=DURATION,
+        random_seed=SEED,
+        nprocs=NPROCS,
+        walkers_output="walkers",
+    )
 
-        nwalkers = 500
-        tools.r_sim_water(
-            elevation="elevation",
-            dx="dx",
-            dy="dy",
-            depth=np.array,
-            rain_value=RAIN,
-            man_value=0.3,
-            nwalkers=nwalkers,
-            duration=DURATION,
-            random_seed=SEED,
-            nprocs=NPROCS,
-            walkers_output="walkers",
-        )
-
-        info = tools.v_info(map="walkers", flags="t", format="json")
-        npoints = int(info["points"])
-        assert npoints > 0, "Expected at least one walker point"
-        assert npoints <= nwalkers, (
-            f"Number of walker points ({npoints}) should not exceed "
-            f"nwalkers ({nwalkers})"
-        )
+    info = tools.v_info(map="walkers", flags="t", format="json")
+    npoints = int(info["points"])
+    assert npoints > 0, "Expected at least one walker point"
+    assert npoints <= nwalkers, (
+        f"Number of walker points ({npoints}) should not exceed nwalkers ({nwalkers})"
+    )
 
 
-def test_walkers_output_time_series(tmp_path):
+def test_walkers_output_time_series(long_slope_session):
     """With -t, walkers_output must produce per-step vector maps.
 
     The maps use an underscore-separated time suffix (e.g., walkers_05)
@@ -762,34 +757,26 @@ def test_walkers_output_time_series(tmp_path):
     Uses a large domain (200 cells) with high roughness (0.3) so walkers
     survive long enough to generate multiple time-series outputs.
     """
-    project = tmp_path / "simwe"
-    gs.create_project(project)
-    with gs.setup.init(project, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=2000, s=0, n=10, res=10)
-        tools.r_mapcalc(expression="elevation = 201 - col()")
-        tools.r_mapcalc(expression="dx = 1.0")
-        tools.r_mapcalc(expression="dy = 0.0")
+    tools = Tools(session=long_slope_session)
+    tools.r_sim_water(
+        elevation="elevation",
+        dx="dx",
+        dy="dy",
+        depth="ts_depth",
+        rain_value=RAIN,
+        man_value=0.3,
+        duration=10,
+        output_step=5,
+        random_seed=SEED,
+        nprocs=NPROCS,
+        walkers_output="walkers",
+        flags="t",
+    )
 
-        tools.r_sim_water(
-            elevation="elevation",
-            dx="dx",
-            dy="dy",
-            depth="ts_depth",
-            rain_value=RAIN,
-            man_value=0.3,
-            duration=10,
-            output_step=5,
-            random_seed=SEED,
-            nprocs=NPROCS,
-            walkers_output="walkers",
-            flags="t",
-        )
-
-        info_05 = tools.v_info(map="walkers_05", flags="t", format="json")
-        info_10 = tools.v_info(map="walkers_10", flags="t", format="json")
-        assert int(info_05["points"]) > 0, "Expected walker points at t=5"
-        assert int(info_10["points"]) > 0, "Expected walker points at t=10"
+    info_05 = tools.v_info(map="walkers_05", flags="t", format="json")
+    info_10 = tools.v_info(map="walkers_10", flags="t", format="json")
+    assert int(info_05["points"]) > 0, "Expected walker points at t=5"
+    assert int(info_10["points"]) > 0, "Expected walker points at t=10"
 
 
 def test_nprocs_gives_same_result(east_slope_session):
