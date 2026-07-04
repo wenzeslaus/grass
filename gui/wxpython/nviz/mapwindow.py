@@ -34,23 +34,23 @@ from grass.pydispatch.signal import Signal
 # isort: split
 
 import wx
-from core.debug import Debug
-from core.gcmd import GError, GException, GMessage
-from core.giface import Notification
-from core.globalvar import CheckWxVersion
-from core.settings import UserSettings
-from core.utils import str2rgb
-from mapwin.base import MapWindowBase
-from nviz import wxnviz
-from nviz.animation import Animation
-from nviz.workspace import NvizSettings
+from grassgui.core.debug import Debug
+from grassgui.core.gcmd import GError, GException, GMessage
+from grassgui.core.giface import Notification
+from grassgui.core.globalvar import CheckWxVersion
+from grassgui.core.settings import UserSettings
+from grassgui.core.utils import str2rgb
+from grassgui.mapwin.base import MapWindowBase
+from grassgui.nviz import wxnviz
+from grassgui.nviz.animation import Animation
+from grassgui.nviz.workspace import NvizSettings
 from wx import glcanvas
 from wx.glcanvas import WX_GL_DEPTH_SIZE, WX_GL_DOUBLEBUFFER, WX_GL_RGBA
 from wx.lib.newevent import NewEvent
 
 if TYPE_CHECKING:
-    import lmgr.frame
-    import main_window.frame
+    import grassgui.lmgr.frame
+    import grassgui.main_window.frame
 
 wxUpdateProperties, EVT_UPDATE_PROP = NewEvent()
 wxUpdateView, EVT_UPDATE_VIEW = NewEvent()
@@ -98,7 +98,7 @@ class GLWindow(MapWindowBase, glcanvas.GLCanvas):
         frame,
         Map,
         tree,
-        lmgr: main_window.frame.GMFrame | lmgr.frame.GMFrame,
+        lmgr: grassgui.main_window.frame.GMFrame | grassgui.lmgr.frame.GMFrame,
         id=wx.ID_ANY,
     ) -> None:
         """All parameters except for id are mandatory. The todo is to remove

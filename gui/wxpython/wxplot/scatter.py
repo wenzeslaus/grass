@@ -21,11 +21,11 @@ import wx
 
 import grass.script as gs
 from wx.lib import plot
-from wxplot.base import BasePlotFrame, PlotIcons
-from gui_core.toolbars import BaseToolbar, BaseIcons
-from gui_core.wrap import StockCursor
-from wxplot.dialogs import ScatterRasterDialog, PlotStatsFrame
-from core.gcmd import RunCommand, GException, GError, GMessage
+from grassgui.wxplot.base import BasePlotFrame, PlotIcons
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.gui_core.wrap import StockCursor
+from grassgui.wxplot.dialogs import ScatterRasterDialog, PlotStatsFrame
+from grassgui.core.gcmd import RunCommand, GException, GError, GMessage
 
 
 class ScatterFrame(BasePlotFrame):

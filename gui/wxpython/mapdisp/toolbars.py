@@ -18,10 +18,10 @@ This program is free software under the GNU General Public License
 
 import wx
 
-from gui_core.toolbars import BaseToolbar, BaseIcons
-from nviz.main import haveNviz
-from vdigit.main import haveVDigit
-from icons.icon import MetaIcon
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.nviz.main import haveNviz
+from grassgui.vdigit.main import haveVDigit
+from grassgui.icons.icon import MetaIcon
 
 MapIcons = {
     "query": MetaIcon(
@@ -101,7 +101,7 @@ class MapToolbar(BaseToolbar):
             self.toolId["3d"] = toolNum
             toolNum += 1
         else:
-            from nviz.main import errorMsg
+            from grassgui.nviz.main import errorMsg
 
             self._giface.WriteCmdLog(_("3D view mode not available"))
             self._giface.WriteWarning(_("Reason: %s") % str(errorMsg))
@@ -113,7 +113,7 @@ class MapToolbar(BaseToolbar):
             self.toolId["vdigit"] = toolNum
             toolNum += 1
         else:
-            from vdigit.main import errorMsg
+            from grassgui.vdigit.main import errorMsg
 
             self._giface.WriteCmdLog(_("Vector digitizer not available"))
             self._giface.WriteWarning(_("Reason: %s") % errorMsg)

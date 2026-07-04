@@ -25,10 +25,10 @@ from copy import copy, deepcopy
 import wx
 from wx.lib.mixins.listctrl import ColumnSorterMixin, ListCtrlAutoWidthMixin
 
-from core import globalvar
-from core.gcmd import GError
-from gui_core.widgets import FloatValidator, IntegerValidator
-from gui_core.wrap import (
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GError
+from grassgui.gui_core.widgets import FloatValidator, IntegerValidator
+from grassgui.gui_core.wrap import (
     BitmapFromImage,
     Button,
     ComboBox,

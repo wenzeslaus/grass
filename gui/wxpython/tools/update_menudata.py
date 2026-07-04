@@ -28,8 +28,8 @@ from subprocess import DEVNULL
 from grass.script import core as grass
 from grass.script import task as gtask
 
-from lmgr.menudata import LayerManagerMenuData
-from core.globalvar import grassCmd
+from grassgui.lmgr.menudata import LayerManagerMenuData
+from grassgui.core.globalvar import grassCmd
 
 
 def parseModules():

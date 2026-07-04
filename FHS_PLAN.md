@@ -133,10 +133,15 @@ Locally on this branch: the PR code is brought in as the Phase 0 commit.
 - Phase 4: done. INSTALL.md CMake/WITH_FHS section; AGENTS.md
   LD_LIBRARY_PATH note for FHS.
 - Design decisions resolved (2026-07-04):
-  - wxGUI: code stays in site-packages/grass/gui; icons, images, and
-    xml install to share/grass/gui under FHS (same substructure as the
-    legacy gui directory, which is unchanged). New GRASS_GUIXMLDIR
-    resource variable for the menu xml directory.
+  - wxGUI: icons, images, and xml install to share/grass/gui under FHS
+    (same substructure as the legacy gui directory, which is
+    unchanged). New GRASS_GUIXMLDIR resource variable for the menu xml
+    directory. Superseded/extended by a later decision: the GUI code is
+    now a real importable top-level package, grassgui (imports
+    rewritten from the flat style; site-packages/grassgui under FHS; a
+    redirecting stand-in init in etc/python under the legacy layout).
+    set_gui_path() remains as the compatibility path for GUI addons
+    with flat imports.
   - C resource-path contract: fall back to the legacy GISBASE-relative
     location when a GRASS_* variable is unset; fatal only when neither
     works. Bare-GISBASE environments keep working on legacy installs.

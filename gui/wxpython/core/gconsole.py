@@ -44,13 +44,13 @@ from grass.pydispatch.signal import Signal
 from grass.grassdb import history
 from grass.grassdb.history import Status
 
-from core import globalvar
-from core.gcmd import CommandThread, GError, GException
-from gui_core.forms import GUI
-from core.debug import Debug
-from core.settings import UserSettings
-from core.giface import Notification
-from gui_core.widgets import FormNotebook
+from grassgui.core import globalvar
+from grassgui.core.gcmd import CommandThread, GError, GException
+from grassgui.gui_core.forms import GUI
+from grassgui.core.debug import Debug
+from grassgui.core.settings import UserSettings
+from grassgui.core.giface import Notification
+from grassgui.gui_core.widgets import FormNotebook
 
 wxCmdOutput, EVT_CMD_OUTPUT = NewEvent()
 wxCmdProgress, EVT_CMD_PROGRESS = NewEvent()

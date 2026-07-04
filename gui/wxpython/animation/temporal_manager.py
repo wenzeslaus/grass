@@ -23,9 +23,9 @@ from pathlib import Path
 
 import grass.script as gs
 import grass.temporal as tgis
-from core.gcmd import GException
-from core.settings import UserSettings
-from animation.utils import validateTimeseriesName, TemporalType
+from grassgui.core.gcmd import GException
+from grassgui.core.settings import UserSettings
+from grassgui.animation.utils import validateTimeseriesName, TemporalType
 
 
 class DataMode:

@@ -27,25 +27,25 @@ from pathlib import Path
 
 import wx
 
-from core.gcmd import RunCommand, GError, GMessage
-from core.utils import GetListOfLocations
-from core.debug import Debug
-from core.gthread import gThread
-from core.watchdog import (
+from grassgui.core.gcmd import RunCommand, GError, GMessage
+from grassgui.core.utils import GetListOfLocations
+from grassgui.core.debug import Debug
+from grassgui.core.gthread import gThread
+from grassgui.core.watchdog import (
     EVT_UPDATE_MAPSET,
     EVT_CURRENT_MAPSET_CHANGED,
     MapsetWatchdog,
     watchdog_used,
 )
-from gui_core.dialogs import TextEntryDialog
-from core.giface import StandaloneGrassInterface
-from core.treemodel import TreeModel, DictFilterNode
-from gui_core.treeview import TreeView
-from gui_core.wrap import Menu
-from datacatalog.dialogs import CatalogReprojectionDialog
-from icons.icon import MetaIcon
-from core.settings import UserSettings
-from startup.guiutils import (
+from grassgui.gui_core.dialogs import TextEntryDialog
+from grassgui.core.giface import StandaloneGrassInterface
+from grassgui.core.treemodel import TreeModel, DictFilterNode
+from grassgui.gui_core.treeview import TreeView
+from grassgui.gui_core.wrap import Menu
+from grassgui.datacatalog.dialogs import CatalogReprojectionDialog
+from grassgui.icons.icon import MetaIcon
+from grassgui.core.settings import UserSettings
+from grassgui.startup.guiutils import (
     create_mapset_interactively,
     create_location_interactively,
     rename_mapset_interactively,

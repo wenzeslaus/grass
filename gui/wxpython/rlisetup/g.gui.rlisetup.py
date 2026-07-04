@@ -38,8 +38,8 @@ def main():
 
     set_gui_path()
 
-    from core.giface import StandaloneGrassInterface
-    from rlisetup.frame import RLiSetupFrame
+    from grassgui.core.giface import StandaloneGrassInterface
+    from grassgui.rlisetup.frame import RLiSetupFrame
 
     app = wx.App()
     frame = RLiSetupFrame(

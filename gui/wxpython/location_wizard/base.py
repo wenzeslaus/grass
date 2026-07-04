@@ -17,7 +17,7 @@ This program is free software under the GNU General Public License
 """
 
 import wx
-from gui_core.wrap import StaticText, TextCtrl, Button, CheckBox
+from grassgui.gui_core.wrap import StaticText, TextCtrl, Button, CheckBox
 
 
 class BaseClass(wx.Object):

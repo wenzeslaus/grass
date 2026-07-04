@@ -51,10 +51,10 @@ except ImportError as e:
 
 
 import grass.temporal as tgis
-from core.gcmd import GMessage, GError, GException, RunCommand
-from gui_core.widgets import CoordinatesValidator
-from gui_core import gselect
-from core import globalvar
+from grassgui.core.gcmd import GMessage, GError, GException, RunCommand
+from grassgui.gui_core.widgets import CoordinatesValidator
+from grassgui.gui_core import gselect
+from grassgui.core import globalvar
 from grass.pygrass.vector.geometry import Point
 from grass.pygrass.raster import RasterRow
 from grass.pygrass.gis.region import Region
@@ -67,8 +67,8 @@ except ImportError:
     import wx.lib.flatnotebook as FN
 import wx.lib.filebrowsebutton as filebrowse
 
-from gui_core.widgets import GNotebook
-from gui_core.wrap import CheckBox, TextCtrl, Button, StaticText
+from grassgui.gui_core.widgets import GNotebook
+from grassgui.gui_core.wrap import CheckBox, TextCtrl, Button, StaticText
 from operator import add
 
 ALPHA = 0.5

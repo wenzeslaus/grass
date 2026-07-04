@@ -14,7 +14,7 @@ SRCFILES := $(wildcard icons/*.py xml/*) \
 	mapswipe/*.py modules/*.py nviz/*.py psmap/*.py rdigit/*.py \
 	rlisetup/*.py startup/*.py timeline/*.py vdigit/*.py \
 	vnet/*.py web_services/*.py wxplot/*.py iscatt/*.py tplot/*.py photo2image/*.py image2target/*.py) \
-	wxgui.py README.md
+	__init__.py wxgui.py README.md
 
 DSTFILES := $(patsubst %,$(DSTDIR)/%,$(SRCFILES)) \
 	$(patsubst %.py,$(DSTDIR)/%.pyc,$(filter %.py,$(SRCFILES)))
@@ -27,7 +27,7 @@ PYDSTDIRS := $(patsubst %,$(DSTDIR)/%,animation core datacatalog history dbmgr g
 
 DSTDIRS := $(patsubst %,$(DSTDIR)/%,icons xml)
 
-default: $(DSTFILES)
+default: $(DSTFILES) $(ETC)/python/grassgui/__init__.py
 ifndef CROSS_COMPILING
 	-$(MAKE) $(DSTDIR)/xml/module_items.xml
 	-$(MAKE) xml/menudata.xml
@@ -38,6 +38,12 @@ endif
 
 
 $(DSTDIR)/%: % | $(PYDSTDIRS) $(DSTDIRS)
+	$(INSTALL_DATA) $< $@
+
+# Stand-in for the grassgui package on the Python path: its __init__.py
+# redirects the package content to the wxGUI directory in this layout.
+$(ETC)/python/grassgui/__init__.py: __init__.py
+	$(MKDIR) $(ETC)/python/grassgui
 	$(INSTALL_DATA) $< $@
 
 xml/menudata.xml: core/toolboxes.py

@@ -29,18 +29,18 @@ import getpass
 
 from pathlib import Path
 
-from core import globalvar
+from grassgui.core import globalvar
 import wx
 import wx.lib.mixins.listctrl as listmix
 
 from grass.script import core as grass
 
-from core.gcmd import GMessage, GError, DecodeString, RunCommand
-from core.utils import GetListOfLocations, GetListOfMapsets
-from location_wizard.dialogs import RegionDef
-from gui_core.dialogs import TextEntryDialog
-from gui_core.widgets import GenericValidator, StaticWrapText
-from gui_core.wrap import (
+from grassgui.core.gcmd import GMessage, GError, DecodeString, RunCommand
+from grassgui.core.utils import GetListOfLocations, GetListOfMapsets
+from grassgui.location_wizard.dialogs import RegionDef
+from grassgui.gui_core.dialogs import TextEntryDialog
+from grassgui.gui_core.widgets import GenericValidator, StaticWrapText
+from grassgui.gui_core.wrap import (
     Button,
     ListCtrl,
     StaticText,
@@ -593,7 +593,7 @@ class GRASSStartup(wx.Frame):
 
     def OnWizard(self, event):
         """Location wizard started"""
-        from location_wizard.wizard import LocationWizard
+        from grassgui.location_wizard.wizard import LocationWizard
 
         gWizard = LocationWizard(parent=self, grassdatabase=self.tgisdbase.GetValue())
         if gWizard.location is not None:

@@ -9,7 +9,7 @@ import os
 import sys
 from pathlib import Path
 from grass.script import core as grass
-from core.gcmd import GError
+from grassgui.core.gcmd import GError
 
 
 class SamplingType:

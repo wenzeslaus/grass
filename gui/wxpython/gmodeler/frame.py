@@ -19,11 +19,11 @@ import os
 
 import wx
 
-from core import globalvar
-from gui_core.menu import Menu as Menubar
+from grassgui.core import globalvar
+from grassgui.gui_core.menu import Menu as Menubar
 
-from gmodeler.menudata import ModelerMenuData
-from gmodeler.panels import ModelerPanel
+from grassgui.gmodeler.menudata import ModelerMenuData
+from grassgui.gmodeler.panels import ModelerPanel
 
 
 class ModelerFrame(wx.Frame):

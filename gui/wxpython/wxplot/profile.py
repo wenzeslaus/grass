@@ -25,11 +25,11 @@ import wx
 
 from wx.lib import plot
 import grass.script as gs
-from wxplot.base import BasePlotFrame, PlotIcons
-from gui_core.toolbars import BaseToolbar, BaseIcons
-from gui_core.wrap import StockCursor
-from wxplot.dialogs import ProfileRasterDialog, PlotStatsFrame
-from core.gcmd import RunCommand, GWarning, GError, GMessage
+from grassgui.wxplot.base import BasePlotFrame, PlotIcons
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.gui_core.wrap import StockCursor
+from grassgui.wxplot.dialogs import ProfileRasterDialog, PlotStatsFrame
+from grassgui.core.gcmd import RunCommand, GWarning, GError, GMessage
 
 try:
     import grass.lib.gis as gislib

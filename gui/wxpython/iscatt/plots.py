@@ -22,11 +22,11 @@ from math import ceil
 from multiprocessing import Process, Queue
 
 from copy import deepcopy
-from iscatt.core_c import MergeArrays, ApplyColormap
-from iscatt.dialogs import ManageBusyCursorMixin
-from iscatt.utils import dist_point_to_segment
-from core.settings import UserSettings
-from gui_core.wrap import Menu, NewId
+from grassgui.iscatt.core_c import MergeArrays, ApplyColormap
+from grassgui.iscatt.dialogs import ManageBusyCursorMixin
+from grassgui.iscatt.utils import dist_point_to_segment
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.wrap import Menu, NewId
 
 try:
     import matplotlib as mpl

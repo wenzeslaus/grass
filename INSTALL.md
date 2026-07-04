@@ -152,11 +152,11 @@ directory tree (the same layout as Autotools, with everything under
 `<prefix>/lib/grass<MM>`, i.e. `GISBASE`). With `-DWITH_FHS=ON`, the
 installation instead follows the Filesystem Hierarchy Standard:
 executables under `libexec/grass` with the startup script in `bin`,
-libraries in the standard library directory, the Python package in
-`site-packages` (override with `-DGRASS_INSTALL_PYDIR=<prefix-relative
-path>`), architecture-independent data in `share/grass`, translations in
-`share/locale`, documentation in `share/doc`, and man pages in
-`share/man`.
+libraries in the standard library directory, the Python packages
+(`grass` and the GUI's `grassgui`) in `site-packages` (override with
+`-DGRASS_INSTALL_PYDIR=<prefix-relative path>`), architecture-independent
+data in `share/grass`, translations in `share/locale`, documentation in
+`share/doc`, and man pages in `share/man`.
 
 With either layout, tools locate resources through `GRASS_*` environment
 variables (e.g. `GRASS_ETCDIR`, `GRASS_LOCALEDIR`) which the session

@@ -7,8 +7,8 @@ from grass.script.setup import set_gui_path
 set_gui_path()
 
 # Imports require path to GUI code to be set.
-from core.gcmd import RunCommand  # noqa: E402
-from gui_core.preferences import MapsetAccess  # noqa: E402
+from grassgui.core.gcmd import RunCommand  # noqa: E402
+from grassgui.gui_core.preferences import MapsetAccess  # noqa: E402
 
 
 def main():

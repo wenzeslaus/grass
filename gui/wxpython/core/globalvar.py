@@ -22,7 +22,7 @@ if not os.getenv("GISBASE"):
 # So we need to import it before any of the GUI code.
 from grass.script.core import get_commands
 
-from core.debug import Debug
+from grassgui.core.debug import Debug
 from pathlib import Path
 
 # path to python scripts

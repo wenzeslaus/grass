@@ -22,10 +22,10 @@ from __future__ import annotations
 from typing import Literal
 
 import wx
-from core.debug import Debug
-from core.settings import UserSettings
-from gui_core.wrap import NewId, Rect
-from mapwin.buffered import BufferedMapWindow
+from grassgui.core.debug import Debug
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.wrap import NewId, Rect
+from grassgui.mapwin.buffered import BufferedMapWindow
 
 EVT_MY_MOUSE_EVENTS = wx.NewEventType()
 EVT_MY_MOTION = wx.NewEventType()

@@ -28,11 +28,11 @@ import numpy as np
 
 from math import sqrt, ceil, floor
 
-from core.gcmd import GException, RunCommand
+from grassgui.core.gcmd import GException, RunCommand
 
 import grass.script as gs
 
-from iscatt.core_c import CreateCatRast, ComputeScatts, UpdateCatRast, Rasterize
+from grassgui.iscatt.core_c import CreateCatRast, ComputeScatts, UpdateCatRast, Rasterize
 
 MAX_SCATT_SIZE = 4100 * 4100
 WARN_SCATT_SIZE = 2000 * 2000

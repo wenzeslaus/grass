@@ -17,10 +17,10 @@ This program is free software under the GNU General Public License
 
 import os
 
-from core.menutree import MenuTreeModelBuilder
-from core.toolboxes import getMenudataFile
-from core.globalvar import GUIXMLDIR
-from core.gcmd import GError
+from grassgui.core.menutree import MenuTreeModelBuilder
+from grassgui.core.toolboxes import getMenudataFile
+from grassgui.core.globalvar import GUIXMLDIR
+from grassgui.core.gcmd import GError
 
 
 class LayerManagerMenuData(MenuTreeModelBuilder):

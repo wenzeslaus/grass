@@ -51,13 +51,13 @@ def main():
 
     set_gui_path()
 
-    from core.render import Map
-    from core.globalvar import ICONDIR
-    from mapdisp.frame import MapPanel
-    from gui_core.mapdisp import FrameMixin
-    from mapdisp.main import DMonGrassInterface
-    from core.settings import UserSettings
-    from vdigit.main import haveVDigit, errorMsg
+    from grassgui.core.render import Map
+    from grassgui.core.globalvar import ICONDIR
+    from grassgui.mapdisp.frame import MapPanel
+    from grassgui.gui_core.mapdisp import FrameMixin
+    from grassgui.mapdisp.main import DMonGrassInterface
+    from grassgui.core.settings import UserSettings
+    from grassgui.vdigit.main import haveVDigit, errorMsg
     from grass.exceptions import CalledModuleError
 
     # define classes which needs imports as local

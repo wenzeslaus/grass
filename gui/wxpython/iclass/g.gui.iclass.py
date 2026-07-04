@@ -63,9 +63,9 @@ def main():
 
     set_gui_path()
 
-    from core.settings import UserSettings
-    from core import globalvar
-    from iclass.frame import IClassMapDisplay
+    from grassgui.core.settings import UserSettings
+    from grassgui.core import globalvar
+    from grassgui.iclass.frame import IClassMapDisplay
 
     group_name = subgroup_name = map_name = trainingmap_name = None
 

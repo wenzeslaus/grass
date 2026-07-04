@@ -21,11 +21,11 @@ This program is free software under the GNU General Public License
 import wx
 import wx.lib.scrolledpanel as scrolled
 
-from core.gcmd import RunCommand, GError
-from core.debug import Debug
-from dbmgr.vinfo import VectorDBInfo, GetUnicodeValue, GetDbEncoding
-from gui_core.widgets import IntegerValidator, FloatValidator, TimeISOValidator
-from gui_core.wrap import SpinCtrl, Button, StaticText, StaticBox, TextCtrl
+from grassgui.core.gcmd import RunCommand, GError
+from grassgui.core.debug import Debug
+from grassgui.dbmgr.vinfo import VectorDBInfo, GetUnicodeValue, GetDbEncoding
+from grassgui.gui_core.widgets import IntegerValidator, FloatValidator, TimeISOValidator
+from grassgui.gui_core.wrap import SpinCtrl, Button, StaticText, StaticBox, TextCtrl
 
 
 class DisplayAttributesDialog(wx.Dialog):

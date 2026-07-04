@@ -24,11 +24,11 @@ import sys
 
 import wx
 
-from core.debug import Debug
-from gui_core.toolbars import ToolSwitcher
-from gui_core.wrap import NewId
-from mapdisp import statusbar as sb
-from mapwin.base import MapWindowProperties
+from grassgui.core.debug import Debug
+from grassgui.gui_core.toolbars import ToolSwitcher
+from grassgui.gui_core.wrap import NewId
+from grassgui.mapdisp import statusbar as sb
+from grassgui.mapwin.base import MapWindowProperties
 
 from grass.script import core as grass
 
@@ -493,7 +493,7 @@ class MapPanelBase(wx.Panel):
 
     def OnMapDisplayProperties(self, event):
         """Show Map Display Properties dialog"""
-        from mapdisp.properties import MapDisplayPropertiesDialog
+        from grassgui.mapdisp.properties import MapDisplayPropertiesDialog
 
         dlg = MapDisplayPropertiesDialog(
             parent=self,

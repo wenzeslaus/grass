@@ -24,10 +24,10 @@ from copy import deepcopy
 import wx
 
 
-from core.gcmd import GError, GMessage, RunCommand, GWarning
-from core.settings import UserSettings
-from core.gthread import gThread
-from iscatt.iscatt_core import (
+from grassgui.core.gcmd import GError, GMessage, RunCommand, GWarning
+from grassgui.core.settings import UserSettings
+from grassgui.core.gthread import gThread
+from grassgui.iscatt.iscatt_core import (
     Core,
     idBandsToidScatt,
     GetRasterInfo,
@@ -37,8 +37,8 @@ from iscatt.iscatt_core import (
     MAX_NCELLS,
     WARN_NCELLS,
 )
-from iscatt.dialogs import AddScattPlotDialog, ExportCategoryRaster
-from iclass.dialogs import IClassGroupDialog
+from grassgui.iscatt.dialogs import AddScattPlotDialog, ExportCategoryRaster
+from grassgui.iclass.dialogs import IClassGroupDialog
 
 import grass.script as gs
 

@@ -23,11 +23,11 @@ import os
 
 import wx
 
-from core import globalvar
-from core.settings import UserSettings
-from core.globalvar import ICONDIR
-from gui_core.gselect import Select
-from gui_core.wrap import (
+from grassgui.core import globalvar
+from grassgui.core.settings import UserSettings
+from grassgui.core.globalvar import ICONDIR
+from grassgui.gui_core.gselect import Select
+from grassgui.gui_core.wrap import (
     ColourSelect,
     ComboBox,
     Button,

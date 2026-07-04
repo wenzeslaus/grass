@@ -36,10 +36,11 @@ function(build_gui_in_subdir dir_name)
   add_custom_command(
     OUTPUT ${GUI_STAMP_FILE}
     COMMAND ${CMAKE_COMMAND} -E make_directory
-            "${OUTDIR}/${GRASS_INSTALL_GUIDIR}/wxpython/${G_NAME}"
+            "${OUTDIR}/${GRASS_INSTALL_GRASS_GUIWXDIR}/${G_NAME}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PYTHON_FILES}
-            "${OUTDIR}/${GRASS_INSTALL_GUIDIR}/wxpython/${G_NAME}"
-    COMMAND ${CMAKE_COMMAND} -E touch ${GUI_STAMP_FILE})
+            "${OUTDIR}/${GRASS_INSTALL_GRASS_GUIWXDIR}/${G_NAME}"
+    COMMAND ${CMAKE_COMMAND} -E touch ${GUI_STAMP_FILE}
+    DEPENDS ${PYTHON_FILES})
 
   set(OUT_SCRIPT_FILE
       "${OUTDIR}/${GRASS_INSTALL_SCRIPTDIR}/${G_TARGET_NAME}${SCRIPT_EXT}")
@@ -107,8 +108,8 @@ function(build_gui_in_subdir dir_name)
   endif()
 
   install(
-    DIRECTORY "${OUTDIR}/${GRASS_INSTALL_GUIDIR}/wxpython/${G_NAME}"
-    DESTINATION "${GRASS_INSTALL_GUIDIR}/wxpython")
+    DIRECTORY "${OUTDIR}/${GRASS_INSTALL_GRASS_GUIWXDIR}/${G_NAME}"
+    DESTINATION "${GRASS_INSTALL_GRASS_GUIWXDIR}")
 
   install(
     PROGRAMS ${OUTDIR}/${GRASS_INSTALL_SCRIPTDIR}/${G_TARGET_NAME}${SCRIPT_EXT}

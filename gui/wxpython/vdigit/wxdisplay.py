@@ -24,9 +24,9 @@ from ctypes import CFUNCTYPE, byref, c_double, c_int, pointer
 from grass.lib.ctypes_preamble import UNCHECKED, String
 
 import wx
-from core.debug import Debug
-from core.gcmd import DecodeString
-from core.settings import UserSettings
+from grassgui.core.debug import Debug
+from grassgui.core.gcmd import DecodeString
+from grassgui.core.settings import UserSettings
 
 try:
     from grass.lib.gis import (
@@ -117,7 +117,7 @@ try:
     )
 except (ImportError, OSError, TypeError) as e:
     print("wxdisplay.py: {}".format(e), file=sys.stderr)
-from gui_core.wrap import Rect
+from grassgui.gui_core.wrap import Rect
 
 log = None
 progress = None

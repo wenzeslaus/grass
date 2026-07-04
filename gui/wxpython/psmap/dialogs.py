@@ -42,7 +42,7 @@ from pathlib import Path
 
 import wx
 import wx.lib.agw.floatspin as fs
-from core import globalvar
+from grassgui.core import globalvar
 from wx.lib.mixins.listctrl import ListCtrlAutoWidthMixin
 
 if globalvar.wxPythonPhoenix:
@@ -52,12 +52,12 @@ else:
 
 import grass.script as gs
 from grass.exceptions import ScriptError
-from core.gcmd import GError, GMessage, RunCommand
-from core.utils import PilImageToWxImage, cmp
-from dbmgr.vinfo import VectorDBInfo
-from gui_core.dialogs import SymbolDialog
-from gui_core.gselect import Select
-from gui_core.wrap import (
+from grassgui.core.gcmd import GError, GMessage, RunCommand
+from grassgui.core.utils import PilImageToWxImage, cmp
+from grassgui.dbmgr.vinfo import VectorDBInfo
+from grassgui.gui_core.dialogs import SymbolDialog
+from grassgui.gui_core.gselect import Select
+from grassgui.gui_core.wrap import (
     BitmapButton,
     BitmapComboBox,
     BitmapFromImage,
@@ -90,7 +90,7 @@ from gui_core.wrap import (
 )
 
 # Explicit imports from psmap.instructions
-from psmap.instructions import (
+from grassgui.psmap.instructions import (
     Image,
     Labels,
     Line,
@@ -110,7 +110,7 @@ from psmap.instructions import (
 )
 
 # Explicit imports from psmap.utils
-from psmap.utils import (
+from grassgui.psmap.utils import (
     AutoAdjust,
     BBoxAfterRotation,
     ComputeSetRegion,

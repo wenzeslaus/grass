@@ -46,7 +46,7 @@ def GetSettingsPath():
     # TODO: if the function would be in the grass Python library there would
     # no need to do this
     try:
-        from core.utils import GetSettingsPath as actualGetSettingsPath
+        from grassgui.core.utils import GetSettingsPath as actualGetSettingsPath
 
         return actualGetSettingsPath()
     except ImportError:

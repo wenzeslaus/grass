@@ -18,7 +18,7 @@ for details.
 
 import wx
 
-from gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
 
 
 class ExampleMapToolbar(BaseToolbar):

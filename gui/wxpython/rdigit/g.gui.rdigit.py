@@ -73,12 +73,12 @@ def main():
 
     set_gui_path()
 
-    from core.render import Map
-    from core.globalvar import ICONDIR
-    from mapdisp.frame import MapPanel
-    from gui_core.mapdisp import FrameMixin
-    from mapdisp.main import DMonGrassInterface
-    from core.settings import UserSettings
+    from grassgui.core.render import Map
+    from grassgui.core.globalvar import ICONDIR
+    from grassgui.mapdisp.frame import MapPanel
+    from grassgui.gui_core.mapdisp import FrameMixin
+    from grassgui.mapdisp.main import DMonGrassInterface
+    from grassgui.core.settings import UserSettings
 
     # define classes which needs imports as local
     # for longer definitions, a separate file would be a better option

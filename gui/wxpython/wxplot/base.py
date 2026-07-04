@@ -21,13 +21,13 @@ import wx
 from random import randint
 
 from wx.lib import plot
-from core.globalvar import ICONDIR
-from core.settings import UserSettings
-from wxplot.dialogs import TextDialog, OptDialog
-from core.render import Map
-from icons.icon import MetaIcon
-from gui_core.toolbars import BaseIcons
-from gui_core.wrap import Menu
+from grassgui.core.globalvar import ICONDIR
+from grassgui.core.settings import UserSettings
+from grassgui.wxplot.dialogs import TextDialog, OptDialog
+from grassgui.core.render import Map
+from grassgui.icons.icon import MetaIcon
+from grassgui.gui_core.toolbars import BaseIcons
+from grassgui.gui_core.wrap import Menu
 
 import grass.script as gs
 from grass.exceptions import CalledModuleError

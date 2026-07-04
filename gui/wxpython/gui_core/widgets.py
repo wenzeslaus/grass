@@ -58,7 +58,7 @@ import re
 from bisect import bisect
 from datetime import datetime
 from pathlib import Path
-from core.globalvar import wxPythonPhoenix
+from grassgui.core.globalvar import wxPythonPhoenix
 
 import wx
 import wx.lib.mixins.listctrl as listmix
@@ -88,10 +88,10 @@ from grass.script import core as grass
 
 from grass.pydispatch.signal import Signal
 
-from core import globalvar
-from core.gcmd import GMessage, GError
-from core.debug import Debug
-from gui_core.wrap import (
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GMessage, GError
+from grassgui.core.debug import Debug
+from grassgui.gui_core.wrap import (
     Button,
     SearchCtrl,
     Slider,

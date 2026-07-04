@@ -19,7 +19,7 @@ import wx
 
 from wx.lib import plot
 import wx.lib.scrolledpanel as scrolled
-from core.gcmd import GError
+from grassgui.core.gcmd import GError
 
 
 class PlotPanel(scrolled.ScrolledPanel):
@@ -76,7 +76,7 @@ class PlotPanel(scrolled.ScrolledPanel):
     def _createScatterPlotPanel(self):
         """Init interactive scatter plot tool"""
         try:
-            from iscatt.frame import IClassIScattPanel
+            from grassgui.iscatt.frame import IClassIScattPanel
 
             self.iscatt_panel = IClassIScattPanel(
                 parent=self,

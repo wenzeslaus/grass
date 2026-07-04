@@ -25,7 +25,7 @@ This program is free software under the GNU General Public License
 
 import wx
 import wx.lib.scrolledpanel as SP
-from gui_core.wrap import Button
+from grassgui.gui_core.wrap import Button
 
 
 class PropertyItem:

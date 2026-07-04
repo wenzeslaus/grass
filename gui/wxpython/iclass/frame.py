@@ -59,30 +59,30 @@ except ImportError as e:
     errMsg = _("Loading imagery lib failed.\n%s") % e
 
 import grass.script as gs
-from core import globalvar
-from core.gcmd import GError, GMessage, RunCommand
-from core.render import Map
-from dbmgr.vinfo import VectorDBInfo
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GError, GMessage, RunCommand
+from grassgui.core.render import Map
+from grassgui.dbmgr.vinfo import VectorDBInfo
 from grass.pydispatch.signal import Signal
-from gui_core.dialogs import SetOpacityDialog
-from gui_core.mapdisp import DoubleMapPanel, FrameMixin
-from gui_core.wrap import Menu
-from mapdisp import statusbar as sb
-from mapdisp.main import StandaloneMapDisplayGrassInterface
-from mapwin.buffered import BufferedMapWindow
-from vdigit.toolbars import VDigitToolbar
+from grassgui.gui_core.dialogs import SetOpacityDialog
+from grassgui.gui_core.mapdisp import DoubleMapPanel, FrameMixin
+from grassgui.gui_core.wrap import Menu
+from grassgui.mapdisp import statusbar as sb
+from grassgui.mapdisp.main import StandaloneMapDisplayGrassInterface
+from grassgui.mapwin.buffered import BufferedMapWindow
+from grassgui.vdigit.toolbars import VDigitToolbar
 
-from iclass.dialogs import (
+from grassgui.iclass.dialogs import (
     IClassCategoryManagerDialog,
     IClassExportAreasDialog,
     IClassGroupDialog,
     IClassMapDialog,
     IClassSignatureFileDialog,
 )
-from iclass.digit import IClassVDigit, IClassVDigitWindow
-from iclass.plots import PlotPanel
-from iclass.statistics import StatisticsData
-from iclass.toolbars import (
+from grassgui.iclass.digit import IClassVDigit, IClassVDigitWindow
+from grassgui.iclass.plots import PlotPanel
+from grassgui.iclass.statistics import StatisticsData
+from grassgui.iclass.toolbars import (
     IClassMapManagerToolbar,
     IClassMapToolbar,
     IClassMiscToolbar,

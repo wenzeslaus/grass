@@ -31,9 +31,9 @@ from grass.script import core as grass
 from grass.script import task as gtask
 from grass.app.runtime import get_grass_config_dir_for_version
 
-from core.gcmd import RunCommand
-from core.debug import Debug
-from core.globalvar import wxPythonPhoenix
+from grassgui.core.gcmd import RunCommand
+from grassgui.core.debug import Debug
+from grassgui.core.globalvar import wxPythonPhoenix
 
 
 if TYPE_CHECKING:
@@ -1023,7 +1023,7 @@ def PilImageToWxImage(pilImage: PIL.Image.Image, copyAlpha: bool = True) -> wx.I
 
     Based on http://wiki.wxpython.org/WorkingWithImages
     """
-    from gui_core.wrap import EmptyImage
+    from grassgui.gui_core.wrap import EmptyImage
 
     hasAlpha = pilImage.mode[-1] == "A"
     if copyAlpha and hasAlpha:  # Make sure there is an alpha layer copy.

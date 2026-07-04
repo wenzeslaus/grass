@@ -51,12 +51,12 @@ if __name__ == "__main__":
 
     set_gui_path()
 
-from core import globalvar
-from core.gcmd import GError, DecodeString
-from core.settings import UserSettings
-from gui_core.widgets import FormNotebook, ScrolledPanel
-from gui_core.wrap import Button, StaticText, TextCtrl
-from core.debug import Debug
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GError, DecodeString
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.widgets import FormNotebook, ScrolledPanel
+from grassgui.gui_core.wrap import Button, StaticText, TextCtrl
+from grassgui.core.debug import Debug
 
 
 class AboutWindow(wx.Frame):

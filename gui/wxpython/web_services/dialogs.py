@@ -29,16 +29,16 @@ from pathlib import Path
 import grass.script as gs
 from grass.script.task import cmdlist_to_tuple, cmdtuple_to_list
 
-from core import globalvar
-from core.debug import Debug
-from core.gcmd import GMessage, GWarning, GError
-from core.utils import GetSettingsPath
-from core.gconsole import CmdThread, GStderr, EVT_CMD_DONE, EVT_CMD_OUTPUT
+from grassgui.core import globalvar
+from grassgui.core.debug import Debug
+from grassgui.core.gcmd import GMessage, GWarning, GError
+from grassgui.core.utils import GetSettingsPath
+from grassgui.core.gconsole import CmdThread, GStderr, EVT_CMD_DONE, EVT_CMD_OUTPUT
 
-from gui_core.gselect import Select
-from gui_core.wrap import Button, StaticText, StaticBox, TextCtrl, RadioButton
+from grassgui.gui_core.gselect import Select
+from grassgui.gui_core.wrap import Button, StaticText, StaticBox, TextCtrl, RadioButton
 
-from web_services.widgets import WSPanel, WSManageSettingsWidget
+from grassgui.web_services.widgets import WSPanel, WSManageSettingsWidget
 
 
 class WSDialogBase(wx.Dialog):

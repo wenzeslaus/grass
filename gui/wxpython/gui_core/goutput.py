@@ -34,8 +34,8 @@ if __name__ == "__main__":
 
     set_gui_path()
 
-from core.gcmd import GError
-from core.gconsole import (
+from grassgui.core.gcmd import GError
+from grassgui.core.gconsole import (
     GConsole,
     EVT_CMD_OUTPUT,
     EVT_CMD_PROGRESS,
@@ -43,10 +43,10 @@ from core.gconsole import (
     EVT_CMD_DONE,
     Notification,
 )
-from core.globalvar import CheckWxVersion, wxPythonPhoenix
-from gui_core.prompt import GPromptSTC
-from gui_core.wrap import Button, ClearButton, StaticText
-from core.settings import UserSettings
+from grassgui.core.globalvar import CheckWxVersion, wxPythonPhoenix
+from grassgui.gui_core.prompt import GPromptSTC
+from grassgui.gui_core.wrap import Button, ClearButton, StaticText
+from grassgui.core.settings import UserSettings
 
 
 GC_EMPTY = 0
@@ -668,7 +668,7 @@ class GConsoleFrame(wx.Frame):
 
         panel = wx.Panel(self, id=wx.ID_ANY)
 
-        from lmgr.menudata import LayerManagerMenuData
+        from grassgui.lmgr.menudata import LayerManagerMenuData
 
         menuTreeBuilder = LayerManagerMenuData()
         self.gconsole = GConsole(guiparent=self)

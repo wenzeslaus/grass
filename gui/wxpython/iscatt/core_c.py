@@ -41,7 +41,7 @@ try:
 except ImportError as e:
     sys.stderr.write(_("Loading ctypes libs failed: %s") % e)
 
-from core.gcmd import GException
+from grassgui.core.gcmd import GException
 from grass.script import encode
 
 

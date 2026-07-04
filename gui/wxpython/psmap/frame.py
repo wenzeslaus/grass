@@ -29,20 +29,20 @@ except ImportError:
     import wx.lib.flatnotebook as FN
 
 import grass.script as gs
-from core import globalvar
-from core.gcmd import GError, GMessage, RunCommand
-from core.gconsole import EVT_CMD_DONE, CmdThread
-from core.settings import UserSettings
-from core.utils import PilImageToWxImage
-from gui_core.dialogs import HyperlinkDialog
-from gui_core.forms import GUI
-from gui_core.ghelp import ShowAboutDialog
-from gui_core.menu import Menu
-from gui_core.toolbars import ToolSwitcher
-from gui_core.widgets import GNotebook
-from gui_core.wrap import ClientDC, EmptyBitmap, PseudoDC, Rect, StockCursor
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GError, GMessage, RunCommand
+from grassgui.core.gconsole import EVT_CMD_DONE, CmdThread
+from grassgui.core.settings import UserSettings
+from grassgui.core.utils import PilImageToWxImage
+from grassgui.gui_core.dialogs import HyperlinkDialog
+from grassgui.gui_core.forms import GUI
+from grassgui.gui_core.ghelp import ShowAboutDialog
+from grassgui.gui_core.menu import Menu
+from grassgui.gui_core.toolbars import ToolSwitcher
+from grassgui.gui_core.widgets import GNotebook
+from grassgui.gui_core.wrap import ClientDC, EmptyBitmap, PseudoDC, Rect, StockCursor
 
-from psmap.dialogs import (
+from grassgui.psmap.dialogs import (
     ImageDialog,
     LabelsDialog,
     LegendDialog,
@@ -57,10 +57,10 @@ from psmap.dialogs import (
     ScalebarDialog,
     TextDialog,
 )
-from psmap.instructions import InitMap, Instruction, NewId, SetResolution, PageSetup
-from psmap.menudata import PsMapMenuData
-from psmap.toolbars import PsMapToolbar
-from psmap.utils import (
+from grassgui.psmap.instructions import InitMap, Instruction, NewId, SetResolution, PageSetup
+from grassgui.psmap.menudata import PsMapMenuData
+from grassgui.psmap.toolbars import PsMapToolbar
+from grassgui.psmap.utils import (
     AutoAdjust,
     ComputeSetRegion,
     GetMapBounds,

@@ -16,9 +16,9 @@ for details.
 
 import wx
 
-from gui_core.gselect import Select
-from gui_core.wrap import Button, StaticText
-from core.gcmd import GWarning
+from grassgui.gui_core.gselect import Select
+from grassgui.gui_core.wrap import Button, StaticText
+from grassgui.core.gcmd import GWarning
 
 import grass.script.core as gcore
 import grass.script.raster as grast

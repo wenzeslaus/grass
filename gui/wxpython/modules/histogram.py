@@ -23,18 +23,18 @@ from pathlib import Path
 
 import wx
 
-from core import globalvar
-from core.render import Map
-from core.settings import UserSettings
-from gui_core.forms import GUI
-from mapdisp.gprint import PrintOptions
-from core.utils import GetLayerNameFromCmd
-from gui_core.dialogs import GetImageHandlers, ImageSizeDialog
-from gui_core.preferences import DefaultFontDialog
-from core.debug import Debug
-from core.gcmd import GError
-from gui_core.toolbars import BaseToolbar, BaseIcons
-from gui_core.wrap import PseudoDC, Menu, EmptyBitmap, NewId, BitmapFromImage
+from grassgui.core import globalvar
+from grassgui.core.render import Map
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.forms import GUI
+from grassgui.mapdisp.gprint import PrintOptions
+from grassgui.core.utils import GetLayerNameFromCmd
+from grassgui.gui_core.dialogs import GetImageHandlers, ImageSizeDialog
+from grassgui.gui_core.preferences import DefaultFontDialog
+from grassgui.core.debug import Debug
+from grassgui.core.gcmd import GError
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.gui_core.wrap import PseudoDC, Menu, EmptyBitmap, NewId, BitmapFromImage
 
 
 class BufferedWindow(wx.Window):

@@ -28,13 +28,13 @@ from grass.script.task import cmdlist_to_tuple
 
 import wx
 
-from core.gcmd import RunCommand, GMessage
-from core.gconsole import CmdThread, EVT_CMD_DONE, GConsole
+from grassgui.core.gcmd import RunCommand, GMessage
+from grassgui.core.gconsole import CmdThread, EVT_CMD_DONE, GConsole
 
-from gui_core.gselect import VectorDBInfo
+from grassgui.gui_core.gselect import VectorDBInfo
 
-from vnet.vnet_data import VNETData, VNETTmpVectMaps, VectMap, History
-from vnet.vnet_utils import ParseMapStr, haveCtypes, GetNearestNodeCat
+from grassgui.vnet.vnet_data import VNETData, VNETTmpVectMaps, VectMap, History
+from grassgui.vnet.vnet_utils import ParseMapStr, haveCtypes, GetNearestNodeCat
 
 from grass.pydispatch.signal import Signal
 

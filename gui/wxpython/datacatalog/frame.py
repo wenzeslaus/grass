@@ -20,9 +20,9 @@ for details.
 import os
 import wx
 
-from core.globalvar import ICONDIR
-from datacatalog.catalog import DataCatalog
-from gui_core.wrap import Button
+from grassgui.core.globalvar import ICONDIR
+from grassgui.datacatalog.catalog import DataCatalog
+from grassgui.gui_core.wrap import Button
 
 
 class DataCatalogFrame(wx.Frame):

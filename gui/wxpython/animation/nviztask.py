@@ -16,11 +16,11 @@ This program is free software under the GNU General Public License
 
 import xml.etree.ElementTree as ET
 
-from core.workspace import ProcessWorkspaceFile
-from core.gcmd import RunCommand, GException
-from core.utils import GetLayerNameFromCmd
+from grassgui.core.workspace import ProcessWorkspaceFile
+from grassgui.core.gcmd import RunCommand, GException
+from grassgui.core.utils import GetLayerNameFromCmd
 from grass.script import task as gtask
-from core.settings import UserSettings
+from grassgui.core.settings import UserSettings
 
 
 class NvizTask:

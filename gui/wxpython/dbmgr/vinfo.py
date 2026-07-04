@@ -18,10 +18,10 @@ import os
 
 import wx
 
-from gui_core.gselect import VectorDBInfo as VectorDBInfoBase
-from gui_core.wrap import StaticText
-from core.gcmd import RunCommand, GError
-from core.settings import UserSettings
+from grassgui.gui_core.gselect import VectorDBInfo as VectorDBInfoBase
+from grassgui.gui_core.wrap import StaticText
+from grassgui.core.gcmd import RunCommand, GError
+from grassgui.core.settings import UserSettings
 import grass.script as gs
 from grass.exceptions import ScriptError
 

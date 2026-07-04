@@ -190,7 +190,9 @@ def wxpath(*args) -> str:
     global _WXPYTHON_BASE
     if not _WXPYTHON_BASE:
         # this can be called only after GISBASE was set
-        _WXPYTHON_BASE = gpath("gui", "wxpython")
+        _WXPYTHON_BASE = os.environ.get("GRASS_GUIWXDIR") or gpath(
+            "gui", "wxpython"
+        )
     return os.path.join(_WXPYTHON_BASE, *args)
 
 

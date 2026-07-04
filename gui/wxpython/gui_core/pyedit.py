@@ -29,16 +29,16 @@ if __name__ == "__main__":
 
     set_gui_path()
 
-from core.gcmd import GError
-from gui_core.pystc import PyStc, SetDarkMode
-from core import globalvar
-from core.menutree import MenuTreeModelBuilder
-from gui_core.menu import RecentFilesMenu, Menu as Menubar
-from gui_core.toolbars import BaseToolbar, BaseIcons
-from gui_core.wrap import IsDark
-from icons.icon import MetaIcon
-from core.debug import Debug
-from main_window.page import MainPageBase
+from grassgui.core.gcmd import GError
+from grassgui.gui_core.pystc import PyStc, SetDarkMode
+from grassgui.core import globalvar
+from grassgui.core.menutree import MenuTreeModelBuilder
+from grassgui.gui_core.menu import RecentFilesMenu, Menu as Menubar
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.gui_core.wrap import IsDark
+from grassgui.icons.icon import MetaIcon
+from grassgui.core.debug import Debug
+from grassgui.main_window.page import MainPageBase
 
 
 # TODO: add validation: call/import pep8 (error message if not available)
@@ -912,7 +912,7 @@ class PyEditFrame(wx.Frame):
 
 def main():
     """Test application (potentially useful as g.gui.pyedit)"""
-    from core.giface import StandaloneGrassInterface
+    from grassgui.core.giface import StandaloneGrassInterface
 
     app = wx.App()
     giface = StandaloneGrassInterface()

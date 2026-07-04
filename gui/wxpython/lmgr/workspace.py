@@ -22,11 +22,11 @@ from pathlib import Path
 
 import wx
 
-from core.settings import UserSettings
-from core.gcmd import RunCommand, GError, GMessage
-from core.workspace import ProcessWorkspaceFile, WriteWorkspaceFile
-from core.debug import Debug
-from gui_core.menu import RecentFilesMenu
+from grassgui.core.settings import UserSettings
+from grassgui.core.gcmd import RunCommand, GError, GMessage
+from grassgui.core.workspace import ProcessWorkspaceFile, WriteWorkspaceFile
+from grassgui.core.debug import Debug
+from grassgui.gui_core.menu import RecentFilesMenu
 
 
 class WorkspaceManager:

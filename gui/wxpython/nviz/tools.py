@@ -46,20 +46,20 @@ except ImportError:
     fs = None
 import grass.script as gs
 
-from core import globalvar
-from gui_core.gselect import VectorDBInfo
-from core.gcmd import GMessage, RunCommand
-from modules.colorrules import ThematicVectorTable
-from core.settings import UserSettings
-from gui_core.widgets import (
+from grassgui.core import globalvar
+from grassgui.gui_core.gselect import VectorDBInfo
+from grassgui.core.gcmd import GMessage, RunCommand
+from grassgui.modules.colorrules import ThematicVectorTable
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.widgets import (
     ScrolledPanel,
     NumTextCtrl,
     FloatSlider,
     SymbolButton,
     GNotebook,
 )
-from gui_core.gselect import Select
-from gui_core.wrap import (
+from grassgui.gui_core.gselect import Select
+from grassgui.gui_core.wrap import (
     Window,
     SpinCtrl,
     PseudoDC,
@@ -72,8 +72,8 @@ from gui_core.wrap import (
     CheckListBox,
     ColourSelect,
 )
-from core.debug import Debug
-from nviz.mapwindow import (
+from grassgui.core.debug import Debug
+from grassgui.nviz.mapwindow import (
     wxUpdateProperties,
     wxUpdateView,
     wxUpdateLight,

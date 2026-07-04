@@ -34,16 +34,16 @@ from grass.script.task import cmdlist_to_tuple
 import wx
 
 
-from core import utils
-from core.gcmd import RunCommand, GMessage
-from core.settings import UserSettings
+from grassgui.core import utils
+from grassgui.core.gcmd import RunCommand, GMessage
+from grassgui.core.settings import UserSettings
 
-from vnet.vnet_utils import ParseMapStr, SnapToNode
+from grassgui.vnet.vnet_utils import ParseMapStr, SnapToNode
 
-from gui_core.gselect import VectorDBInfo
+from grassgui.gui_core.gselect import VectorDBInfo
 from grass.pydispatch.signal import Signal
 
-from vnet.vnet_utils import DegreesToRadians
+from grassgui.vnet.vnet_utils import DegreesToRadians
 
 
 class VNETData:

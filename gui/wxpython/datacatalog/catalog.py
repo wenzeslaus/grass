@@ -20,15 +20,15 @@ import wx
 
 from pathlib import Path
 
-from core.debug import Debug
-from datacatalog.tree import DataCatalogTree
-from datacatalog.toolbars import DataCatalogToolbar, DataCatalogSearch
-from gui_core.infobar import InfoBar
-from datacatalog.infomanager import DataCatalogInfoManager
-from gui_core.wrap import Menu
-from gui_core.forms import GUI
-from core.settings import UserSettings
-from core.gcmd import GError
+from grassgui.core.debug import Debug
+from grassgui.datacatalog.tree import DataCatalogTree
+from grassgui.datacatalog.toolbars import DataCatalogToolbar, DataCatalogSearch
+from grassgui.gui_core.infobar import InfoBar
+from grassgui.datacatalog.infomanager import DataCatalogInfoManager
+from grassgui.gui_core.wrap import Menu
+from grassgui.gui_core.forms import GUI
+from grassgui.core.settings import UserSettings
+from grassgui.core.gcmd import GError
 
 from grass.pydispatch.signal import Signal
 from grass.script.utils import clock
@@ -249,7 +249,7 @@ class DataCatalog(wx.Panel):
 
     def OnImportGdalLayers(self, event):
         """Convert multiple GDAL layers to GRASS raster map layers"""
-        from modules.import_export import GdalImportDialog
+        from grassgui.modules.import_export import GdalImportDialog
 
         dlg = GdalImportDialog(parent=self, giface=self.giface)
         dlg.CentreOnScreen()
@@ -257,7 +257,7 @@ class DataCatalog(wx.Panel):
 
     def OnImportOgrLayers(self, event):
         """Convert multiple OGR layers to GRASS vector map layers"""
-        from modules.import_export import OgrImportDialog
+        from grassgui.modules.import_export import OgrImportDialog
 
         dlg = OgrImportDialog(parent=self, giface=self.giface)
         dlg.CentreOnScreen()
@@ -265,7 +265,7 @@ class DataCatalog(wx.Panel):
 
     def OnLinkGdalLayers(self, event):
         """Link multiple GDAL layers to GRASS raster map layers"""
-        from modules.import_export import GdalImportDialog
+        from grassgui.modules.import_export import GdalImportDialog
 
         dlg = GdalImportDialog(parent=self, giface=self.giface, link=True)
         dlg.CentreOnScreen()
@@ -273,7 +273,7 @@ class DataCatalog(wx.Panel):
 
     def OnLinkOgrLayers(self, event):
         """Links multiple OGR layers to GRASS vector map layers"""
-        from modules.import_export import OgrImportDialog
+        from grassgui.modules.import_export import OgrImportDialog
 
         dlg = OgrImportDialog(parent=self, giface=self.giface, link=True)
         dlg.CentreOnScreen()
@@ -281,7 +281,7 @@ class DataCatalog(wx.Panel):
 
     def OnRasterOutputFormat(self, event):
         """Set raster output format handler"""
-        from modules.import_export import GdalOutputDialog
+        from grassgui.modules.import_export import GdalOutputDialog
 
         dlg = GdalOutputDialog(parent=self, ogr=False)
         dlg.CentreOnScreen()
@@ -289,7 +289,7 @@ class DataCatalog(wx.Panel):
 
     def OnVectorOutputFormat(self, event):
         """Set vector output format handler"""
-        from modules.import_export import GdalOutputDialog
+        from grassgui.modules.import_export import GdalOutputDialog
 
         dlg = GdalOutputDialog(parent=self, ogr=True)
         dlg.CentreOnScreen()

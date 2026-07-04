@@ -19,15 +19,15 @@ import wx
 import wx.lib.scrolledpanel as SP
 import wx.lib.colourselect as csel
 
-from core import globalvar
-from gui_core import gselect
-from gui_core.widgets import SimpleValidator
-from gui_core.preferences import PreferencesBaseDialog
-from core.gcmd import GMessage
-from core.layerlist import LayerList
-from core.settings import UserSettings
-from gui_core.wrap import SpinCtrl, Button, StaticText, StaticBox
-from gui_core.simplelmgr import (
+from grassgui.core import globalvar
+from grassgui.gui_core import gselect
+from grassgui.gui_core.widgets import SimpleValidator
+from grassgui.gui_core.preferences import PreferencesBaseDialog
+from grassgui.core.gcmd import GMessage
+from grassgui.core.layerlist import LayerList
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.wrap import SpinCtrl, Button, StaticText, StaticBox
+from grassgui.gui_core.simplelmgr import (
     SimpleLayerManager,
     SIMPLE_LMGR_RASTER,
     SIMPLE_LMGR_VECTOR,

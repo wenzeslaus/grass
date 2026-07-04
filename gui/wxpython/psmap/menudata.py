@@ -16,8 +16,8 @@ This program is free software under the GNU General Public License
 
 import os
 
-from core import globalvar
-from core.menutree import MenuTreeModelBuilder
+from grassgui.core import globalvar
+from grassgui.core.menutree import MenuTreeModelBuilder
 
 
 class PsMapMenuData(MenuTreeModelBuilder):

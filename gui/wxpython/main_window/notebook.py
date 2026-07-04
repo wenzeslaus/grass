@@ -21,9 +21,9 @@ import os
 import wx
 from wx.lib.agw import aui
 
-from core import globalvar
-from gui_core.wrap import SimpleTabArt
-from mapdisp.frame import MapPanel
+from grassgui.core import globalvar
+from grassgui.gui_core.wrap import SimpleTabArt
+from grassgui.mapdisp.frame import MapPanel
 
 
 class MainPageFrame(wx.Frame):

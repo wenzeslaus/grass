@@ -23,9 +23,9 @@ This program is free software under the GNU General Public License
 @author Linda Kladivova <linda.kladivova gmail com>
 """
 
-from core.gcmd import RunCommand
-from gui_core.toolbars import BaseToolbar, AuiToolbar, BaseIcons
-from icons.icon import MetaIcon
+from grassgui.core.gcmd import RunCommand
+from grassgui.gui_core.toolbars import BaseToolbar, AuiToolbar, BaseIcons
+from grassgui.icons.icon import MetaIcon
 
 
 class LMWorkspaceToolbar(AuiToolbar):

@@ -18,9 +18,9 @@ if(WITH_FHS)
         "${CMAKE_INSTALL_LIBDIR}/python${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}/site-packages"
     )
   endif()
-  set(GRASS_INSTALL_GUIDIR "${GRASS_INSTALL_PYDIR}/${PROJECT_NAME_LOWER}/gui")
-  # GUI Python code goes to the Python package (GUIDIR); GUI resources
-  # (icons, images, xml) go to the shared data directory.
+  # GUI Python code forms the grassgui package; GUI resources (icons,
+  # images, xml) go to the shared data directory.
+  set(GRASS_INSTALL_GUIDIR "${GRASS_INSTALL_PYDIR}/grassgui")
   set(GRASS_INSTALL_GUIRESDIR "${GRASS_INSTALL_SHAREDIR}/gui")
   set(GRASS_INSTALL_GUISCRIPTDIR "${GRASS_INSTALL_SCRIPTDIR}")
   set(GRASS_INSTALL_DRIVERDIR "${GISBASE_DIR}/driver")
@@ -40,7 +40,8 @@ if(WITH_FHS)
   set(GRASS_INSTALL_LOCALEDIR "${CMAKE_INSTALL_LOCALEDIR}")
   set(GRASS_INSTALL_COLORSDIR "${GRASS_INSTALL_ETCDIR}/colors")
   set(GRASS_INSTALL_GRAPHICSDIR "${GRASS_INSTALL_ETCDIR}/graphics")
-  set(GRASS_INSTALL_GRASS_GUIWXDIR "${GRASS_INSTALL_GUIDIR}/wxpython")
+  # The grassgui package directory is the wxGUI code directory.
+  set(GRASS_INSTALL_GRASS_GUIWXDIR "${GRASS_INSTALL_GUIDIR}")
 else()
   message("Legacy file structure")
   set(GISBASE_DIR "${CMAKE_INSTALL_LIBDIR}/grass${GRASS_VERSION_MAJOR}${GRASS_VERSION_MINOR}")
@@ -161,7 +162,7 @@ file(TO_NATIVE_PATH "${OUTDIR}/${GRASS_INSTALL_DOCDIR}" DOC_DIR)
 
 file(TO_NATIVE_PATH "${OUTDIR}/${GRASS_INSTALL_DEMODIR}/${GISRC_NAME}" GISRC)
 file(TO_NATIVE_PATH "${OUTDIR}/${GRASS_INSTALL_PYDIR}" ETC_PYTHON_DIR)
-file(TO_NATIVE_PATH "${OUTDIR}/${GRASS_INSTALL_GUIDIR}/wxpython"
+file(TO_NATIVE_PATH "${OUTDIR}/${GRASS_INSTALL_GRASS_GUIWXDIR}"
      GUI_WXPYTHON_DIR)
 message(STATUS "GISBASE ${GISBASE}")
 message(STATUS "GISBASE_NATIVE ${RUN_GISBASE_NATIVE}")

@@ -60,14 +60,14 @@ from grass.script.setup import set_gui_path
 set_gui_path()
 
 # GUI imports require path to GUI code to be set.
-from core.settings import UserSettings  # noqa: E402
-from core.giface import StandaloneGrassInterface  # noqa: E402
-from mapwin.base import MapWindowProperties  # noqa: E402
-from mapwin.buffered import BufferedMapWindow  # noqa: E402
-from core.render import Map  # noqa: E402
-from rlisetup.sampling_frame import RLiSetupMapPanel  # noqa: E402
-from mapdisp.main import LayerList  # noqa: E402
-from gui_core.wrap import StaticText  # noqa: E402
+from grassgui.core.settings import UserSettings  # noqa: E402
+from grassgui.core.giface import StandaloneGrassInterface  # noqa: E402
+from grassgui.mapwin.base import MapWindowProperties  # noqa: E402
+from grassgui.mapwin.buffered import BufferedMapWindow  # noqa: E402
+from grassgui.core.render import Map  # noqa: E402
+from grassgui.rlisetup.sampling_frame import RLiSetupMapPanel  # noqa: E402
+from grassgui.mapdisp.main import LayerList  # noqa: E402
+from grassgui.gui_core.wrap import StaticText  # noqa: E402
 
 
 class MapdispGrassInterface(StandaloneGrassInterface):
@@ -158,7 +158,7 @@ class Tester:
         self.frame.Show()
 
     def testMapDisplay(self, giface, map_):
-        from mapdisp.frame import MapFrame
+        from grassgui.mapdisp.frame import MapFrame
 
         # known issues (should be similar with d.mon):
         # * opening map in digitizer ends with: vdigit/toolbars.py:723: 'selection'
@@ -228,7 +228,7 @@ class Tester:
 
         self.frame.Show()
 
-        from mapwin.analysis import MeasureDistanceController
+        from grassgui.mapwin.analysis import MeasureDistanceController
 
         self.controller = MeasureDistanceController(giface, window)
         self.controller.Start()
@@ -262,7 +262,7 @@ class Tester:
 
         self.frame.Show()
 
-        from mapwin.analysis import ProfileController
+        from grassgui.mapwin.analysis import ProfileController
 
         self.controller = ProfileController(giface, window)
         self.controller.Start()
@@ -273,7 +273,7 @@ class Tester:
             if layer.maplayer.GetType() == "raster"
         ]
 
-        from wxplot.profile import ProfileFrame
+        from grassgui.wxplot.profile import ProfileFrame
 
         profileWindow = ProfileFrame(
             parent=self.frame,

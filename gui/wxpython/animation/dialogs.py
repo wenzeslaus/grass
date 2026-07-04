@@ -36,16 +36,16 @@ try:
 except ImportError:
     from wx import HyperlinkCtrl
 
-from core.gcmd import GMessage, GError, GException
+from grassgui.core.gcmd import GMessage, GError, GException
 from grass.exceptions import ScriptError
-from core import globalvar
-from gui_core.dialogs import MapLayersDialog, GetImageHandlers
-from gui_core.preferences import PreferencesBaseDialog
-from gui_core.forms import GUI
-from core.settings import UserSettings
-from gui_core.gselect import Select
-from gui_core.widgets import FloatValidator
-from gui_core.wrap import (
+from grassgui.core import globalvar
+from grassgui.gui_core.dialogs import MapLayersDialog, GetImageHandlers
+from grassgui.gui_core.preferences import PreferencesBaseDialog
+from grassgui.gui_core.forms import GUI
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.gselect import Select
+from grassgui.gui_core.widgets import FloatValidator
+from grassgui.gui_core.wrap import (
     BitmapButton,
     Button,
     CheckBox,
@@ -59,15 +59,15 @@ from gui_core.wrap import (
     TextCtrl,
 )
 
-from animation.utils import (
+from grassgui.animation.utils import (
     TemporalMode,
     getRegisteredMaps,
     getNameAndLayer,
     getCpuCount,
 )
-from animation.data import AnimationData, AnimLayer
-from animation.toolbars import AnimSimpleLmgrToolbar, SIMPLE_LMGR_STDS
-from gui_core.simplelmgr import (
+from grassgui.animation.data import AnimationData, AnimLayer
+from grassgui.animation.toolbars import AnimSimpleLmgrToolbar, SIMPLE_LMGR_STDS
+from grassgui.gui_core.simplelmgr import (
     SimpleLayerManager,
     SIMPLE_LMGR_RASTER,
     SIMPLE_LMGR_VECTOR,
@@ -2132,7 +2132,7 @@ def testTemporalLayer():
 
 
 def testAnimLmgr():
-    from core.layerlist import LayerList
+    from grassgui.core.layerlist import LayerList
 
     frame = wx.Frame(None)
     mgr = AnimSimpleLayerManager(parent=frame, layerList=LayerList())

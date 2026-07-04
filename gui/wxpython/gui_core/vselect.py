@@ -25,9 +25,9 @@ import random
 import wx
 import wx.lib.mixins.listctrl as listmix
 
-from core.gcmd import GMessage, GError, GWarning
-from core.gcmd import RunCommand
-from gui_core.wrap import Button, ListCtrl
+from grassgui.core.gcmd import GMessage, GError, GWarning
+from grassgui.core.gcmd import RunCommand
+from grassgui.gui_core.wrap import Button, ListCtrl
 
 import grass.script as gs
 from grass.exceptions import ScriptError

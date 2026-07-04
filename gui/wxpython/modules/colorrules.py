@@ -37,15 +37,15 @@ import wx.lib.filebrowsebutton as filebrowse
 import grass.script as gs
 from grass.script.task import cmdlist_to_tuple
 
-from core import globalvar
-from core import utils
-from core.gcmd import GMessage, RunCommand, GError
-from gui_core.gselect import Select, LayerSelect, ColumnSelect, VectorDBInfo
-from core.render import Map
-from gui_core.forms import GUI
-from core.debug import Debug
-from gui_core.widgets import ColorTablesComboBox
-from gui_core.wrap import (
+from grassgui.core import globalvar
+from grassgui.core import utils
+from grassgui.core.gcmd import GMessage, RunCommand, GError
+from grassgui.gui_core.gselect import Select, LayerSelect, ColumnSelect, VectorDBInfo
+from grassgui.core.render import Map
+from grassgui.gui_core.forms import GUI
+from grassgui.core.debug import Debug
+from grassgui.gui_core.widgets import ColorTablesComboBox
+from grassgui.gui_core.wrap import (
     SpinCtrl,
     PseudoDC,
     TextCtrl,
@@ -1914,10 +1914,10 @@ class ThematicVectorTable(VectorColorTable):
 
         data["vector"][self.vectorType]["thematic"]["update"] = None
 
-        from nviz.main import haveNviz
+        from grassgui.nviz.main import haveNviz
 
         if haveNviz:
-            from nviz.mapwindow import wxUpdateProperties
+            from grassgui.nviz.mapwindow import wxUpdateProperties
 
             event = wxUpdateProperties(data=data)
             wx.PostEvent(self.parent.mapWindow, event)

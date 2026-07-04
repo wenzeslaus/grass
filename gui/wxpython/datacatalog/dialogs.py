@@ -15,10 +15,10 @@ This program is free software under the GNU General Public License
 """
 
 import wx
-from gui_core.widgets import FloatValidator, IntegerValidator
-from core.giface import Notification
-from core.gcmd import RunCommand
-from gui_core.wrap import Button, StaticText, TextCtrl
+from grassgui.gui_core.widgets import FloatValidator, IntegerValidator
+from grassgui.core.giface import Notification
+from grassgui.core.gcmd import RunCommand
+from grassgui.gui_core.wrap import Button, StaticText, TextCtrl
 
 from grass.script import parse_key_val, region_env
 

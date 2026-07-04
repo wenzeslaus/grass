@@ -8,7 +8,7 @@ List of classes:
 
 Usage:
 @code
-from core.settings import UserSettings
+from grassgui.core.settings import UserSettings
 @endcode
 
 (C) 2007-2017 by the GRASS Development Team
@@ -26,9 +26,9 @@ import wx
 import json
 import collections.abc
 
-from core import globalvar
-from core.gcmd import GException, GError
-from core.utils import GetSettingsPath, PathJoin, rgb2str
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GException, GError
+from grassgui.core.utils import GetSettingsPath, PathJoin, rgb2str
 from pathlib import Path
 
 

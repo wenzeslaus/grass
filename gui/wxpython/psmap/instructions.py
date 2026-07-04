@@ -40,13 +40,13 @@ from time import localtime, strftime
 
 import grass.script as gs
 import wx
-from core.gcmd import GError, GMessage, GWarning
-from core.utils import GetCmdString
-from dbmgr.vinfo import VectorDBInfo
+from grassgui.core.gcmd import GError, GMessage, GWarning
+from grassgui.core.utils import GetCmdString
+from grassgui.dbmgr.vinfo import VectorDBInfo
 from grass.exceptions import ScriptError
 from grass.script.task import cmdlist_to_tuple
-from gui_core.wrap import NewId as wxNewId
-from psmap.utils import (  # Add any additional required names from psmap.utils here
+from grassgui.gui_core.wrap import NewId as wxNewId
+from grassgui.psmap.utils import (  # Add any additional required names from psmap.utils here
     BBoxAfterRotation,
     GetMapBounds,
     PaperMapCoordinates,

@@ -213,7 +213,7 @@ if(WIN32)
   string(REPLACE ";" "${sep}" env_pythonpath "${env_pythonpath}")
   set(grass_env_command
     ${CMAKE_COMMAND} -E env "PATH=${BIN_DIR}${sep}${SCRIPTS_DIR}${sep}${env_path}${sep}${LIB_DIR}"
-    "PYTHONPATH=${ETC_PYTHON_DIR}${sep}${GUI_WXPYTHON_DIR}${sep}${env_pythonpath}"
+    "PYTHONPATH=${ETC_PYTHON_DIR}${sep}${env_pythonpath}"
     "GRASS_PYTHON=${PYTHON_EXECUTABLE}" "GISBASE=${RUN_GISBASE_NATIVE}" "GISRC=${GISRC}" "LC_ALL=C" "LANG=C"
     "GRASS_COLORSDIR=${RUNTIME_GRASS_COLORSDIR}"
     "GRASS_DOCDIR=${RUNTIME_GRASS_DOCDIR}"
@@ -237,7 +237,7 @@ else()
   set(sep ":")
   set(grass_env_command
     ${CMAKE_COMMAND} -E env "PATH=${BIN_DIR}${sep}${SCRIPTS_DIR}${sep}${env_path}"
-    "PYTHONPATH=${ETC_PYTHON_DIR}${sep}${GUI_WXPYTHON_DIR}${sep}$ENV{PYTHONPATH}"
+    "PYTHONPATH=${ETC_PYTHON_DIR}${sep}$ENV{PYTHONPATH}"
     "LD_LIBRARY_PATH=${LIB_DIR}${sep}$ENV{LD_LIBRARY_PATH}"
     "GISBASE=${RUN_GISBASE_NATIVE}" "GISRC=${GISRC}" "LC_ALL=C" "LANG=C"
     "GRASS_COLORSDIR=${RUNTIME_GRASS_COLORSDIR}"

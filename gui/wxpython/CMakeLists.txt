@@ -1,4 +1,4 @@
-set(WXPYTHON_DIR ${GRASS_INSTALL_GUIDIR}/wxpython)
+set(WXPYTHON_DIR ${GRASS_INSTALL_GRASS_GUIWXDIR})
 set(gui_lib_DIRS
     core
     gui_core
@@ -60,6 +60,14 @@ endif()
 
 install(FILES README.md ${OUTDIR}/${WXPYTHON_DIR}/wxgui.py
         DESTINATION ${WXPYTHON_DIR})
+
+# The package init makes the grassgui package importable. In the FHS
+# layout it lands at the package root next to the content; in the legacy
+# layout it acts as a stand-in on the Python path which redirects the
+# package to the wxGUI directory.
+configure_file(__init__.py ${OUTDIR}/${GRASS_INSTALL_PYDIR}/grassgui/__init__.py
+               COPYONLY)
+install(FILES __init__.py DESTINATION ${GRASS_INSTALL_PYDIR}/grassgui)
 
 add_custom_target(
   copy_wxpython_xml

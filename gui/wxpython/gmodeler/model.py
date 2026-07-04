@@ -29,8 +29,8 @@ from xml.sax import saxutils
 
 import wx
 
-from core import utils
-from core.gcmd import (
+from grassgui.core import utils
+from grassgui.core.gcmd import (
     GMessage,
     GException,
     GError,
@@ -38,7 +38,7 @@ from core.gcmd import (
     GWarning,
     GetDefaultEncoding,
 )
-from gmodeler.model_items import (
+from grassgui.gmodeler.model_items import (
     ModelAction,
     ModelCondition,
     ModelComment,
@@ -48,9 +48,9 @@ from gmodeler.model_items import (
     ModelLoop,
     ModelRelation,
 )
-from gmodeler.dialogs import ModelParamDialog
-from core.giface import StandaloneGrassInterface
-from gui_core.forms import GUI
+from grassgui.gmodeler.dialogs import ModelParamDialog
+from grassgui.core.giface import StandaloneGrassInterface
+from grassgui.gui_core.forms import GUI
 
 from grass.script import task as gtask
 

@@ -71,8 +71,7 @@ function(build_script_in_subdir dir_name)
       -DLIBDIR="${OUTDIR}/${GRASS_INSTALL_LIBDIR}"
       -DSCRIPTDIR="${OUTDIR}/${G_DEST_DIR}"
       -DETCDIR="${OUTDIR}/${GRASS_INSTALL_ETCDIR}"
-      -DPYDIR="${OUTDIR}/${GRASS_INSTALL_PYDIR}" -DGISRC="${GISRC}"
-      -DGUIDIR="${OUTDIR}/${GRASS_INSTALL_GUIDIR}" -P
+      -DPYDIR="${OUTDIR}/${GRASS_INSTALL_PYDIR}" -DGISRC="${GISRC}" -P
       ${CMAKE_SOURCE_DIR}/cmake/locale_strings.cmake
     DEPENDS g.parser)
 

@@ -19,10 +19,10 @@ This program is free software under the GNU General Public License
 
 import wx
 
-from icons.icon import MetaIcon
-from gui_core.toolbars import BaseToolbar, BaseIcons
-from gui_core.wrap import ComboBox
-from core.gcmd import RunCommand
+from grassgui.icons.icon import MetaIcon
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.gui_core.wrap import ComboBox
+from grassgui.core.gcmd import RunCommand
 
 
 class PointListToolbar(BaseToolbar):

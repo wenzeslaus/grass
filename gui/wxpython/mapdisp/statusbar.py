@@ -29,10 +29,10 @@ This program is free software under the GNU General Public License
 import copy
 import wx
 
-from core import utils
-from core.gcmd import RunCommand
-from core.settings import UserSettings
-from gui_core.wrap import TextCtrl, Menu, NewId
+from grassgui.core import utils
+from grassgui.core.gcmd import RunCommand
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.wrap import TextCtrl, Menu, NewId
 
 from grass.pydispatch.signal import Signal
 

@@ -32,12 +32,12 @@ import wx
 from abc import abstractmethod
 from wx.lib import ogl
 
-from core.gcmd import (
+from grassgui.core.gcmd import (
     GException,
 )
-from core.settings import UserSettings
-from gui_core.forms import GUI
-from gui_core.wrap import IsDark
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.forms import GUI
+from grassgui.gui_core.wrap import IsDark
 
 
 class ModelObject:

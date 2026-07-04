@@ -21,10 +21,10 @@ from io import StringIO
 
 import wx
 
-from core.utils import normalize_whitespace
-from core.settings import UserSettings
-from core.gcmd import EncodeString, GetDefaultEncoding
-from nviz.main import NvizSettings
+from grassgui.core.utils import normalize_whitespace
+from grassgui.core.settings import UserSettings
+from grassgui.core.gcmd import EncodeString, GetDefaultEncoding
+from grassgui.nviz.main import NvizSettings
 
 from grass.script import core as gcore
 

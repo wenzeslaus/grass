@@ -33,11 +33,11 @@ from operator import itemgetter
 
 from grass.pydispatch.signal import Signal
 
-from core.globalvar import wxPythonPhoenix
+from grassgui.core.globalvar import wxPythonPhoenix
 import grass.script as gs
 
-from gui_core.dialogs import SavedRegion
-from gui_core.wrap import (
+from grassgui.gui_core.dialogs import SavedRegion
+from grassgui.gui_core.wrap import (
     DragImage,
     PseudoDC,
     EmptyBitmap,
@@ -47,13 +47,13 @@ from gui_core.wrap import (
     Rect,
     NewId,
 )
-from core.gcmd import RunCommand, GException, GError
-from core.debug import Debug
-from core.settings import UserSettings
-from mapwin.base import MapWindowBase
-from core import utils
-from mapwin.graphics import GraphicsSet
-from core.gthread import gThread
+from grassgui.core.gcmd import RunCommand, GException, GError
+from grassgui.core.debug import Debug
+from grassgui.core.settings import UserSettings
+from grassgui.mapwin.base import MapWindowBase
+from grassgui.core import utils
+from grassgui.mapwin.graphics import GraphicsSet
+from grassgui.core.gthread import gThread
 
 try:
     import grass.lib.gis as gislib

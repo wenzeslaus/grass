@@ -17,8 +17,8 @@ This program is free software under the GNU General Public License
 
 import wx
 
-from gui_core.toolbars import BaseToolbar, BaseIcons
-from icons.icon import MetaIcon
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.icons.icon import MetaIcon
 
 
 class GCPManToolbar(BaseToolbar):

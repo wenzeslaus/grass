@@ -83,9 +83,9 @@ def main():
 
     set_gui_path()
 
-    from core.settings import UserSettings
-    from core.giface import StandaloneGrassInterface
-    from photo2image.ip2i_manager import GCPWizard
+    from grassgui.core.settings import UserSettings
+    from grassgui.core.giface import StandaloneGrassInterface
+    from grassgui.photo2image.ip2i_manager import GCPWizard
 
     driver = UserSettings.Get(group="display", key="driver", subkey="type")
     if driver == "png":

@@ -27,7 +27,7 @@ import re
 
 from pathlib import Path
 
-from core import globalvar
+from grassgui.core import globalvar
 
 try:
     from agw import aui
@@ -44,24 +44,24 @@ except ImportError:
 from grass.script import core as grass
 from grass.script.utils import decode
 
-from core.gcmd import RunCommand, GError, GMessage
-from core.settings import UserSettings, GetDisplayVectSettings
-from core.utils import SetAddOnPath, GetLayerNameFromCmd, command2ltype, get_shell_pid
-from core.watchdog import (
+from grassgui.core.gcmd import RunCommand, GError, GMessage
+from grassgui.core.settings import UserSettings, GetDisplayVectSettings
+from grassgui.core.utils import SetAddOnPath, GetLayerNameFromCmd, command2ltype, get_shell_pid
+from grassgui.core.watchdog import (
     EVT_UPDATE_MAPSET,
     EVT_CURRENT_MAPSET_CHANGED,
     MapsetWatchdog,
 )
-from core.menutree import MenuTreeModelBuilder
-from gui_core.preferences import MapsetAccess, PreferencesDialog
-from lmgr.layertree import LayerTree, LMIcons
-from lmgr.menudata import LayerManagerMenuData, LayerManagerModuleTree
-from main_window.notebook import MainNotebook
-from gui_core.widgets import GNotebook
-from core.gconsole import GConsole, EVT_IGNORED_CMD_RUN
-from core.giface import Notification
-from gui_core.goutput import GConsoleWindow, GC_PROMPT
-from gui_core.dialogs import (
+from grassgui.core.menutree import MenuTreeModelBuilder
+from grassgui.gui_core.preferences import MapsetAccess, PreferencesDialog
+from grassgui.lmgr.layertree import LayerTree, LMIcons
+from grassgui.lmgr.menudata import LayerManagerMenuData, LayerManagerModuleTree
+from grassgui.main_window.notebook import MainNotebook
+from grassgui.gui_core.widgets import GNotebook
+from grassgui.core.gconsole import GConsole, EVT_IGNORED_CMD_RUN
+from grassgui.core.giface import Notification
+from grassgui.gui_core.goutput import GConsoleWindow, GC_PROMPT
+from grassgui.gui_core.dialogs import (
     LocationDialog,
     MapsetDialog,
     CreateNewVector,
@@ -69,20 +69,20 @@ from gui_core.dialogs import (
     MapLayersDialog,
     QuitDialog,
 )
-from gui_core.menu import SearchModuleWindow, Menu as GMenu
-from core.debug import Debug
-from lmgr.toolbars import LMWorkspaceToolbar, LMToolsToolbar
-from lmgr.toolbars import LMMiscToolbar, LMNvizToolbar, DisplayPanelToolbar
-from lmgr.statusbar import SbMain
-from lmgr.workspace import WorkspaceManager
-from lmgr.pyshell import PyShellWindow
-from lmgr.giface import LayerManagerGrassInterface
-from mapdisp.frame import MapPanel
-from datacatalog.catalog import DataCatalog
-from history.browser import HistoryBrowser
-from gui_core.forms import GUI
-from gui_core.wrap import Menu, TextEntryDialog, SimpleTabArt
-from startup.guiutils import (
+from grassgui.gui_core.menu import SearchModuleWindow, Menu as GMenu
+from grassgui.core.debug import Debug
+from grassgui.lmgr.toolbars import LMWorkspaceToolbar, LMToolsToolbar
+from grassgui.lmgr.toolbars import LMMiscToolbar, LMNvizToolbar, DisplayPanelToolbar
+from grassgui.lmgr.statusbar import SbMain
+from grassgui.lmgr.workspace import WorkspaceManager
+from grassgui.lmgr.pyshell import PyShellWindow
+from grassgui.lmgr.giface import LayerManagerGrassInterface
+from grassgui.mapdisp.frame import MapPanel
+from grassgui.datacatalog.catalog import DataCatalog
+from grassgui.history.browser import HistoryBrowser
+from grassgui.gui_core.forms import GUI
+from grassgui.gui_core.wrap import Menu, TextEntryDialog, SimpleTabArt
+from grassgui.startup.guiutils import (
     can_switch_mapset_interactive,
     switch_mapset_interactively,
     create_mapset_interactively,
@@ -793,12 +793,12 @@ class GMFrame(wx.Frame):
         :param firstTime: if a mapdisplay is starting 3D mode for the first time
         """
         Debug.msg(5, "GMFrame.AddNvizTools()")
-        from nviz.main import haveNviz
+        from grassgui.nviz.main import haveNviz
 
         if not haveNviz:
             return
 
-        from nviz.main import NvizToolWindow
+        from grassgui.nviz.main import NvizToolWindow
 
         # show toolbar
         self._auimgr.GetPane("toolbarNviz").Show()
@@ -881,14 +881,14 @@ class GMFrame(wx.Frame):
 
     def OnGCPManager(self, event=None, cmd=None):
         """Launch georectifier module. See OnIClass documentation"""
-        from gcp.manager import GCPWizard
+        from grassgui.gcp.manager import GCPWizard
 
         GCPWizard(self, self._giface)
 
     def OnGModeler(self, event=None, cmd=None):
         """Launch Graphical Modeler. See OnIClass documentation"""
-        from gmodeler.panels import ModelerPanel
-        from gmodeler.menudata import ModelerMenuData
+        from grassgui.gmodeler.panels import ModelerPanel
+        from grassgui.gmodeler.menudata import ModelerMenuData
 
         gmodeler_panel = ModelerPanel(
             parent=self, giface=self._giface, statusbar=self.statusbar, dockable=True
@@ -905,7 +905,7 @@ class GMFrame(wx.Frame):
 
     def OnPsMap(self, event=None, cmd=None):
         """Launch Cartographic Composer. See OnIClass documentation"""
-        from psmap.frame import PsMapFrame
+        from grassgui.psmap.frame import PsMapFrame
 
         win = PsMapFrame(parent=self)
         win.CentreOnScreen()
@@ -913,7 +913,7 @@ class GMFrame(wx.Frame):
 
     def OnMapSwipe(self, event=None, cmd=None):
         """Launch Map Swipe. See OnIClass documentation"""
-        from mapswipe.frame import SwipeMapDisplay
+        from grassgui.mapswipe.frame import SwipeMapDisplay
 
         frame = wx.Frame(
             parent=None, size=globalvar.MAP_WINDOW_SIZE, title=_("Map Swipe Tool")
@@ -942,7 +942,7 @@ class GMFrame(wx.Frame):
 
     def OnRLiSetup(self, event=None, cmd=None):
         """Launch r.li setup. See OnIClass documentation"""
-        from rlisetup.frame import RLiSetupFrame
+        from grassgui.rlisetup.frame import RLiSetupFrame
 
         win = RLiSetupFrame(parent=self)
         win.CentreOnScreen()
@@ -950,7 +950,7 @@ class GMFrame(wx.Frame):
 
     def OnDataCatalog(self, event=None, cmd=None):
         """Launch Data Catalog"""
-        from datacatalog.frame import DataCatalogFrame
+        from grassgui.datacatalog.frame import DataCatalogFrame
 
         win = DataCatalogFrame(parent=self, giface=self._giface)
         win.CentreOnScreen()
@@ -979,7 +979,7 @@ class GMFrame(wx.Frame):
             dlg.Destroy()
             return
 
-        from gmodeler.model import Model
+        from grassgui.gmodeler.model import Model
 
         self.model = Model()
         self.model.LoadModel(filename)
@@ -1667,7 +1667,7 @@ class GMFrame(wx.Frame):
 
     def OnAboutGRASS(self, event):
         """Display 'About GRASS' dialog"""
-        from gui_core.ghelp import AboutWindow
+        from grassgui.gui_core.ghelp import AboutWindow
 
         win = AboutWindow(self)
         win.CentreOnScreen()
@@ -1748,7 +1748,7 @@ class GMFrame(wx.Frame):
 
     def OnRasterRules(self, event):
         """Launches dialog for raster color rules"""
-        from modules.colorrules import RasterColorTable
+        from grassgui.modules.colorrules import RasterColorTable
 
         ctable = RasterColorTable(self, layerTree=self.GetLayerTree())
         ctable.Show()
@@ -1756,7 +1756,7 @@ class GMFrame(wx.Frame):
 
     def OnVectorRules(self, event):
         """Launches dialog for vector color rules"""
-        from modules.colorrules import VectorColorTable
+        from grassgui.modules.colorrules import VectorColorTable
 
         ctable = VectorColorTable(
             self, layerTree=self.GetLayerTree(), attributeType="color"
@@ -1772,7 +1772,7 @@ class GMFrame(wx.Frame):
 
     def OnInstallExtension(self, event):
         """Install extension from GRASS Addons repository"""
-        from modules.extensions import InstallExtensionWindow
+        from grassgui.modules.extensions import InstallExtensionWindow
 
         win = InstallExtensionWindow(self, giface=self._giface, size=(650, 550))
         win.CentreOnScreen()
@@ -1780,7 +1780,7 @@ class GMFrame(wx.Frame):
 
     def OnManageExtension(self, event):
         """Manage or uninstall extensions"""
-        from modules.extensions import ManageExtensionWindow
+        from grassgui.modules.extensions import ManageExtensionWindow
 
         win = ManageExtensionWindow(self, size=(650, 300))
         win.CentreOnScreen()
@@ -1803,7 +1803,7 @@ class GMFrame(wx.Frame):
     def OnNvizPreferences(self, event):
         """Show nviz preferences"""
         if not self.dialogs["nvizPreferences"]:
-            from nviz.preferences import NvizPreferencesDialog
+            from grassgui.nviz.preferences import NvizPreferencesDialog
 
             dlg = NvizPreferencesDialog(parent=self, giface=self._giface)
             self.dialogs["nvizPreferences"] = dlg
@@ -1826,7 +1826,7 @@ class GMFrame(wx.Frame):
             This documentation is actually documentation of some
             component related to gui_core/menu.py file.
         """
-        from iclass.frame import IClassMapDisplay, haveIClass, errMsg
+        from grassgui.iclass.frame import IClassMapDisplay, haveIClass, errMsg
 
         if not haveIClass:
             GError(
@@ -1847,7 +1847,7 @@ class GMFrame(wx.Frame):
 
     def OnAnimationTool(self, event=None, cmd=None):
         """Launch Animation tool. See OnIClass documentation."""
-        from animation.frame import AnimationFrame
+        from grassgui.animation.frame import AnimationFrame
 
         frame = AnimationFrame(parent=self, giface=self._giface)
         frame.CentreOnScreen()
@@ -1861,8 +1861,8 @@ class GMFrame(wx.Frame):
                 if tree.GetLayerInfo(layer, key="type") == "raster"
             ]
             if len(rasters) >= 2:
-                from core.layerlist import LayerList
-                from animation.data import AnimLayer
+                from grassgui.core.layerlist import LayerList
+                from grassgui.animation.data import AnimLayer
 
                 layerList = LayerList()
                 layer = AnimLayer()
@@ -1875,7 +1875,7 @@ class GMFrame(wx.Frame):
     def OnTimelineTool(self, event=None, cmd=None):
         """Launch Timeline Tool"""
         try:
-            from timeline.frame import TimelineFrame
+            from grassgui.timeline.frame import TimelineFrame
         except ImportError:
             GError(parent=self, message=_("Unable to start Timeline Tool."))
             return
@@ -1885,7 +1885,7 @@ class GMFrame(wx.Frame):
     def OnTplotTool(self, event=None, cmd=None):
         """Launch Temporal Plot Tool"""
         try:
-            from tplot.frame import TplotFrame
+            from grassgui.tplot.frame import TplotFrame
         except ImportError:
             GError(parent=self, message=_("Unable to start Temporal Plot Tool."))
             return
@@ -1894,7 +1894,7 @@ class GMFrame(wx.Frame):
 
     def OnHistogram(self, event):
         """Init histogram display canvas and tools"""
-        from modules.histogram import HistogramFrame
+        from grassgui.modules.histogram import HistogramFrame
 
         win = HistogramFrame(self, giface=self._giface)
 
@@ -1905,7 +1905,7 @@ class GMFrame(wx.Frame):
 
     def OnMapCalculator(self, event, cmd=""):
         """Init map calculator for interactive creation of mapcalc statements"""
-        from modules.mcalc_builder import MapCalcFrame
+        from grassgui.modules.mcalc_builder import MapCalcFrame
 
         if event:
             try:
@@ -1922,7 +1922,7 @@ class GMFrame(wx.Frame):
 
     def OnVectorOutputFormat(self, event):
         """Set vector output format handler"""
-        from modules.import_export import GdalOutputDialog
+        from grassgui.modules.import_export import GdalOutputDialog
 
         dlg = GdalOutputDialog(parent=self, ogr=True)
         dlg.CentreOnScreen()
@@ -1930,7 +1930,7 @@ class GMFrame(wx.Frame):
 
     def OnImportDxfFile(self, event, cmd=None):
         """Convert multiple DXF layers to GRASS vector map layers"""
-        from modules.import_export import DxfImportDialog
+        from grassgui.modules.import_export import DxfImportDialog
 
         dlg = DxfImportDialog(parent=self, giface=self._giface)
         dlg.CentreOnScreen()
@@ -1938,7 +1938,7 @@ class GMFrame(wx.Frame):
 
     def OnImportGdalLayers(self, event, cmd=None):
         """Convert multiple GDAL layers to GRASS raster map layers"""
-        from modules.import_export import GdalImportDialog
+        from grassgui.modules.import_export import GdalImportDialog
 
         dlg = GdalImportDialog(parent=self, giface=self._giface)
         dlg.CentreOnScreen()
@@ -1946,7 +1946,7 @@ class GMFrame(wx.Frame):
 
     def OnLinkGdalLayers(self, event, cmd=None):
         """Link multiple GDAL layers to GRASS raster map layers"""
-        from modules.import_export import GdalImportDialog
+        from grassgui.modules.import_export import GdalImportDialog
 
         dlg = GdalImportDialog(parent=self, giface=self._giface, link=True)
         dlg.CentreOnScreen()
@@ -1954,7 +1954,7 @@ class GMFrame(wx.Frame):
 
     def OnImportOgrLayers(self, event, cmd=None):
         """Convert multiple OGR layers to GRASS vector map layers"""
-        from modules.import_export import OgrImportDialog
+        from grassgui.modules.import_export import OgrImportDialog
 
         dlg = OgrImportDialog(parent=self, giface=self._giface)
         dlg.CentreOnScreen()
@@ -1962,7 +1962,7 @@ class GMFrame(wx.Frame):
 
     def OnLinkOgrLayers(self, event, cmd=None):
         """Links multiple OGR layers to GRASS vector map layers"""
-        from modules.import_export import OgrImportDialog
+        from grassgui.modules.import_export import OgrImportDialog
 
         dlg = OgrImportDialog(parent=self, giface=self._giface, link=True)
         dlg.CentreOnScreen()
@@ -1970,7 +1970,7 @@ class GMFrame(wx.Frame):
 
     def OnAddWS(self, event, cmd=None):
         """Add web services layer"""
-        from web_services.dialogs import AddWSDialog
+        from grassgui.web_services.dialogs import AddWSDialog
 
         dlg = AddWSDialog(parent=self, giface=self._giface)
         dlg.CentreOnScreen()
@@ -1980,7 +1980,7 @@ class GMFrame(wx.Frame):
 
     def OnSimpleEditor(self, event):
         # import on demand
-        from gui_core.pyedit import PyEditPanel
+        from grassgui.gui_core.pyedit import PyEditPanel
 
         # we don't keep track of them and we don't care about open files
         # there when closing the main GUI
@@ -2027,7 +2027,7 @@ class GMFrame(wx.Frame):
         if not dcmd:
             return
 
-        from dbmgr.manager import AttributeManager
+        from grassgui.dbmgr.manager import AttributeManager
 
         dbmanager = AttributeManager(
             parent=self,

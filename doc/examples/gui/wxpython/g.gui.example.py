@@ -52,9 +52,9 @@ def main():
 
     set_gui_path()
 
-    from core.globalvar import CheckWxVersion, MAP_WINDOW_SIZE
-    from core.giface import StandaloneGrassInterface
-    from core.settings import UserSettings
+    from grassgui.core.globalvar import CheckWxVersion, MAP_WINDOW_SIZE
+    from grassgui.core.giface import StandaloneGrassInterface
+    from grassgui.core.settings import UserSettings
     from example.frame import ExampleMapDisplay
 
     if options["input"]:

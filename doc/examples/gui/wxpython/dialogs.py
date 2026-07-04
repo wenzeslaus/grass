@@ -22,9 +22,9 @@ import wx
 # NOTE: we import it just for the side effects of gettext.install()
 import grass  # noqa: F401
 
-from core import globalvar
-from gui_core.dialogs import SimpleDialog
-from gui_core import gselect
+from grassgui.core import globalvar
+from grassgui.gui_core.dialogs import SimpleDialog
+from grassgui.gui_core import gselect
 
 
 class ExampleMapDialog(SimpleDialog):

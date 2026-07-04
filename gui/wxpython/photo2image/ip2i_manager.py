@@ -38,14 +38,14 @@ import wx.lib.colourselect as csel
 
 import grass.script as gs
 
-from core import utils, globalvar
-from core.render import Map
-from gui_core.gselect import Select
-from gui_core.mapdisp import FrameMixin
-from core.gcmd import RunCommand, GMessage, GError, GWarning
-from core.settings import UserSettings
-from photo2image.ip2i_mapdisplay import MapPanel
-from gui_core.wrap import (
+from grassgui.core import utils, globalvar
+from grassgui.core.render import Map
+from grassgui.gui_core.gselect import Select
+from grassgui.gui_core.mapdisp import FrameMixin
+from grassgui.core.gcmd import RunCommand, GMessage, GError, GWarning
+from grassgui.core.settings import UserSettings
+from grassgui.photo2image.ip2i_mapdisplay import MapPanel
+from grassgui.gui_core.wrap import (
     SpinCtrl,
     Button,
     StaticText,

@@ -24,10 +24,10 @@ import time
 import wx
 from abc import ABC, abstractmethod
 
-from core import utils
-from gui_core.forms import GUI
+from grassgui.core import utils
+from grassgui.gui_core.forms import GUI
 
-from gmodeler.model_items import ModelAction, ModelComment, ModelCondition, ModelLoop
+from grassgui.gmodeler.model_items import ModelAction, ModelComment, ModelCondition, ModelLoop
 
 
 class BaseModelConverter(ABC):

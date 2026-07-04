@@ -30,7 +30,7 @@ from pathlib import Path
 import wx
 
 from wx.lib import ogl
-from core import globalvar
+from grassgui.core import globalvar
 
 if globalvar.wxPythonPhoenix:
     try:
@@ -41,20 +41,20 @@ else:
     import wx.lib.flatnotebook as FN
 from wx.lib.newevent import NewEvent
 
-from core.gconsole import GConsole, EVT_CMD_RUN, EVT_CMD_DONE, EVT_CMD_PREPARE
-from core.debug import Debug
-from core.gcmd import GMessage, GException, GWarning, GError
-from core.settings import UserSettings
-from core.giface import Notification, StandaloneGrassInterface
+from grassgui.core.gconsole import GConsole, EVT_CMD_RUN, EVT_CMD_DONE, EVT_CMD_PREPARE
+from grassgui.core.debug import Debug
+from grassgui.core.gcmd import GMessage, GException, GWarning, GError
+from grassgui.core.settings import UserSettings
+from grassgui.core.giface import Notification, StandaloneGrassInterface
 
-from gui_core.widgets import GNotebook
-from gui_core.goutput import GConsoleWindow
-from gui_core.dialogs import GetImageHandlers
-from gui_core.dialogs import TextEntryDialog as CustomTextEntryDialog
-from gui_core.ghelp import ShowAboutDialog
-from gui_core.forms import GUI
-from gui_core.pystc import PyStc, SetDarkMode
-from gui_core.wrap import (
+from grassgui.gui_core.widgets import GNotebook
+from grassgui.gui_core.goutput import GConsoleWindow
+from grassgui.gui_core.dialogs import GetImageHandlers
+from grassgui.gui_core.dialogs import TextEntryDialog as CustomTextEntryDialog
+from grassgui.gui_core.ghelp import ShowAboutDialog
+from grassgui.gui_core.forms import GUI
+from grassgui.gui_core.pystc import PyStc, SetDarkMode
+from grassgui.gui_core.wrap import (
     Button,
     EmptyBitmap,
     ImageFromBitmap,
@@ -64,10 +64,10 @@ from gui_core.wrap import (
     TextCtrl,
     IsDark,
 )
-from main_window.page import MainPageBase
-from gmodeler.giface import GraphicalModelerGrassInterface
-from gmodeler.model import Model, WriteModelFile
-from gmodeler.model_items import (
+from grassgui.main_window.page import MainPageBase
+from grassgui.gmodeler.giface import GraphicalModelerGrassInterface
+from grassgui.gmodeler.model import Model, WriteModelFile
+from grassgui.gmodeler.model_items import (
     ModelAction,
     ModelRelation,
     ModelLoop,
@@ -76,20 +76,20 @@ from gmodeler.model_items import (
     ModelDataSeries,
     ModelDataSingle,
 )
-from gmodeler.model_convert import (
+from grassgui.gmodeler.model_convert import (
     ModelToActinia,
     ModelToPython,
     ModelToPyWPS,
 )
-from gmodeler.dialogs import (
+from grassgui.gmodeler.dialogs import (
     ModelDataDialog,
     ModelSearchDialog,
     VariableListCtrl,
     ItemListCtrl,
 )
-from gmodeler.canvas import ModelCanvas, ModelEvtHandler
-from gmodeler.toolbars import ModelerToolbar
-from gmodeler.preferences import PreferencesDialog, PropertiesDialog
+from grassgui.gmodeler.canvas import ModelCanvas, ModelEvtHandler
+from grassgui.gmodeler.toolbars import ModelerToolbar
+from grassgui.gmodeler.preferences import PreferencesDialog, PropertiesDialog
 
 from grass.script.utils import try_remove
 from grass.script import core as grass

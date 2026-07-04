@@ -33,19 +33,19 @@ from grass.script import core as grass
 from grass.script import vector as gvector
 from grass.script import utils as gutils
 
-from core import globalvar
-from gui_core.dialogs import SqlQueryFrame, SetOpacityDialog, TextEntryDialog
-from gui_core.forms import GUI
-from core.render import Map
-from core.utils import GetLayerNameFromCmd, ltype2command
-from core.debug import Debug
-from core.settings import UserSettings, GetDisplayVectSettings
-from vdigit.main import haveVDigit
-from core.gcmd import GWarning, GError, RunCommand
-from icons.icon import MetaIcon
-from gui_core.widgets import MapValidator
-from gui_core.wrap import Menu, GenBitmapButton, TextCtrl, NewId
-from lmgr.giface import LayerManagerGrassInterfaceForMapDisplay
+from grassgui.core import globalvar
+from grassgui.gui_core.dialogs import SqlQueryFrame, SetOpacityDialog, TextEntryDialog
+from grassgui.gui_core.forms import GUI
+from grassgui.core.render import Map
+from grassgui.core.utils import GetLayerNameFromCmd, ltype2command
+from grassgui.core.debug import Debug
+from grassgui.core.settings import UserSettings, GetDisplayVectSettings
+from grassgui.vdigit.main import haveVDigit
+from grassgui.core.gcmd import GWarning, GError, RunCommand
+from grassgui.icons.icon import MetaIcon
+from grassgui.gui_core.widgets import MapValidator
+from grassgui.gui_core.wrap import Menu, GenBitmapButton, TextCtrl, NewId
+from grassgui.lmgr.giface import LayerManagerGrassInterfaceForMapDisplay
 
 
 TREE_ITEM_HEIGHT = 25
@@ -894,7 +894,7 @@ class LayerTree(treemixin.DragAndDrop, CT.CustomTreeCtrl):
     def OnSaveWs(self, event):
         """Show dialog for saving web service layer into GRASS vector/raster layer"""
         mapLayer = self.GetLayerInfo(self.layer_selected, key="maplayer")
-        from web_services.dialogs import SaveWMSLayerDialog
+        from grassgui.web_services.dialogs import SaveWMSLayerDialog
 
         dlg = SaveWMSLayerDialog(
             parent=self, layer=mapLayer, giface=self._gifaceForDisplay
@@ -1126,7 +1126,7 @@ class LayerTree(treemixin.DragAndDrop, CT.CustomTreeCtrl):
             return
 
         # lazy import to reduce dependencies and startup
-        from wxplot.histogram import HistogramPlotFrame
+        from grassgui.wxplot.histogram import HistogramPlotFrame
 
         win = HistogramPlotFrame(
             parent=self, giface=self._giface, rasterList=rasterList
@@ -1172,7 +1172,7 @@ class LayerTree(treemixin.DragAndDrop, CT.CustomTreeCtrl):
         """Start editing vector map layer requested by the user"""
         mapLayer = self.GetLayerInfo(self.layer_selected, key="maplayer")
         if not haveVDigit:
-            from vdigit import errorMsg
+            from grassgui.vdigit import errorMsg
 
             self.mapdisplay.toolbars["map"].combo.SetValue(_("2D view"))
 

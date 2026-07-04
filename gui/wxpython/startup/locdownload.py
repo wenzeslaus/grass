@@ -35,9 +35,9 @@ from grass.script.setup import set_gui_path
 set_gui_path()
 
 # flake8: noqa: E402
-from core.debug import Debug
-from core.gthread import gThread
-from gui_core.wrap import Button, StaticText
+from grassgui.core.debug import Debug
+from grassgui.core.gthread import gThread
+from grassgui.gui_core.wrap import Button, StaticText
 
 # flakes8: qa
 

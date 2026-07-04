@@ -49,10 +49,10 @@ except ImportError as e:
 import grass.script as gs
 
 import grass.temporal as tgis
-from core.gcmd import GError, GException, RunCommand
-from gui_core import gselect
-from gui_core.wrap import Button, StaticText
-from core import globalvar
+from grassgui.core.gcmd import GError, GException, RunCommand
+from grassgui.gui_core import gselect
+from grassgui.gui_core.wrap import Button, StaticText
+from grassgui.core import globalvar
 
 ALPHA = 1
 COLORS = ["b", "g", "r", "c", "m", "y", "k"]

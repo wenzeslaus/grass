@@ -31,9 +31,9 @@ from grass.grassdb import history
 
 from grass.pydispatch.signal import Signal
 
-from core import globalvar
-from core import utils
-from core.gcmd import EncodeString, DecodeString, GError
+from grassgui.core import globalvar
+from grassgui.core import utils
+from grassgui.core.gcmd import EncodeString, DecodeString, GError
 
 
 class GPrompt:

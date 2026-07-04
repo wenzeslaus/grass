@@ -29,16 +29,16 @@ import os
 import wx
 import wx.lib.mixins.listctrl as listmix
 
-from core import globalvar
-from core import utils
-from core.gcmd import GError
-from gui_core.forms import CmdPanel
-from gui_core.widgets import SearchModuleWidget, SimpleValidator, GNotebook
-from gui_core.dialogs import SimpleDialog, MapLayersDialogForModeler
-from gui_core.prompt import GPromptSTC
-from gui_core.gselect import Select, ElementSelect
-from lmgr.menudata import LayerManagerMenuData
-from gui_core.wrap import (
+from grassgui.core import globalvar
+from grassgui.core import utils
+from grassgui.core.gcmd import GError
+from grassgui.gui_core.forms import CmdPanel
+from grassgui.gui_core.widgets import SearchModuleWidget, SimpleValidator, GNotebook
+from grassgui.gui_core.dialogs import SimpleDialog, MapLayersDialogForModeler
+from grassgui.gui_core.prompt import GPromptSTC
+from grassgui.gui_core.gselect import Select, ElementSelect
+from grassgui.lmgr.menudata import LayerManagerMenuData
+from grassgui.gui_core.wrap import (
     Button,
     StaticText,
     StaticBox,
@@ -48,8 +48,8 @@ from gui_core.wrap import (
     NewId,
     CheckListCtrlMixin,
 )
-from gmodeler.model_items import ModelData, ModelAction, ModelCondition
-from gmodeler.giface import GraphicalModelerGrassInterface
+from grassgui.gmodeler.model_items import ModelData, ModelAction, ModelCondition
+from grassgui.gmodeler.giface import GraphicalModelerGrassInterface
 
 from grass.script import task as gtask
 

@@ -51,7 +51,7 @@ from pathlib import Path
 
 import wx
 
-from core import globalvar
+from grassgui.core import globalvar
 from wx.lib import buttons
 import wx.lib.filebrowsebutton as filebrowse
 
@@ -60,22 +60,22 @@ import grass.script as gs
 from grass.script import task as gtask
 from grass.exceptions import CalledModuleError
 
-from gui_core.widgets import ManageSettingsWidget, CoordinatesValidator
+from grassgui.gui_core.widgets import ManageSettingsWidget, CoordinatesValidator
 
-from core.gcmd import RunCommand, GError, GMessage, GWarning, GException
-from core.utils import (
+from grassgui.core.gcmd import RunCommand, GError, GMessage, GWarning, GException
+from grassgui.core.utils import (
     GetListOfLocations,
     GetListOfMapsets,
     GetFormats,
     rasterFormatExtension,
     vectorFormatExtension,
 )
-from core.utils import GetSettingsPath, GetValidLayerName, ListSortLower
-from core.utils import GetVectorNumberOfLayers
-from core.settings import UserSettings
-from core.debug import Debug
-from gui_core.vselect import VectorSelectBase
-from gui_core.wrap import (
+from grassgui.core.utils import GetSettingsPath, GetValidLayerName, ListSortLower
+from grassgui.core.utils import GetVectorNumberOfLayers
+from grassgui.core.settings import UserSettings
+from grassgui.core.debug import Debug
+from grassgui.gui_core.vselect import VectorSelectBase
+from grassgui.gui_core.wrap import (
     TreeCtrl,
     Button,
     StaticText,
@@ -3196,7 +3196,7 @@ class SqlWhereSelect(wx.Panel):
         return self.sqlField
 
     def _onClick(self, event):
-        from dbmgr.sqlbuilder import SQLBuilderWhere
+        from grassgui.dbmgr.sqlbuilder import SQLBuilderWhere
 
         try:
             if not self.vector_map:

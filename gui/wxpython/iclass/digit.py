@@ -17,10 +17,10 @@ for details.
 """
 
 import wx
-from core.gcmd import GWarning
-from vdigit.mapwindow import VDigitWindow
-from vdigit.wxdigit import IVDigit
-from vdigit.wxdisplay import TYPE_AREA, DisplayDriver
+from grassgui.core.gcmd import GWarning
+from grassgui.vdigit.mapwindow import VDigitWindow
+from grassgui.vdigit.wxdigit import IVDigit
+from grassgui.vdigit.wxdisplay import TYPE_AREA, DisplayDriver
 
 try:
     from ctypes import pointer

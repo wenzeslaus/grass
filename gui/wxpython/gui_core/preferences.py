@@ -47,15 +47,15 @@ from grass.pydispatch.signal import Signal
 import grass.script as gs
 from grass.exceptions import OpenError
 
-from core import globalvar
-from core.gcmd import GError
-from core.utils import ListOfMapsets, GetColorTables, ReadEpsgCodes
-from core.settings import UserSettings
-from core.globalvar import CheckWxVersion
-from gui_core.dialogs import SymbolDialog, DefaultFontDialog
-from gui_core.widgets import IntegerValidator, ColorTablesComboBox
-from core.debug import Debug
-from gui_core.wrap import (
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GError
+from grassgui.core.utils import ListOfMapsets, GetColorTables, ReadEpsgCodes
+from grassgui.core.settings import UserSettings
+from grassgui.core.globalvar import CheckWxVersion
+from grassgui.gui_core.dialogs import SymbolDialog, DefaultFontDialog
+from grassgui.gui_core.widgets import IntegerValidator, ColorTablesComboBox
+from grassgui.core.debug import Debug
+from grassgui.gui_core.wrap import (
     SpinCtrl,
     Button,
     BitmapButton,
