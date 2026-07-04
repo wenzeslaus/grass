@@ -109,6 +109,33 @@ Locally on this branch: the PR code is brought in as the Phase 0 commit.
   in release notes; keep `OFF` as the default. FHS targets Linux
   packaging first; Windows/macOS stay on the legacy layout.
 
+## Progress on this branch (2026-07-04)
+
+- Phase 0: PR #5630 squashed in. Two fixes on top, both worth upstreaming
+  separately:
+  - Header staging in CMake had no dependency on source headers, so
+    incremental builds compiled against stale headers (crashed via an
+    implicitly declared, pointer-truncating G_locale_dir()).
+  - G_init_locale() recursed without bound when GRASS_LOCALEDIR was
+    unset (G_fatal_error translates, which re-enters locale init).
+    Likely the Windows g.proj 0xC00000FD failure on the PR.
+- Phase 1: done. WITH_FHS=ON and legacy both build completely; symlink
+  workaround removed; GUI menudata, man index, and translation status
+  enabled under FHS; GRASS_INSTALL_PYDIR prefix-relative; installed
+  fontcap paths rewritten to the prefix; demolocation GISDBASE fixed.
+- Phase 2: done. Added GRASS_PYDIR and GRASS_MANDIR resource paths (both
+  build systems), used by session PYTHONPATH/MANPATH with legacy
+  fallbacks; --config python_path reports the resolved path; g.manual
+  converted to resource variables (missed by PR #5630). Verified with
+  pytest (grass.app, grass.script, r.slope.aspect) against the FHS
+  install and by session smoke tests on both layouts.
+- Phase 3: done. CMake CI workflow now a WITH_FHS OFF/ON matrix.
+- Phase 4: done. INSTALL.md CMake/WITH_FHS section; AGENTS.md
+  LD_LIBRARY_PATH note for FHS.
+- Still open (upstream design items): wxGUI-as-package decision,
+  g.extension/addon build against an FHS install, pkg-config file for
+  CMake builds (missing for both layouts), Windows/macOS layouts.
+
 ## Risks
 
 - The env-var contract breaks third-party code that builds a GRASS
