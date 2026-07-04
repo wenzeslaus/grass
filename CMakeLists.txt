@@ -182,15 +182,6 @@ endif()
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${GRASS_INSTALL_LIBDIR}")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-# TODO: a proper fix to this workaround
-if(WITH_FHS)
-  file(CREATE_LINK ${OUTDIR}/${GRASS_INSTALL_DEMODIR}
-       ${RUNTIME_GISBASE}/demolocation SYMBOLIC)
-  file(MAKE_DIRECTORY "${RUNTIME_GISBASE}/gui/wxpython")
-  file(CREATE_LINK ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/wxpython/xml
-       ${RUNTIME_GISBASE}/gui/wxpython/xml SYMBOLIC)
-endif()
-
 include(set_compiler_flags)
 set_compiler_flags()
 include(Configure)

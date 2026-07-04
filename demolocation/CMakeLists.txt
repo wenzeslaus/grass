@@ -35,9 +35,9 @@ foreach(_s ${_src})
           DESTINATION ${GRASS_INSTALL_DEMODIR}/${_s_dir})
 endforeach()
 
-set(GISDBASE ${RUNTIME_GISBASE})
+set(GISDBASE ${OUTDIR}/${GRASS_INSTALL_MISCDIR})
 configure_file(${CMAKE_SOURCE_DIR}/demolocation/grassrc.tmpl "${GISRC}" @ONLY)
-set(GISDBASE ${GISBASE})
+set(GISDBASE ${CMAKE_INSTALL_PREFIX}/${GRASS_INSTALL_MISCDIR})
 configure_file(${CMAKE_SOURCE_DIR}/demolocation/grassrc.tmpl
                "${CMAKE_CURRENT_BINARY_DIR}/${GISRC_NAME}" @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${GISRC_NAME}"

@@ -12,14 +12,22 @@ build_program_in_subdir(g.mkfontcap DEPENDS grass_gis PRIMARY_DEPENDS
                         Freetype::Freetype)
 add_dependencies(g.mkfontcap fonts)
 
-# TODO(FHS): rewire ${OUTDIR} path to ${PREFIX} in installed version of fontcap
 add_custom_command(
   TARGET g.mkfontcap
   POST_BUILD
   COMMAND ${grass_env_command} ${OUTDIR}/${GRASS_INSTALL_BINDIR}/g.mkfontcap -s
           > ${OUTDIR}/${GRASS_INSTALL_ETCDIR}/fontcap)
-install(FILES ${OUTDIR}/${GRASS_INSTALL_ETCDIR}/fontcap
-        DESTINATION ${GRASS_INSTALL_ETCDIR})
+# The generated fontcap references stroke fonts by absolute paths into the
+# build tree; rewrite them to the install prefix at install time.
+install(
+  CODE "file(READ \"${OUTDIR}/${GRASS_INSTALL_ETCDIR}/fontcap\" _fontcap)
+string(REPLACE \"${OUTDIR}/${GRASS_INSTALL_FONTSDIR}\"
+               \"${CMAKE_INSTALL_PREFIX}/${GRASS_INSTALL_FONTSDIR}\"
+               _fontcap \"\${_fontcap}\")
+file(WRITE \"${CMAKE_CURRENT_BINARY_DIR}/fontcap.install\" \"\${_fontcap}\")")
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/fontcap.install
+        DESTINATION ${GRASS_INSTALL_ETCDIR}
+        RENAME fontcap)
 build_program_in_subdir(g.parser DEPENDS grass_gis)
 build_program_in_subdir(g.pnmcomp DEPENDS grass_gis)
 build_program_in_subdir(g.ppmtopng DEPENDS grass_gis PRIMARY_DEPENDS PNG::PNG)
