@@ -27,7 +27,7 @@ endforeach()
 add_custom_target(
   GUI_WXPYTHON
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/wxgui.py
-          ${OUTDIR}/${WXPYTHON_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}/__main__.py ${OUTDIR}/${WXPYTHON_DIR}
   DEPENDS ${gui_lib_targets} LIB_PYTHON)
 
 set_target_properties(GUI_WXPYTHON PROPERTIES FOLDER GUI)
@@ -59,6 +59,7 @@ if(WITH_DOCS)
 endif()
 
 install(FILES README.md ${OUTDIR}/${WXPYTHON_DIR}/wxgui.py
+              ${OUTDIR}/${WXPYTHON_DIR}/__main__.py
         DESTINATION ${WXPYTHON_DIR})
 
 # The package init makes the grassgui package importable. In the FHS
