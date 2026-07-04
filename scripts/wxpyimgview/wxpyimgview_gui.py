@@ -45,10 +45,7 @@ import numpy as np
 import wx
 
 import grass.script as gs
-from grass.script.setup import set_gui_path
-
-set_gui_path()
-from gui_core.wrap import BitmapFromImage  # noqa: E402
+from grassgui.gui_core.wrap import BitmapFromImage
 
 
 class Frame(wx.Frame):
