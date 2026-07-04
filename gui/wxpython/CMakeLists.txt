@@ -64,7 +64,7 @@ install(FILES README.md ${OUTDIR}/${WXPYTHON_DIR}/wxgui.py
 add_custom_target(
   copy_wxpython_xml
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/xml
-          ${OUTDIR}/${WXPYTHON_DIR}/xml)
+          ${OUTDIR}/${GRASS_GUIXMLDIR})
 
 add_dependencies(copy_wxpython_xml GUI_WXPYTHON)
 set_target_properties(copy_wxpython_xml PROPERTIES FOLDER GUI)
@@ -79,16 +79,16 @@ add_dependencies(compile_python_files ALL_MODULES)
 set_target_properties(compile_python_files PROPERTIES FOLDER GUI)
 
 add_custom_command(
-  OUTPUT "${OUTDIR}/${WXPYTHON_DIR}/xml/module_items.xml"
+  OUTPUT "${OUTDIR}/${GRASS_GUIXMLDIR}/module_items.xml"
   COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/tools"
   COMMAND ${CMAKE_COMMAND} -E copy
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/build_modules_xml.py tools
   COMMAND ${grass_env_command} ${PYTHON_EXECUTABLE} tools/build_modules_xml.py >
-          "${OUTDIR}/${WXPYTHON_DIR}/xml/module_items.xml"
+          "${OUTDIR}/${GRASS_GUIXMLDIR}/module_items.xml"
   COMMENT "Generating interface description for all modules...")
 
 add_custom_target(build_modules_items_xml
-                  DEPENDS "${OUTDIR}/${WXPYTHON_DIR}/xml/module_items.xml")
+                  DEPENDS "${OUTDIR}/${GRASS_GUIXMLDIR}/module_items.xml")
 
 add_dependencies(build_modules_items_xml copy_wxpython_xml grass_interface_dtd
                  compile_python_files ${g_gui_targets})
@@ -106,7 +106,7 @@ add_custom_target(
     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/menudata.xml
   COMMAND
     ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/menudata.xml
-    ${OUTDIR}/${WXPYTHON_DIR}/xml
+    ${OUTDIR}/${GRASS_GUIXMLDIR}
   DEPENDS build_modules_items_xml)
 
 set_target_properties(build_xml_menudata PROPERTIES FOLDER GUI)
@@ -124,7 +124,7 @@ add_custom_target(
   COMMAND
     ${CMAKE_COMMAND} -E copy
     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/module_tree_menudata.xml
-    ${OUTDIR}/${WXPYTHON_DIR}/xml
+    ${OUTDIR}/${GRASS_GUIXMLDIR}
   DEPENDS build_xml_menudata)
 
 set_target_properties(build_module_tree_menudata PROPERTIES FOLDER GUI)
@@ -147,4 +147,5 @@ add_custom_target(
 
 set_target_properties(build_menustrings PROPERTIES FOLDER GUI)
 
-install(DIRECTORY "${OUTDIR}/${WXPYTHON_DIR}/xml" DESTINATION "${WXPYTHON_DIR}")
+install(DIRECTORY "${OUTDIR}/${GRASS_GUIXMLDIR}"
+        DESTINATION "${GRASS_INSTALL_GUIRESDIR}/wxpython")

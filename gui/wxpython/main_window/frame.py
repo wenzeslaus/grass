@@ -1987,7 +1987,7 @@ class GMFrame(wx.Frame):
         simpleEditor = PyEditPanel(
             parent=self, giface=self._giface, statusbar=self.statusbar, dockable=True
         )
-        filename = os.path.join(globalvar.WXGUIDIR, "xml", "menudata_pyedit.xml")
+        filename = os.path.join(globalvar.GUIXMLDIR, "menudata_pyedit.xml")
         simpleEditor.SetUpPage(
             self,
             self.mainnotebook,

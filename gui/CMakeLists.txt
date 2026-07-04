@@ -8,13 +8,13 @@ add_subdirectory(wxpython)
 add_custom_target(
   grass_interface_dtd ALL
   COMMAND ${CMAKE_COMMAND} -E make_directory
-          "${OUTDIR}/${GRASS_INSTALL_GUIDIR}/xml"
+          "${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/xml"
   COMMAND
     ${CMAKE_COMMAND} -E copy
     "${CMAKE_CURRENT_SOURCE_DIR}/xml/grass-interface.dtd"
-    ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/xml)
+    ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/xml)
 add_dependencies(grass_interface_dtd GUI_WXPYTHON)
 set_target_properties(grass_interface_dtd PROPERTIES FOLDER GUI)
 
-install(FILES ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/xml/grass-interface.dtd
-        DESTINATION ${GRASS_INSTALL_GUIDIR}/xml)
+install(FILES ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/xml/grass-interface.dtd
+        DESTINATION ${GRASS_INSTALL_GUIRESDIR}/xml)

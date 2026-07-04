@@ -233,17 +233,17 @@ if __name__ == "__main__":
     # FIXME: cross-dependencies
     if menu == "manager":
         from lmgr.menudata import LayerManagerMenuData
-        from core.globalvar import WXGUIDIR
+        from core.globalvar import GUIXMLDIR
 
-        filename = os.path.join(WXGUIDIR, "xml", "menudata.xml")
+        filename = os.path.join(GUIXMLDIR, "menudata.xml")
         menudata = LayerManagerMenuData(filename)
     # FIXME: since module descriptions are used again we have now the third
     # copy of the same string (one is in modules)
     elif menu == "module_tree":
         from lmgr.menudata import LayerManagerModuleTree
-        from core.globalvar import WXGUIDIR
+        from core.globalvar import GUIXMLDIR
 
-        filename = os.path.join(WXGUIDIR, "xml", "module_tree_menudata.xml")
+        filename = os.path.join(GUIXMLDIR, "module_tree_menudata.xml")
         menudata = LayerManagerModuleTree(filename)
     elif menu == "modeler":
         from gmodeler.menudata import ModelerMenuData

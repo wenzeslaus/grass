@@ -53,6 +53,7 @@ class RuntimePaths:
         "guires_dir": "GRASS_GUIRESDIR",
         "guiscript_dir": "GRASS_GUISCRIPTDIR",
         "guiwx_dir": "GRASS_GUIWXDIR",
+        "guixml_dir": "GRASS_GUIXMLDIR",
         "locale_dir": "GRASS_LOCALEDIR",
         "man_dir": "GRASS_MANDIR",
         "misc_dir": "GRASS_MISCDIR",

@@ -28,6 +28,7 @@ from pathlib import Path
 # path to python scripts
 ETCDIR = os.getenv("GRASS_ETCDIR")
 WXGUIDIR = os.getenv("GRASS_GUIWXDIR")
+GUIXMLDIR = os.getenv("GRASS_GUIXMLDIR")
 ICONDIR = os.path.join(os.getenv("GRASS_GUIRESDIR"), "icons")
 IMGDIR = os.path.join(os.getenv("GRASS_GUIRESDIR"), "images")
 SYMBDIR = os.path.join(IMGDIR, "symbols")

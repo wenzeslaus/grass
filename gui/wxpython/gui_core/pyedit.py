@@ -887,7 +887,7 @@ class PyEditFrame(wx.Frame):
 
         self.panel = PyEditPanel(parent=self, giface=giface)
 
-        filename = os.path.join(globalvar.WXGUIDIR, "xml", "menudata_pyedit.xml")
+        filename = os.path.join(globalvar.GUIXMLDIR, "menudata_pyedit.xml")
         self.menubar = Menubar(
             parent=self,
             model=MenuTreeModelBuilder(filename).GetModel(separators=True),

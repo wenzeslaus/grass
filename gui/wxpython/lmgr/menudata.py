@@ -19,7 +19,7 @@ import os
 
 from core.menutree import MenuTreeModelBuilder
 from core.toolboxes import getMenudataFile
-from core.globalvar import WXGUIDIR
+from core.globalvar import GUIXMLDIR
 from core.gcmd import GError
 
 
@@ -27,7 +27,7 @@ class LayerManagerMenuData(MenuTreeModelBuilder):
     def __init__(self, filename=None, message_handler=GError):
         expandAddons = not filename
 
-        fallback = os.path.join(WXGUIDIR, "xml", "menudata.xml")
+        fallback = os.path.join(GUIXMLDIR, "menudata.xml")
         if not filename:
             filename = getMenudataFile(
                 userRootFile="main_menu.xml", newFile="menudata.xml", fallback=fallback
@@ -46,7 +46,7 @@ class LayerManagerMenuData(MenuTreeModelBuilder):
                     "Default main menu will be loaded."
                 )
             )
-            fallback = os.path.join(WXGUIDIR, "xml", "menudata.xml")
+            fallback = os.path.join(GUIXMLDIR, "menudata.xml")
             MenuTreeModelBuilder.__init__(
                 self, fallback, message_handler=message_handler
             )
@@ -56,7 +56,7 @@ class LayerManagerModuleTree(MenuTreeModelBuilder):
     def __init__(self, filename=None, message_handler=GError):
         expandAddons = not filename
 
-        fallback = os.path.join(WXGUIDIR, "xml", "module_tree_menudata.xml")
+        fallback = os.path.join(GUIXMLDIR, "module_tree_menudata.xml")
         if not filename:
             filename = getMenudataFile(
                 userRootFile="module_tree.xml",

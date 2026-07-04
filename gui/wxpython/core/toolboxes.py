@@ -31,14 +31,14 @@ ETREE_EXCEPTIONS = (ET.ParseError, expat.ExpatError)
 # if this will become part of grass Python library or module, this should be
 # parametrized, so we will get rid of the definition here
 # (GUI will use its definition and build also its own)
-WXGUIDIR = os.environ["GRASS_GUIWXDIR"]
+GUIXMLDIR = os.environ["GRASS_GUIXMLDIR"]
 
 
 # this could be placed to functions
-mainMenuFile = os.path.join(WXGUIDIR, "xml", "main_menu.xml")
-toolboxesFile = os.path.join(WXGUIDIR, "xml", "toolboxes.xml")
-wxguiItemsFile = os.path.join(WXGUIDIR, "xml", "wxgui_items.xml")
-moduleItemsFile = os.path.join(WXGUIDIR, "xml", "module_items.xml")
+mainMenuFile = os.path.join(GUIXMLDIR, "main_menu.xml")
+toolboxesFile = os.path.join(GUIXMLDIR, "toolboxes.xml")
+wxguiItemsFile = os.path.join(GUIXMLDIR, "wxgui_items.xml")
+moduleItemsFile = os.path.join(GUIXMLDIR, "module_items.xml")
 
 
 def GetSettingsPath():
@@ -116,7 +116,7 @@ def getMenudataFile(userRootFile, newFile, fallback):
         ),
     )
 
-    distributionRootFile = os.path.join(WXGUIDIR, "xml", userRootFile)
+    distributionRootFile = os.path.join(GUIXMLDIR, userRootFile)
     userRootFile = os.path.join(GetSettingsPath(), "toolboxes", userRootFile)
     if not Path(userRootFile).exists():
         userRootFile = None
@@ -804,11 +804,11 @@ def module_test():
     """Tests the module using test files included in the current
     directory and in files from distribution.
     """
-    toolboxesFile = os.path.join(WXGUIDIR, "xml", "toolboxes.xml")
+    toolboxesFile = os.path.join(GUIXMLDIR, "toolboxes.xml")
     userToolboxesFile = "data/test_toolboxes_user_toolboxes.xml"
     menuFile = "data/test_toolboxes_menu.xml"
-    wxguiItemsFile = os.path.join(WXGUIDIR, "xml", "wxgui_items.xml")
-    moduleItemsFile = os.path.join(WXGUIDIR, "xml", "module_items.xml")
+    wxguiItemsFile = os.path.join(GUIXMLDIR, "wxgui_items.xml")
+    moduleItemsFile = os.path.join(GUIXMLDIR, "module_items.xml")
 
     toolboxes = ET.parse(toolboxesFile)
     userToolboxes = ET.parse(userToolboxesFile)
@@ -875,9 +875,9 @@ def main():
     """
     # TODO: fix parameter handling
     if len(sys.argv) > 1:
-        mainFile = os.path.join(WXGUIDIR, "xml", "module_tree.xml")
+        mainFile = os.path.join(GUIXMLDIR, "module_tree.xml")
     else:
-        mainFile = os.path.join(WXGUIDIR, "xml", "main_menu.xml")
+        mainFile = os.path.join(GUIXMLDIR, "main_menu.xml")
     tree = createTree(
         distributionRootFile=mainFile, userRootFile=None, userDefined=False
     )
