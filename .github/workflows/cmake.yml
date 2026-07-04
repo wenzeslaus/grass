@@ -24,6 +24,13 @@ permissions:
 
 jobs:
   build-cmake:
+    strategy:
+      matrix:
+        # Build both the legacy Autotools-compatible layout and the FHS
+        # layout (WITH_FHS=ON).
+        fhs: ["OFF", "ON"]
+      fail-fast: false
+    name: build-cmake (FHS ${{ matrix.fhs }})
     runs-on: ubuntu-24.04
     env:
       CMAKE_VERSION: "3.22.0"
@@ -65,7 +72,7 @@ jobs:
         run: |
           cmake -S "${GITHUB_WORKSPACE}" -B "${GITHUB_WORKSPACE}/build" -G Ninja \
             -DCMAKE_INSTALL_PREFIX="${HOME}/install" -DWITH_READLINE=ON -DWITH_ODBC=ON \
-            -DWITH_NETCDF=ON -DWITH_BZLIB=ON
+            -DWITH_NETCDF=ON -DWITH_BZLIB=ON -DWITH_FHS=${{ matrix.fhs }}
       - name: Print CMakeCache.txt
         shell: bash -el {0}
         run: |
@@ -90,6 +97,6 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: testreport-CMake
+          name: testreport-CMake-FHS-${{ matrix.fhs }}
           path: testreport
           retention-days: 3
