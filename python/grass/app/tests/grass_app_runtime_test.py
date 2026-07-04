@@ -114,6 +114,24 @@ def test_explicit_env_vars_set_gisbase():
     assert env["GISBASE"] == paths.gisbase
 
 
+def test_explicit_env_vars_set_pydir():
+    """Explicit call should set the env vars."""
+    env = {}
+    paths = RuntimePaths(env=env)
+    paths.set_env_variables()
+    assert "GRASS_PYDIR" in env
+    assert env["GRASS_PYDIR"] == paths.pydir
+
+
+def test_explicit_env_vars_set_man_dir():
+    """Explicit call should set the env vars."""
+    env = {}
+    paths = RuntimePaths(env=env)
+    paths.set_env_variables()
+    assert "GRASS_MANDIR" in env
+    assert env["GRASS_MANDIR"] == paths.man_dir
+
+
 def test_constructor_parameter_env_vars_set_colors():
     """Constructor with parameter should set the env vars."""
     env = {}

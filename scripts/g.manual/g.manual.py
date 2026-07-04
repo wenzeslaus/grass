@@ -79,7 +79,7 @@ def start_browser(entry):
                 entry,
             )
     else:
-        directory = os.path.join(gisbase, "docs", "mkdocs", "site")
+        directory = os.path.join(os.environ["GRASS_MKDOCSDIR"], "site")
         if Path(directory).exists():
             path = os.path.join(directory, entry + ".html")
             if not Path(path).exists() and os.getenv("GRASS_ADDON_BASE"):
@@ -87,7 +87,7 @@ def start_browser(entry):
                     os.getenv("GRASS_ADDON_BASE"), "docs", "html", entry + ".html"
                 )
         else:
-            path = os.path.join(gisbase, "docs", "html", entry + ".html")
+            path = os.path.join(os.environ["GRASS_DOCDIR"], entry + ".html")
             if not Path(path).exists() and os.getenv("GRASS_ADDON_BASE"):
                 path = os.path.join(
                     os.getenv("GRASS_ADDON_BASE"), "docs", "html", entry + ".html"
@@ -116,7 +116,7 @@ def start_browser(entry):
 
 
 def start_man(entry):
-    path = os.path.join(gisbase, "docs", "man", "man1", entry + ".1")
+    path = os.path.join(os.environ["GRASS_MANDIR"], entry + ".1")
     if not Path(path).exists() and os.getenv("GRASS_ADDON_BASE"):
         path = os.path.join(
             os.getenv("GRASS_ADDON_BASE"), "docs", "man", "man1", entry + ".1"
@@ -130,7 +130,7 @@ def start_man(entry):
 
 
 def main():
-    global gisbase, browser, browser_name
+    global browser, browser_name
 
     if flags["i"] and flags["t"]:
         grass.fatal(_("Flags -%c and -%c are mutually exclusive") % ("i", "t"))
@@ -144,7 +144,6 @@ def main():
     start = start_man if flags["m"] else start_browser
 
     entry = options["entry"]
-    gisbase = os.environ["GISBASE"]
     browser = os.getenv("GRASS_HTML_BROWSER", "")
 
     if sys.platform == "darwin":

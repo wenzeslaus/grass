@@ -1802,7 +1802,8 @@ def print_params(params) -> None:
         if arg == "path":
             sys.stdout.write("%s\n" % GISBASE)
         elif arg in {"python_path", "python-path"}:
-            sys.stdout.write("%s\n" % gpath("etc", "python"))
+            pydir, _exists = find_path_to_grass_python_package()
+            sys.stdout.write("%s\n" % pydir)
         elif arg == "arch":
             val = grep("ARCH", linesplat)
             sys.stdout.write("%s\n" % val[0].split("=")[1].strip())
