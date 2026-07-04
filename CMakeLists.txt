@@ -358,4 +358,8 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/GRASSConfig.cmake
               ${CMAKE_CURRENT_BINARY_DIR}/GRASSConfigVersion.cmake
         DESTINATION ${GRASS_INSTALL_CMAKECONFDIR}/GRASS)
 
+configure_file(cmake/grass.pc.in ${CMAKE_CURRENT_BINARY_DIR}/grass.pc @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/grass.pc
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)

@@ -132,9 +132,27 @@ Locally on this branch: the PR code is brought in as the Phase 0 commit.
 - Phase 3: done. CMake CI workflow now a WITH_FHS OFF/ON matrix.
 - Phase 4: done. INSTALL.md CMake/WITH_FHS section; AGENTS.md
   LD_LIBRARY_PATH note for FHS.
-- Still open (upstream design items): wxGUI-as-package decision,
-  g.extension/addon build against an FHS install, pkg-config file for
-  CMake builds (missing for both layouts), Windows/macOS layouts.
+- Design decisions resolved (2026-07-04):
+  - wxGUI: code stays in site-packages/grass/gui; icons, images, and
+    xml install to share/grass/gui under FHS (same substructure as the
+    legacy gui directory, which is unchanged). New GRASS_GUIXMLDIR
+    resource variable for the menu xml directory.
+  - C resource-path contract: fall back to the legacy GISBASE-relative
+    location when a GRASS_* variable is unset; fatal only when neither
+    works. Bare-GISBASE environments keep working on legacy installs.
+  - g.extension against an FHS install: verified working for Python and
+    C addons after exporting GRASS_LIBRARY_DIR from the GRASS CMake
+    package (addon RPATH) and adding GRASS_LIBDIR for the session
+    dynamic library path. Addons install into GRASS_ADDON_BASE with the
+    legacy user-directory layout regardless of the core layout.
+  - pkg-config: CMake builds now generate and install grass.pc into
+    the prefix libdir pkgconfig directory for both layouts; verified by
+    compiling and running a program against the FHS install.
+- Found upstream (unrelated to FHS): the d.region.grid addon in
+  grass-addons carries a stale module description copied from d.shade
+  (visible in --help output); fix in grass-addons.
+- Still open (upstream discussion): Windows/macOS layouts stay legacy;
+  release-notes callout for the resource-variable session contract.
 
 ## Risks
 

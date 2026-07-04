@@ -1,0 +1,13 @@
+# Package Information for pkg-config
+#
+# See also: grass --config
+
+prefix=@CMAKE_INSTALL_PREFIX@
+libdir=${prefix}/@GRASS_INSTALL_LIBDIR@
+includedir=${prefix}/@GRASS_INSTALL_INCLUDEDIR@
+
+Name: GRASS
+Description: GRASS GIS
+Version: @GRASS_VERSION_NUMBER@
+Libs: -L${libdir} -lgrass_gmath -lgrass_gis -lgrass_datetime -lgrass_gproj -lgrass_raster -lgrass_vector -lgrass_dbmibase -lgrass_dbmiclient -lm -lz
+Cflags: -I${includedir}
