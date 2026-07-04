@@ -54,6 +54,7 @@ class RuntimePaths:
         "guiscript_dir": "GRASS_GUISCRIPTDIR",
         "guiwx_dir": "GRASS_GUIWXDIR",
         "guixml_dir": "GRASS_GUIXMLDIR",
+        "lib_dir": "GRASS_LIBDIR",
         "locale_dir": "GRASS_LOCALEDIR",
         "man_dir": "GRASS_MANDIR",
         "misc_dir": "GRASS_MISCDIR",
@@ -345,9 +346,13 @@ def set_man_path(install_path, addon_base, env):
 
 def set_dynamic_library_path(variable_name, install_path, env):
     """Define path to dynamic libraries (LD_LIBRARY_PATH on Linux)"""
+    lib_dir = env.get("GRASS_LIBDIR")
+    if not lib_dir:
+        # Fall back to the legacy layout location under the install path.
+        lib_dir = os.path.join(install_path, "lib")
     if variable_name not in env:
         env[variable_name] = ""
-    env[variable_name] += os.pathsep + os.path.join(install_path, "lib")
+    env[variable_name] += os.pathsep + lib_dir
 
 
 def set_python_path_variable(install_path, env):

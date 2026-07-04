@@ -45,6 +45,7 @@ $(DSTDIR)/resource_paths.py: resource_paths.py
 	-e 's#@GRASS_GUISCRIPTDIR@#gui/scripts#' \
 	-e 's#@GRASS_GUIWXDIR@#gui/wxpython#' \
 	-e 's#@GRASS_GUIXMLDIR@#gui/wxpython/xml#' \
+	-e 's#@GRASS_LIBDIR@#lib#' \
 	-e 's#@GRASS_LOCALEDIR@#locale#' \
 	-e 's#@GRASS_MANDIR@#docs/man/man1#' \
 	-e 's#@GRASS_MISCDIR@##' \
