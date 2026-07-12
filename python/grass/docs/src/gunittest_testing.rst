@@ -715,10 +715,9 @@ Further reading
    gunittest_running_tests
 
 
-.. _unittest: https://docs.python.org/2/library/unittest.html
-.. _doctest: https://docs.python.org/2/library/doctest.html
+.. _unittest: https://docs.python.org/3/library/unittest.html
 .. _Coverity Scan: https://scan.coverity.com/
 .. _1038: https://scan.coverity.com/projects/1038
 .. _Cppcheck: http://cppcheck.sourceforge.net/
 .. _sandbox: https://svn.osgeo.org/grass/sandbox/wenzeslaus/grass_py_static_check.py
-.. _GRASS sample data: https://grass.osgeo.org/download/data/ and http://fatra.cnr.ncsu.edu/data/ (nc_spm_full_v2beta1)
+.. _GRASS sample data: https://grass.osgeo.org/sampledata/north_carolina/ (nc_spm_full_v2beta1.tar.gz)
