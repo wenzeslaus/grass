@@ -318,8 +318,8 @@ def help_message(default_gui) -> None:
             gui_detail=_("and set as default"),
             config=_("print GRASS configuration parameters"),
             config_detail=_(
-                "options: arch,build,compiler,date,path,python_path,revision,"
-                "svn_revision,version"
+                "options: arch,build,compiler,date,lib_path,path,python_path,"
+                "revision,svn_revision,version"
             ),
             params=_("Parameters"),
             gisdbase=_("initial GRASS database directory"),
@@ -1783,6 +1783,7 @@ def print_params(params) -> None:
             "arch",
             "build",
             "compiler",
+            "lib_path",
             "path",
             "python_path",
             "revision",
@@ -1803,6 +1804,9 @@ def print_params(params) -> None:
     for arg in params:
         if arg == "path":
             sys.stdout.write("%s\n" % GISBASE)
+        elif arg in {"lib_path", "lib-path"}:
+            # Set from the build-time configuration during startup.
+            sys.stdout.write("%s\n" % os.environ["GRASS_LIBDIR"])
         elif arg in {"python_path", "python-path"}:
             pydir, _exists = find_path_to_grass_python_package()
             sys.stdout.write("%s\n" % pydir)
