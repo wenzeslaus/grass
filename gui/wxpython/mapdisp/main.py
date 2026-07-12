@@ -44,17 +44,17 @@ from grass.script.setup import set_gui_path
 set_gui_path()
 
 # GUI imports require path to GUI code to be set.
-from core import globalvar  # noqa: E402
+from grassgui.core import globalvar  # noqa: E402
 import wx  # noqa: E402
 
-from core import utils  # noqa: E402
-from core.giface import StandaloneGrassInterface  # noqa: E402
-from core.gcmd import RunCommand  # noqa: E402
-from core.render import Map, MapLayer, RenderMapMgr  # noqa: E402
-from mapdisp.frame import MapPanel  # noqa: E402
-from gui_core.mapdisp import FrameMixin  # noqa: E402
-from core.debug import Debug  # noqa: E402
-from core.settings import UserSettings  # noqa: E402
+from grassgui.core import utils  # noqa: E402
+from grassgui.core.giface import StandaloneGrassInterface  # noqa: E402
+from grassgui.core.gcmd import RunCommand  # noqa: E402
+from grassgui.core.render import Map, MapLayer, RenderMapMgr  # noqa: E402
+from grassgui.mapdisp.frame import MapPanel  # noqa: E402
+from grassgui.gui_core.mapdisp import FrameMixin  # noqa: E402
+from grassgui.core.debug import Debug  # noqa: E402
+from grassgui.core.settings import UserSettings  # noqa: E402
 
 # for standalone app
 monFile = {

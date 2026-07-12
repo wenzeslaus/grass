@@ -8,13 +8,13 @@ import wx
 import os
 from pathlib import Path
 
-from core import globalvar, gcmd
+from grassgui.core import globalvar, gcmd
 from grass.script.utils import try_remove
-from rlisetup.functions import retRLiPath
-from rlisetup.wizard import RLIWizard
+from grassgui.rlisetup.functions import retRLiPath
+from grassgui.rlisetup.wizard import RLIWizard
 import locale
 import codecs
-from gui_core.wrap import Button, StaticBox, TextCtrl
+from grassgui.gui_core.wrap import Button, StaticBox, TextCtrl
 
 
 class ViewFrame(wx.Frame):

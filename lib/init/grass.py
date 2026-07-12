@@ -190,7 +190,9 @@ def wxpath(*args) -> str:
     global _WXPYTHON_BASE
     if not _WXPYTHON_BASE:
         # this can be called only after GISBASE was set
-        _WXPYTHON_BASE = gpath("gui", "wxpython")
+        _WXPYTHON_BASE = os.environ.get("GRASS_GUIWXDIR") or gpath(
+            "gui", "wxpython"
+        )
     return os.path.join(_WXPYTHON_BASE, *args)
 
 
@@ -316,8 +318,8 @@ def help_message(default_gui) -> None:
             gui_detail=_("and set as default"),
             config=_("print GRASS configuration parameters"),
             config_detail=_(
-                "options: arch,build,compiler,date,path,python_path,revision,"
-                "svn_revision,version"
+                "options: arch,build,compiler,date,lib_path,path,python_path,"
+                "revision,svn_revision,version"
             ),
             params=_("Parameters"),
             gisdbase=_("initial GRASS database directory"),
@@ -1162,7 +1164,7 @@ def set_language(grass_config_dir: StrPath) -> None:
                         os.environ["LC_MESSAGES"] = "C"
                         os.environ["LC_NUMERIC"] = "C"
                         os.environ["LC_TIME"] = "C"
-                        gettext.install("grasslibs", gpath("locale"))
+                        gettext.install("grasslibs", os.environ["GRASS_LOCALEDIR"])
                         sys.stderr.write(
                             "All attempts to enable English language have"
                             " failed. GRASS running with C locale.\n"
@@ -1243,7 +1245,7 @@ def set_language(grass_config_dir: StrPath) -> None:
         del os.environ["LC_ALL"]  # Remove LC_ALL to not override LC_NUMERIC
 
     # From now on enforce the new language
-    gettext.install("grasslibs", gpath("locale"))
+    gettext.install("grasslibs", os.environ["GRASS_LOCALEDIR"])
 
 
 # TODO: the gisrcrc here does not make sense, remove it from load_gisrc
@@ -1781,6 +1783,7 @@ def print_params(params) -> None:
             "arch",
             "build",
             "compiler",
+            "lib_path",
             "path",
             "python_path",
             "revision",
@@ -1801,8 +1804,12 @@ def print_params(params) -> None:
     for arg in params:
         if arg == "path":
             sys.stdout.write("%s\n" % GISBASE)
+        elif arg in {"lib_path", "lib-path"}:
+            # Set from the build-time configuration during startup.
+            sys.stdout.write("%s\n" % os.environ["GRASS_LIBDIR"])
         elif arg in {"python_path", "python-path"}:
-            sys.stdout.write("%s\n" % gpath("etc", "python"))
+            pydir, _exists = find_path_to_grass_python_package()
+            sys.stdout.write("%s\n" % pydir)
         elif arg == "arch":
             val = grep("ARCH", linesplat)
             sys.stdout.write("%s\n" % val[0].split("=")[1].strip())
@@ -2041,7 +2048,7 @@ def parse_cmdline(argv, default_gui) -> Parameters:
     """
     # For the subcommands, we keep a list here which allows us not to import
     # the whole grass.app.cli module and all its dependencies.
-    if len(argv) > 1 and argv[1] in {"run", "project", "mapset", "help", "man"}:
+    if len(argv) > 1 and argv[1] in {"run", "project", "mapset", "gui", "help", "man"}:
         from grass.app.cli import main as subcommand_cli_main
 
         sys.exit(subcommand_cli_main())

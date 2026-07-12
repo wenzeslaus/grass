@@ -177,6 +177,29 @@ def call_g_manual(**kwargs):
             )
 
 
+def subcommand_launch_gui(args) -> int:
+    with ExitStack() as stack:
+        if args.project:
+            project_path = Path(args.project)
+        else:
+            tmp_dir_name = stack.enter_context(tempfile.TemporaryDirectory())
+            project_name = "project"
+            project_path = Path(tmp_dir_name) / project_name
+            gs.create_project(project_path)
+        with gs.setup.init(project_path) as session:
+            # Run the GUI as a blocking process so that the session and a
+            # possible temporary project live as long as the GUI runs.
+            return subprocess.run(
+                [
+                    session.env.get("GRASS_PYTHON", sys.executable),
+                    "-m",
+                    "grassgui",
+                ],
+                env=session.env,
+                check=False,
+            ).returncode
+
+
 def subcommand_show_help(args):
     return call_g_manual(entry=args.page)
 
@@ -259,6 +282,12 @@ def main(args=None, program=None):
 
     add_project_subparser(subparsers)
     add_mapset_subparser(subparsers)
+
+    subparser = subparsers.add_parser(
+        "gui", help="launch the graphical user interface"
+    )
+    subparser.add_argument("--project", type=str, help="project to open in the GUI")
+    subparser.set_defaults(func=subcommand_launch_gui)
 
     subparser = subparsers.add_parser(
         "help", help="show HTML documentation for a tool or topic"

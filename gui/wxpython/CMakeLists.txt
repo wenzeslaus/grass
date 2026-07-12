@@ -1,4 +1,4 @@
-set(WXPYTHON_DIR ${GRASS_INSTALL_GUIDIR}/wxpython)
+set(WXPYTHON_DIR ${GRASS_INSTALL_GRASS_GUIWXDIR})
 set(gui_lib_DIRS
     core
     gui_core
@@ -27,7 +27,7 @@ endforeach()
 add_custom_target(
   GUI_WXPYTHON
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/wxgui.py
-          ${OUTDIR}/${WXPYTHON_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}/__main__.py ${OUTDIR}/${WXPYTHON_DIR}
   DEPENDS ${gui_lib_targets} LIB_PYTHON)
 
 set_target_properties(GUI_WXPYTHON PROPERTIES FOLDER GUI)
@@ -59,12 +59,21 @@ if(WITH_DOCS)
 endif()
 
 install(FILES README.md ${OUTDIR}/${WXPYTHON_DIR}/wxgui.py
+              ${OUTDIR}/${WXPYTHON_DIR}/__main__.py
         DESTINATION ${WXPYTHON_DIR})
+
+# The package init makes the grassgui package importable. In the FHS
+# layout it lands at the package root next to the content; in the legacy
+# layout it acts as a stand-in on the Python path which redirects the
+# package to the wxGUI directory.
+configure_file(__init__.py ${OUTDIR}/${GRASS_INSTALL_PYDIR}/grassgui/__init__.py
+               COPYONLY)
+install(FILES __init__.py DESTINATION ${GRASS_INSTALL_PYDIR}/grassgui)
 
 add_custom_target(
   copy_wxpython_xml
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/xml
-          ${OUTDIR}/${WXPYTHON_DIR}/xml)
+          ${OUTDIR}/${GRASS_GUIXMLDIR})
 
 add_dependencies(copy_wxpython_xml GUI_WXPYTHON)
 set_target_properties(copy_wxpython_xml PROPERTIES FOLDER GUI)
@@ -79,23 +88,20 @@ add_dependencies(compile_python_files ALL_MODULES)
 set_target_properties(compile_python_files PROPERTIES FOLDER GUI)
 
 add_custom_command(
-  OUTPUT "${OUTDIR}/${WXPYTHON_DIR}/xml/module_items.xml"
+  OUTPUT "${OUTDIR}/${GRASS_GUIXMLDIR}/module_items.xml"
   COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/tools"
   COMMAND ${CMAKE_COMMAND} -E copy
           ${CMAKE_CURRENT_SOURCE_DIR}/tools/build_modules_xml.py tools
   COMMAND ${grass_env_command} ${PYTHON_EXECUTABLE} tools/build_modules_xml.py >
-          "${OUTDIR}/${WXPYTHON_DIR}/xml/module_items.xml"
+          "${OUTDIR}/${GRASS_GUIXMLDIR}/module_items.xml"
   COMMENT "Generating interface description for all modules...")
 
 add_custom_target(build_modules_items_xml
-                  DEPENDS "${OUTDIR}/${WXPYTHON_DIR}/xml/module_items.xml")
+                  DEPENDS "${OUTDIR}/${GRASS_GUIXMLDIR}/module_items.xml")
 
 add_dependencies(build_modules_items_xml copy_wxpython_xml grass_interface_dtd
                  compile_python_files ${g_gui_targets})
 set_target_properties(build_modules_items_xml PROPERTIES FOLDER GUI)
-
-# TODO(FHS): remove this if condition
-if(NOT WITH_FHS)
 
 add_custom_target(
   build_xml_menudata
@@ -109,7 +115,7 @@ add_custom_target(
     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/menudata.xml
   COMMAND
     ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/menudata.xml
-    ${OUTDIR}/${WXPYTHON_DIR}/xml
+    ${OUTDIR}/${GRASS_GUIXMLDIR}
   DEPENDS build_modules_items_xml)
 
 set_target_properties(build_xml_menudata PROPERTIES FOLDER GUI)
@@ -127,7 +133,7 @@ add_custom_target(
   COMMAND
     ${CMAKE_COMMAND} -E copy
     ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/module_tree_menudata.xml
-    ${OUTDIR}/${WXPYTHON_DIR}/xml
+    ${OUTDIR}/${GRASS_GUIXMLDIR}
   DEPENDS build_xml_menudata)
 
 set_target_properties(build_module_tree_menudata PROPERTIES FOLDER GUI)
@@ -150,6 +156,5 @@ add_custom_target(
 
 set_target_properties(build_menustrings PROPERTIES FOLDER GUI)
 
-endif() # NOT WITH_FHS
-
-install(DIRECTORY "${OUTDIR}/${WXPYTHON_DIR}/xml" DESTINATION "${WXPYTHON_DIR}")
+install(DIRECTORY "${OUTDIR}/${GRASS_GUIXMLDIR}"
+        DESTINATION "${GRASS_INSTALL_GUIRESDIR}/wxpython")

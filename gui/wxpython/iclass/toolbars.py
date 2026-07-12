@@ -20,11 +20,11 @@ for details.
 
 import wx
 
-from gui_core.toolbars import BaseToolbar, BaseIcons
-from icons.icon import MetaIcon
-from iclass.dialogs import IClassMapDialog, ContrastColor
-from gui_core.forms import GUI
-from gui_core.wrap import StaticText
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.icons.icon import MetaIcon
+from grassgui.iclass.dialogs import IClassMapDialog, ContrastColor
+from grassgui.gui_core.forms import GUI
+from grassgui.gui_core.wrap import StaticText
 
 import grass.script as gs
 

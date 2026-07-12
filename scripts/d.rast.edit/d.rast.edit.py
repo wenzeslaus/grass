@@ -81,10 +81,6 @@ from string import digits
 
 import grass.script as gs
 
-from grass.script.setup import set_gui_path
-
-set_gui_path()
-
 try:
     import wx
 except ImportError:
@@ -703,7 +699,7 @@ def wxGUI():
 if __name__ == "__main__":
     options, flags = gs.parser()
 
-    from gui_core.wrap import ClientDC, Menu, Panel
+    from grassgui.gui_core.wrap import ClientDC, Menu, Panel
 
     Application = wxGUI()
     app = Application(options)

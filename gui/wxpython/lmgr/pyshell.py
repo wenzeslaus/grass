@@ -28,9 +28,9 @@ from wx.py.version import VERSION
 
 import grass.script as gs
 
-from gui_core.wrap import Button, ClearButton, IsDark
-from gui_core.pystc import SetDarkMode
-from core.globalvar import CheckWxVersion
+from grassgui.gui_core.wrap import Button, ClearButton, IsDark
+from grassgui.gui_core.pystc import SetDarkMode
+from grassgui.core.globalvar import CheckWxVersion
 
 
 class PyShellWindow(wx.Panel):

@@ -27,13 +27,13 @@ import tempfile
 from multiprocessing import Process, Queue
 from pathlib import Path
 
-from core.gcmd import GException, DecodeString
-from core.settings import UserSettings
-from core.debug import Debug
-from core.utils import autoCropImageFromFile
+from grassgui.core.gcmd import GException, DecodeString
+from grassgui.core.settings import UserSettings
+from grassgui.core.debug import Debug
+from grassgui.core.utils import autoCropImageFromFile
 
-from animation.utils import HashCmd, HashCmds, GetFileFromCmd, GetFileFromCmds
-from gui_core.wrap import EmptyBitmap, BitmapFromImage
+from grassgui.animation.utils import HashCmd, HashCmds, GetFileFromCmd, GetFileFromCmds
+from grassgui.gui_core.wrap import EmptyBitmap, BitmapFromImage
 
 import grass.script.core as gcore
 from grass.script.task import cmdlist_to_tuple
@@ -877,9 +877,9 @@ def read2_command(*args, **kwargs):
 def test():
     import shutil
 
-    from core.layerlist import LayerList, Layer
-    from animation.data import AnimLayer
-    from animation.utils import layerListToCmdsMatrix
+    from grassgui.core.layerlist import LayerList, Layer
+    from grassgui.animation.data import AnimLayer
+    from grassgui.animation.utils import layerListToCmdsMatrix
     import grass.temporal as tgis
 
     tgis.init()

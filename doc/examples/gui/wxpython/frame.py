@@ -22,20 +22,20 @@ import wx
 
 # this enables to run application standalone (> python example/frame.py )
 if __name__ == "__main__":
-    sys.path.append(os.path.join(os.environ["GISBASE"], "etc", "gui", "wxpython"))
+    sys.path.append(os.environ["GRASS_GUIWXDIR"])
 
 # i18n is taken care of in the grass library code.
 # So we need to import it before any of the GUI code.
 from grass.script import core as gcore
 
-from gui_core.mapdisp import SingleMapPanel, FrameMixin
-from mapwin.buffered import BufferedMapWindow
-from mapwin.base import MapWindowProperties
-from mapdisp import statusbar as sb
-from core.render import Map
-from core.debug import Debug
-from core.gcmd import RunCommand, GError
-from core import globalvar
+from grassgui.gui_core.mapdisp import SingleMapPanel, FrameMixin
+from grassgui.mapwin.buffered import BufferedMapWindow
+from grassgui.mapwin.base import MapWindowProperties
+from grassgui.mapdisp import statusbar as sb
+from grassgui.core.render import Map
+from grassgui.core.debug import Debug
+from grassgui.core.gcmd import RunCommand, GError
+from grassgui.core import globalvar
 
 from example.toolbars import ExampleMapToolbar, ExampleMiscToolbar, ExampleMainToolbar
 from example.dialogs import ExampleMapDialog

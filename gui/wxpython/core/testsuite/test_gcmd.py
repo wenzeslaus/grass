@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
         set_gui_path()
 
-        from core.gcmd import recv_some
+        from grassgui.core.gcmd import recv_some
 
         test()
     except ModuleNotFoundError:

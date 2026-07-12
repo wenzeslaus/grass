@@ -22,7 +22,7 @@ from math import ceil, cos, floor, fmod, radians, sin
 from typing import overload
 
 import wx
-from core.gcmd import GError, RunCommand
+from grassgui.core.gcmd import GError, RunCommand
 
 import grass.script as gs
 from grass.exceptions import ScriptError

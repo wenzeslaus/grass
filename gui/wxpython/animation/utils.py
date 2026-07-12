@@ -32,9 +32,9 @@ except ImportError:
 import grass.temporal as tgis
 import grass.script as gs
 from grass.script.utils import encode
-from gui_core.wrap import EmptyBitmap
+from grassgui.gui_core.wrap import EmptyBitmap
 
-from core.gcmd import GException
+from grassgui.core.gcmd import GException
 
 
 class TemporalMode:

@@ -44,6 +44,22 @@ class RuntimePaths:
     # Mapping of attribute names to environment variable name except the prefix.
     _env_vars = {
         "gisbase": "GISBASE",
+        "colors_dir": "GRASS_COLORSDIR",
+        "doc_dir": "GRASS_DOCDIR",
+        "etc_dir": "GRASS_ETCDIR",
+        "etcbin_dir": "GRASS_ETCBINDIR",
+        "fonts_dir": "GRASS_FONTSDIR",
+        "graphics_dir": "GRASS_GRAPHICSDIR",
+        "guires_dir": "GRASS_GUIRESDIR",
+        "guiscript_dir": "GRASS_GUISCRIPTDIR",
+        "guiwx_dir": "GRASS_GUIWXDIR",
+        "guixml_dir": "GRASS_GUIXMLDIR",
+        "lib_dir": "GRASS_LIBDIR",
+        "locale_dir": "GRASS_LOCALEDIR",
+        "man_dir": "GRASS_MANDIR",
+        "misc_dir": "GRASS_MISCDIR",
+        "mkdocs_dir": "GRASS_MKDOCSDIR",
+        "pydir": "GRASS_PYDIR",
     }
 
     def __init__(self, *, env=None, set_env_variables=False, prefix=None):
@@ -293,7 +309,13 @@ def set_paths(install_path, grass_config_dir):
 
 def set_man_path(install_path, addon_base, env):
     """Set path for the GRASS man pages"""
-    grass_man_path = os.path.join(install_path, "docs", "man")
+    man_dir = env.get("GRASS_MANDIR")
+    if man_dir:
+        # MANPATH wants the man root, not the man1 section directory.
+        grass_man_path = os.path.dirname(man_dir)
+    else:
+        # Fall back to the legacy layout location under the install path.
+        grass_man_path = os.path.join(install_path, "docs", "man")
     addons_man_path = os.path.join(addon_base, "docs", "man")
     man_path = env.get("MANPATH")
     paths = collections.deque()
@@ -324,16 +346,23 @@ def set_man_path(install_path, addon_base, env):
 
 def set_dynamic_library_path(variable_name, install_path, env):
     """Define path to dynamic libraries (LD_LIBRARY_PATH on Linux)"""
+    lib_dir = env.get("GRASS_LIBDIR")
+    if not lib_dir:
+        # Fall back to the legacy layout location under the install path.
+        lib_dir = os.path.join(install_path, "lib")
     if variable_name not in env:
         env[variable_name] = ""
-    env[variable_name] += os.pathsep + os.path.join(install_path, "lib")
+    env[variable_name] += os.pathsep + lib_dir
 
 
 def set_python_path_variable(install_path, env):
     """Set PYTHONPATH to find GRASS Python package in subprocesses"""
     path = env.get("PYTHONPATH")
-    etcpy = os.path.join(install_path, "etc", "python")
-    path = etcpy + os.pathsep + path if path else etcpy
+    pydir = env.get("GRASS_PYDIR")
+    if not pydir:
+        # Fall back to the legacy layout location under the install path.
+        pydir = os.path.join(install_path, "etc", "python")
+    path = pydir + os.pathsep + path if path else pydir
     env["PYTHONPATH"] = path
 
 

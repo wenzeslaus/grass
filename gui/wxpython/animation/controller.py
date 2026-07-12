@@ -17,15 +17,15 @@ This program is free software under the GNU General Public License
 import os
 import wx
 
-from core.gcmd import GException, GError, GMessage
+from grassgui.core.gcmd import GException, GError, GMessage
 from grass.imaging import writeAvi, writeGif, writeIms, writeSwf
-from core.gthread import gThread
-from core.settings import UserSettings
-from gui_core.wrap import EmptyImage, ImageFromBitmap
+from grassgui.core.gthread import gThread
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.wrap import EmptyImage, ImageFromBitmap
 
-from animation.temporal_manager import TemporalManager
-from animation.dialogs import InputDialog, EditDialog, ExportDialog
-from animation.utils import (
+from grassgui.animation.temporal_manager import TemporalManager
+from grassgui.animation.dialogs import InputDialog, EditDialog, ExportDialog
+from grassgui.animation.utils import (
     TemporalMode,
     TemporalType,
     Orientation,
@@ -35,7 +35,7 @@ from animation.utils import (
     layerListToCmdsMatrix,
     HashCmds,
 )
-from animation.data import AnimationData
+from grassgui.animation.data import AnimationData
 
 
 class AnimationController(wx.EvtHandler):

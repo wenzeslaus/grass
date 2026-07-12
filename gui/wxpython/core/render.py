@@ -37,12 +37,12 @@ from grass.script.utils import try_remove, text_to_string
 from grass.script.task import cmdlist_to_tuple, cmdtuple_to_list
 from grass.pydispatch.signal import Signal
 
-from core import utils
-from core.ws import RenderWMSMgr
-from core.gcmd import GException, GError, RunCommand
-from core.debug import Debug
-from core.settings import UserSettings
-from core.gthread import gThread
+from grassgui.core import utils
+from grassgui.core.ws import RenderWMSMgr
+from grassgui.core.gcmd import GException, GError, RunCommand
+from grassgui.core.debug import Debug
+from grassgui.core.settings import UserSettings
+from grassgui.core.gthread import gThread
 
 
 def get_tempfile_name(suffix, create=False):

@@ -26,9 +26,9 @@ import getopt
 from grass.exceptions import Usage
 from grass.script.core import set_raise_on_error, warning, error
 
-from core import globalvar
-from core.utils import registerPid, unregisterPid
-from core.settings import UserSettings
+from grassgui.core import globalvar
+from grassgui.core.utils import registerPid, unregisterPid
+from grassgui.core.settings import UserSettings
 
 import wx
 
@@ -85,9 +85,9 @@ class GMApp(wx.App):
                 group="appearance", key="singleWindow", subkey="enabled"
             )
             if single:
-                from main_window.frame import GMFrame
+                from grassgui.main_window.frame import GMFrame
             else:
-                from lmgr.frame import GMFrame
+                from grassgui.lmgr.frame import GMFrame
             try:
                 mainframe = GMFrame(
                     parent=None, id=wx.ID_ANY, workspace=self.workspaceFile

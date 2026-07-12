@@ -245,7 +245,7 @@ class StandaloneGrassInterface(GrassInterface):
         )
 
         # workaround, standalone grass interface should be moved to sep. file
-        from core.gconsole import GConsole, EVT_CMD_OUTPUT, EVT_CMD_PROGRESS
+        from grassgui.core.gconsole import GConsole, EVT_CMD_OUTPUT, EVT_CMD_PROGRESS
 
         self._gconsole = GConsole()
         self._gconsole.Bind(EVT_CMD_PROGRESS, self._onCmdProgress)

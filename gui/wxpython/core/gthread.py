@@ -24,7 +24,7 @@ import sys
 
 import queue as Queue
 
-from core.gconsole import EVT_CMD_DONE, wxCmdDone
+from grassgui.core.gconsole import EVT_CMD_DONE, wxCmdDone
 
 wxThdTerminate, EVT_THD_TERMINATE = NewEvent()
 

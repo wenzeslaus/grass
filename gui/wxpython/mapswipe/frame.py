@@ -21,20 +21,20 @@ import wx
 
 import grass.script as gs
 
-from gui_core.mapdisp import DoubleMapPanel, FrameMixin
-from gui_core.dialogs import GetImageHandlers
-from gui_core.wrap import Slider
-from core.render import Map
-from mapdisp import statusbar as sb
-from core.debug import Debug
-from core.gcmd import GError, GMessage
-from core.layerlist import LayerListToRendererConverter
-from core import globalvar
-from gui_core.query import QueryDialog, PrepareQueryResults
+from grassgui.gui_core.mapdisp import DoubleMapPanel, FrameMixin
+from grassgui.gui_core.dialogs import GetImageHandlers
+from grassgui.gui_core.wrap import Slider
+from grassgui.core.render import Map
+from grassgui.mapdisp import statusbar as sb
+from grassgui.core.debug import Debug
+from grassgui.core.gcmd import GError, GMessage
+from grassgui.core.layerlist import LayerListToRendererConverter
+from grassgui.core import globalvar
+from grassgui.gui_core.query import QueryDialog, PrepareQueryResults
 
-from mapswipe.toolbars import SwipeMapToolbar, SwipeMainToolbar, SwipeMiscToolbar
-from mapswipe.mapwindow import SwipeBufferedWindow
-from mapswipe.dialogs import SwipeMapDialog, PreferencesDialog
+from grassgui.mapswipe.toolbars import SwipeMapToolbar, SwipeMainToolbar, SwipeMiscToolbar
+from grassgui.mapswipe.mapwindow import SwipeBufferedWindow
+from grassgui.mapswipe.dialogs import SwipeMapDialog, PreferencesDialog
 
 
 class SwipeMapPanel(DoubleMapPanel):

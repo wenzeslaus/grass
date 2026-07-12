@@ -99,6 +99,10 @@ export PYTHONPATH="$(grass --config python_path):${PYTHONPATH}"
 export LD_LIBRARY_PATH="$(grass --config path)/lib:${LD_LIBRARY_PATH}"
 ```
 
+For a CMake build with `-DWITH_FHS=ON`, libraries are not under
+`$(grass --config path)`; use the `lib` directory of the install prefix
+(e.g. `<prefix>/lib`) in `LD_LIBRARY_PATH` instead.
+
 For coverage reporting, two additional variables are needed (used by
 `.coveragerc` to map paths):
 

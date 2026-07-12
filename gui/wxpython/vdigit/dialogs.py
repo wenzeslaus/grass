@@ -23,9 +23,9 @@ import copy
 import wx
 import wx.lib.mixins.listctrl as listmix
 
-from core.gcmd import RunCommand, GError
-from core.debug import Debug
-from gui_core.wrap import (
+from grassgui.core.gcmd import RunCommand, GError
+from grassgui.core.debug import Debug
+from grassgui.gui_core.wrap import (
     SpinCtrl,
     Button,
     StaticText,

@@ -22,7 +22,7 @@ from pathlib import Path
 
 import wx
 
-from core.settings import UserSettings
+from grassgui.core.settings import UserSettings
 
 # default icon set
 from .grass_icons import iconSet as g_iconSet

@@ -19,13 +19,13 @@ This program is free software under the GNU General Public License
 import wx
 from wx.lib import ogl
 
-from gui_core.dialogs import TextEntryDialog as CustomTextEntryDialog
-from gui_core.wrap import TextEntryDialog as wxTextEntryDialog, NewId, Menu
-from gui_core.forms import GUI
-from core.gcmd import GException, GError
-from core.giface import StandaloneGrassInterface
+from grassgui.gui_core.dialogs import TextEntryDialog as CustomTextEntryDialog
+from grassgui.gui_core.wrap import TextEntryDialog as wxTextEntryDialog, NewId, Menu
+from grassgui.gui_core.forms import GUI
+from grassgui.core.gcmd import GException, GError
+from grassgui.core.giface import StandaloneGrassInterface
 
-from gmodeler.model_items import (
+from grassgui.gmodeler.model_items import (
     ModelRelation,
     ModelAction,
     ModelData,
@@ -33,13 +33,13 @@ from gmodeler.model_items import (
     ModelCondition,
     ModelComment,
 )
-from gmodeler.dialogs import (
+from grassgui.gmodeler.dialogs import (
     ModelRelationDialog,
     ModelDataDialog,
     ModelLoopDialog,
     ModelConditionDialog,
 )
-from gmodeler.giface import GraphicalModelerGrassInterface
+from grassgui.gmodeler.giface import GraphicalModelerGrassInterface
 
 
 class ModelCanvas(ogl.ShapeCanvas):

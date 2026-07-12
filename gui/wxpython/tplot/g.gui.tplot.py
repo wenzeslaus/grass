@@ -121,10 +121,10 @@ def main():
 
     set_gui_path()
 
-    from core.giface import StandaloneGrassInterface
+    from grassgui.core.giface import StandaloneGrassInterface
 
     try:
-        from tplot.frame import TplotFrame
+        from grassgui.tplot.frame import TplotFrame
     except ImportError as e:
         gs.fatal(e.message)
     rasters = None

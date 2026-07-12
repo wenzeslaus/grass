@@ -84,29 +84,29 @@ from grass.script import core as grass
 from grass.script import task as gtask
 from grass.exceptions import ScriptError
 
-from core import globalvar
-from gui_core.widgets import (
+from grassgui.core import globalvar
+from grassgui.gui_core.widgets import (
     StaticWrapText,
     ScrolledPanel,
     ColorTablesComboBox,
     BarscalesComboBox,
     NArrowsComboBox,
 )
-from gui_core.ghelp import HelpPanel
-from gui_core import gselect
-from core import gcmd
-from core import utils
-from core.settings import UserSettings
-from gui_core.widgets import (
+from grassgui.gui_core.ghelp import HelpPanel
+from grassgui.gui_core import gselect
+from grassgui.core import gcmd
+from grassgui.core import utils
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.widgets import (
     FloatValidator,
     FormListbook,
     FormNotebook,
     PlacementValidator,
     MapNameValidator,
 )
-from core.giface import Notification, StandaloneGrassInterface
-from gui_core.widgets import LayersList
-from gui_core.wrap import (
+from grassgui.core.giface import Notification, StandaloneGrassInterface
+from grassgui.gui_core.widgets import LayersList
+from grassgui.gui_core.wrap import (
     BitmapFromImage,
     Button,
     CloseButton,
@@ -118,7 +118,7 @@ from gui_core.wrap import (
     TextCtrl,
     NewId,
 )
-from core.debug import Debug
+from grassgui.core.debug import Debug
 
 wxUpdateDialog, EVT_DIALOG_UPDATE = NewEvent()
 
@@ -930,7 +930,7 @@ class TaskFrame(wx.Frame):
 
     def OnAbort(self, event):
         """Abort running command"""
-        from core.gconsole import wxCmdAbort
+        from grassgui.core.gconsole import wxCmdAbort
 
         event = wxCmdAbort(aborted=True)
         wx.PostEvent(self._gconsole, event)
@@ -2028,7 +2028,7 @@ class CmdPanel(wx.Panel):
                             showButton = True
                             try:
                                 # if matplotlib is there
-                                from timeline import frame
+                                from grassgui.timeline import frame
 
                                 showButton = True
                             except ImportError:
@@ -2677,7 +2677,7 @@ class CmdPanel(wx.Panel):
                             # TODO: v.import has no geometry option
                             self.OnUpdateValues()  # TODO: replace by signal
 
-                        from core.globalvar import CheckWxVersion
+                        from grassgui.core.globalvar import CheckWxVersion
 
                         if CheckWxVersion([4, 1, 0]):
                             self.win1.Bind(wx.EVT_LIST_ITEM_CHECKED, OnCheckItem)
@@ -2876,8 +2876,8 @@ class CmdPanel(wx.Panel):
         # are we running from command line?
         # add 'command output' tab regardless standalone dialog
         if self.parent.GetName() == "MainFrame" and self.parent.get_dcmd is None:
-            from core.gconsole import GConsole, EVT_CMD_RUN, EVT_CMD_DONE
-            from gui_core.goutput import GConsoleWindow
+            from grassgui.core.gconsole import GConsole, EVT_CMD_RUN, EVT_CMD_DONE
+            from grassgui.gui_core.goutput import GConsoleWindow
 
             self._gconsole = GConsole(guiparent=self.notebook, giface=self._giface)
             self.goutput = GConsoleWindow(
@@ -3293,7 +3293,7 @@ class CmdPanel(wx.Panel):
         for p in self.task.params:
             if "wxId" not in p or myId not in p["wxId"]:
                 continue
-            from gui_core.dialogs import SymbolDialog
+            from grassgui.gui_core.dialogs import SymbolDialog
 
             dlg = SymbolDialog(
                 self, symbolPath=globalvar.SYMBDIR, currentSymbol=p["value"]
@@ -3326,7 +3326,7 @@ class CmdPanel(wx.Panel):
                 gcmd.GMessage(parent=self, message=_("No dataset given."))
                 return
             datasets = select.GetValue().split(",")
-            from timeline import frame
+            from grassgui.timeline import frame
 
             frame.run(parent=self, datasets=datasets)
 
@@ -3336,7 +3336,7 @@ class CmdPanel(wx.Panel):
         for p in self.task.params:
             if "wxId" not in p or myId not in p["wxId"]:
                 continue
-            from gui_core.dialogs import DefaultFontDialog
+            from grassgui.gui_core.dialogs import DefaultFontDialog
 
             dlg = DefaultFontDialog(
                 parent=self,

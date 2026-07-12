@@ -16,8 +16,8 @@ This program is free software under the GNU General Public License
 
 import os
 
-from core import globalvar
-from core.menutree import MenuTreeModelBuilder
+from grassgui.core import globalvar
+from grassgui.core.menutree import MenuTreeModelBuilder
 
 
 class PsMapMenuData(MenuTreeModelBuilder):
@@ -27,6 +27,6 @@ class PsMapMenuData(MenuTreeModelBuilder):
         :param path: path to XML to be read (None for menudata_psmap.xml)
         """
         if not path:
-            path = os.path.join(globalvar.WXGUIDIR, "xml", "menudata_psmap.xml")
+            path = os.path.join(globalvar.GUIXMLDIR, "menudata_psmap.xml")
 
         MenuTreeModelBuilder.__init__(self, path)

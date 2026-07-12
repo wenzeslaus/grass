@@ -23,12 +23,12 @@ from pathlib import Path
 import wx
 import grass.script as gs
 
-from core import globalvar
-from core.gcmd import GError, RunCommand
-from core.giface import StandaloneGrassInterface
-from gui_core.gselect import Select
-from gui_core.widgets import IntegerValidator
-from gui_core.wrap import (
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GError, RunCommand
+from grassgui.core.giface import StandaloneGrassInterface
+from grassgui.gui_core.gselect import Select
+from grassgui.gui_core.widgets import IntegerValidator
+from grassgui.gui_core.wrap import (
     Button,
     ClearButton,
     CloseButton,
@@ -36,7 +36,7 @@ from gui_core.wrap import (
     StaticText,
     StaticBox,
 )
-from core.settings import UserSettings
+from grassgui.core.settings import UserSettings
 
 
 class MapCalcFrame(wx.Frame):

@@ -16,9 +16,9 @@ This program is free software under the GNU General Public License
 
 import wx
 
-from gui_core.treeview import TreeListView
-from gui_core.wrap import Button, StaticText, Menu, NewId
-from core.treemodel import TreeModel, DictNode
+from grassgui.gui_core.treeview import TreeListView
+from grassgui.gui_core.wrap import Button, StaticText, Menu, NewId
+from grassgui.core.treemodel import TreeModel, DictNode
 
 from grass.pydispatch.signal import Signal
 

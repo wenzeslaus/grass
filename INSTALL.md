@@ -133,6 +133,38 @@ names can be defined (C and C++):
 CC=cc CPP=cpp ./configure ...
 ```
 
+### Compilation with CMake
+
+On the main branch, CMake can be used instead of Autotools:
+
+```bash
+cmake -B build
+cmake --build build
+cmake --install build
+```
+
+Optional dependencies are controlled by `WITH_*` options; see
+`CMakeLists.txt` for the full list. Use `-DCMAKE_INSTALL_PREFIX=<path>`
+at configure time to select the installation prefix.
+
+By default, the CMake build installs into a single self-contained
+directory tree (the same layout as Autotools, with everything under
+`<prefix>/lib/grass<MM>`, i.e. `GISBASE`). With `-DWITH_FHS=ON`, the
+installation instead follows the Filesystem Hierarchy Standard:
+executables under `libexec/grass` with the startup script in `bin`,
+libraries in the standard library directory, the Python packages
+(`grass` and the GUI's `grassgui`) in `site-packages` (override with
+`-DGRASS_INSTALL_PYDIR=<prefix-relative path>`), architecture-independent
+data in `share/grass`, translations in `share/locale`, documentation in
+`share/doc`, and man pages in `share/man`.
+
+With either layout, tools locate resources through `GRASS_*` environment
+variables (e.g. `GRASS_ETCDIR`, `GRASS_LOCALEDIR`) which the session
+setup exports based on values recorded at build time. Code that creates
+a GRASS runtime environment by hand from `GISBASE` alone must be updated
+to set these variables, for example by using `grass.script.setup` or
+`grass.app.runtime.RuntimePaths`.
+
 ## (C) COMPILATION NOTES for 64bit platforms
 
 To successfully compile GRASS on 64bit platforms, the required

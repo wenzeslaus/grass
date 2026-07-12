@@ -25,18 +25,18 @@ import wx.aui
 import grass.script as gs
 import grass.temporal as tgis
 from grass.exceptions import FatalError
-from core import globalvar
-from gui_core.widgets import IntegerValidator
-from gui_core.wrap import StaticText, TextCtrl, Slider
-from core.gcmd import RunCommand, GWarning
+from grassgui.core import globalvar
+from grassgui.gui_core.widgets import IntegerValidator
+from grassgui.gui_core.wrap import StaticText, TextCtrl, Slider
+from grassgui.core.gcmd import RunCommand, GWarning
 
-from animation.mapwindow import AnimationWindow
-from animation.provider import BitmapProvider, BitmapPool, MapFilesPool, CleanUp
-from animation.controller import AnimationController
-from animation.anim import Animation
-from animation.toolbars import MainToolbar, AnimationToolbar, MiscToolbar
-from animation.dialogs import SpeedDialog, PreferencesDialog
-from animation.utils import Orientation, ReplayMode, TemporalType
+from grassgui.animation.mapwindow import AnimationWindow
+from grassgui.animation.provider import BitmapProvider, BitmapPool, MapFilesPool, CleanUp
+from grassgui.animation.controller import AnimationController
+from grassgui.animation.anim import Animation
+from grassgui.animation.toolbars import MainToolbar, AnimationToolbar, MiscToolbar
+from grassgui.animation.dialogs import SpeedDialog, PreferencesDialog
+from grassgui.animation.utils import Orientation, ReplayMode, TemporalType
 
 
 MAX_COUNT = 4

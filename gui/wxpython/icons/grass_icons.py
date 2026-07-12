@@ -9,7 +9,7 @@ __author__ = "Robert Szczepanek"
 import os
 from pathlib import Path
 
-from core import globalvar
+from grassgui.core import globalvar
 
 iconPath = os.path.join(globalvar.ICONDIR, "grass")
 iconPathObj = Path(iconPath)

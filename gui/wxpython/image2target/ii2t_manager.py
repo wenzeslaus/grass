@@ -42,7 +42,7 @@ from typing import TYPE_CHECKING
 
 import wx
 import wx.lib.colourselect as csel
-from core import globalvar
+from grassgui.core import globalvar
 from wx.lib.mixins.listctrl import ColumnSorterMixin, ListCtrlAutoWidthMixin
 
 if globalvar.wxPythonPhoenix or TYPE_CHECKING:
@@ -54,16 +54,16 @@ import grass.script as gs
 
 # isort: split
 
-from core import utils
-from core.gcmd import GError, GMessage, GWarning, RunCommand
-from core.giface import Notification
-from core.render import Map
-from core.settings import UserSettings
-from gcp.mapdisplay import MapPanel
-from gui_core.dialogs import GroupDialog
-from gui_core.gselect import LocationSelect, MapsetSelect, Select
-from gui_core.mapdisp import FrameMixin
-from gui_core.wrap import (
+from grassgui.core import utils
+from grassgui.core.gcmd import GError, GMessage, GWarning, RunCommand
+from grassgui.core.giface import Notification
+from grassgui.core.render import Map
+from grassgui.core.settings import UserSettings
+from grassgui.gcp.mapdisplay import MapPanel
+from grassgui.gui_core.dialogs import GroupDialog
+from grassgui.gui_core.gselect import LocationSelect, MapsetSelect, Select
+from grassgui.gui_core.mapdisp import FrameMixin
+from grassgui.gui_core.wrap import (
     BitmapFromImage,
     Button,
     CheckListBox,
@@ -75,7 +75,7 @@ from gui_core.wrap import (
     StaticText,
     TextCtrl,
 )
-from location_wizard.wizard import GridBagSizerTitledPage as TitledPage
+from grassgui.location_wizard.wizard import GridBagSizerTitledPage as TitledPage
 
 if TYPE_CHECKING:
     from wx.adv import WizardEvent

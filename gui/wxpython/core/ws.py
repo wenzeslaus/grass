@@ -27,8 +27,8 @@ from grass.script.utils import try_remove
 from grass.script import core as grass
 from grass.exceptions import CalledModuleError
 
-from core.debug import Debug
-from core.gthread import gThread
+from grassgui.core.debug import Debug
+from grassgui.core.gthread import gThread
 
 try:
     haveGdal = True

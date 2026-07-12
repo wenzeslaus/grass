@@ -20,15 +20,15 @@ import wx
 from grass import script as gs
 from grass.pydispatch.signal import Signal
 
-from gui_core.toolbars import BaseToolbar, BaseIcons
-from gui_core.dialogs import CreateNewVector, VectorDialog
-from gui_core.wrap import PseudoDC, Menu
-from vdigit.preferences import VDigitSettingsDialog
-from core.debug import Debug
-from core.settings import UserSettings
-from core.gcmd import GError, RunCommand
-from icons.icon import MetaIcon
-from core.giface import Notification
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.gui_core.dialogs import CreateNewVector, VectorDialog
+from grassgui.gui_core.wrap import PseudoDC, Menu
+from grassgui.vdigit.preferences import VDigitSettingsDialog
+from grassgui.core.debug import Debug
+from grassgui.core.settings import UserSettings
+from grassgui.core.gcmd import GError, RunCommand
+from grassgui.icons.icon import MetaIcon
+from grassgui.core.giface import Notification
 
 
 class VDigitToolbar(BaseToolbar):

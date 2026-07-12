@@ -27,19 +27,19 @@ from collections import deque
 from pathlib import Path
 
 import wx
-from core import globalvar
+from grassgui.core import globalvar
 import wx.lib.filebrowsebutton as filebrowse
 
 from grass.script import core as grass
 from grass.script import task as gtask
 
-from core.gcmd import GError, GMessage, GWarning, RunCommand
-from gui_core.forms import CmdPanel
-from gui_core.gselect import GdalSelect
-from gui_core.widgets import GListCtrl, GNotebook, LayersList, LayersListValidator
-from gui_core.wrap import Button, CloseButton, StaticText, StaticBox
-from core.utils import GetValidLayerName
-from core.settings import UserSettings, GetDisplayVectSettings
+from grassgui.core.gcmd import GError, GMessage, GWarning, RunCommand
+from grassgui.gui_core.forms import CmdPanel
+from grassgui.gui_core.gselect import GdalSelect
+from grassgui.gui_core.widgets import GListCtrl, GNotebook, LayersList, LayersListValidator
+from grassgui.gui_core.wrap import Button, CloseButton, StaticText, StaticBox
+from grassgui.core.utils import GetValidLayerName
+from grassgui.core.settings import UserSettings, GetDisplayVectSettings
 
 
 class ImportDialog(wx.Dialog):

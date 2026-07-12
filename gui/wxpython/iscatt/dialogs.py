@@ -19,16 +19,16 @@ This program is free software under the GNU General Public License
 """
 
 import wx
-from gui_core.gselect import Select
+from grassgui.gui_core.gselect import Select
 import wx.lib.colourselect as csel
 
 import grass.script as gs
 
-from core import globalvar
-from core.gcmd import GMessage
-from core.settings import UserSettings
-from gui_core.dialogs import SimpleDialog
-from gui_core.wrap import SpinCtrl, Button, StaticText, StaticBox, TextCtrl
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GMessage
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.dialogs import SimpleDialog
+from grassgui.gui_core.wrap import SpinCtrl, Button, StaticText, StaticBox, TextCtrl
 
 
 class AddScattPlotDialog(wx.Dialog):

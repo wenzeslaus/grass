@@ -38,20 +38,20 @@ from grass.script import core as grass
 from grass.script.utils import naturally_sorted, try_remove
 
 from grass.pydispatch.signal import Signal
-from core import globalvar
-from core.gcmd import GError, RunCommand, GMessage
-from gui_core.gselect import (
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GError, RunCommand, GMessage
+from grassgui.gui_core.gselect import (
     LocationSelect,
     MapsetSelect,
     Select,
     OgrTypeSelect,
     SubGroupSelect,
 )
-from gui_core.widgets import SingleSymbolPanel, SimpleValidator, MapValidator
-from core.settings import UserSettings
-from core.debug import Debug
-from core.utils import is_shell_running
-from gui_core.wrap import (
+from grassgui.gui_core.widgets import SingleSymbolPanel, SimpleValidator, MapValidator
+from grassgui.core.settings import UserSettings
+from grassgui.core.debug import Debug
+from grassgui.core.utils import is_shell_running
+from grassgui.gui_core.wrap import (
     Button,
     CheckListBox,
     EmptyBitmap,

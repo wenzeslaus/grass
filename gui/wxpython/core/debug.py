@@ -7,7 +7,7 @@ Classes:
  - debug::DebugMsg
 
 @code
-from core.debug import Debug
+from grassgui.core.debug import Debug
 Debug.msg (3, 'debug message')
 @endcode
 

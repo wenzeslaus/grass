@@ -5,33 +5,33 @@ file(GLOB FLAGS_ICONS "flags/*.png")
 add_custom_target(
   make_gui_icons_dirs
   COMMAND ${CMAKE_COMMAND} -E make_directory
-          ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/icons/grass
+          ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/icons/grass
   COMMAND ${CMAKE_COMMAND} -E make_directory
-          ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/icons/flags
+          ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/icons/flags
   COMMAND ${CMAKE_COMMAND} -E make_directory
           ${OUTDIR}/${GRASS_INSTALL_DOCDIR}/icons
   COMMAND ${CMAKE_COMMAND} -E make_directory
-          ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/images/symbols)
+          ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/images/symbols)
 set_target_properties(make_gui_icons_dirs PROPERTIES FOLDER GUI)
 
 set(output_icons)
 foreach(ICON ${GUI_ICONS})
   get_filename_component(FILE_NAME ${ICON} NAME)
   add_custom_command(
-    OUTPUT ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/icons/${FILE_NAME}
+    OUTPUT ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/icons/${FILE_NAME}
     COMMAND ${CMAKE_COMMAND} -E copy ${ICON}
-            ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/icons)
-  list(APPEND output_icons ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/icons/${FILE_NAME})
+            ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/icons)
+  list(APPEND output_icons ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/icons/${FILE_NAME})
 endforeach()
 
 foreach(ICON ${GRASS_ICONS})
   get_filename_component(FILE_NAME ${ICON} NAME)
   add_custom_command(
-    OUTPUT ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/icons/grass/${FILE_NAME}
+    OUTPUT ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/icons/grass/${FILE_NAME}
     COMMAND ${CMAKE_COMMAND} -E copy ${ICON}
-            ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/icons/grass)
+            ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/icons/grass)
   list(APPEND output_icons
-       ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/icons/grass/${FILE_NAME})
+       ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/icons/grass/${FILE_NAME})
 
   add_custom_command(
     OUTPUT ${OUTDIR}/${GRASS_INSTALL_DOCDIR}/icons/${FILE_NAME}
@@ -43,19 +43,19 @@ endforeach()
 foreach(ICON ${FLAGS_ICONS})
   get_filename_component(FILE_NAME ${ICON} NAME)
   add_custom_command(
-    OUTPUT ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/icons/flags/${FILE_NAME}
+    OUTPUT ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/icons/flags/${FILE_NAME}
     COMMAND ${CMAKE_COMMAND} -E copy ${ICON}
-            ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/icons/flags)
+            ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/icons/flags)
   list(APPEND output_icons
-       ${OUTDIR}/${GRASS_INSTALL_GUIDIR}/icons/flags/${FILE_NAME})
+       ${OUTDIR}/${GRASS_INSTALL_GUIRESDIR}/icons/flags/${FILE_NAME})
 endforeach()
 
 add_custom_target(gui_icons DEPENDS make_gui_icons_dirs ${output_icons})
 set_target_properties(gui_icons PROPERTIES FOLDER GUI)
 
-install(FILES ${GUI_ICONS} DESTINATION ${GRASS_INSTALL_GUIDIR}/icons)
-install(FILES ${GRASS_ICONS} DESTINATION ${GRASS_INSTALL_GUIDIR}/icons/grass)
-install(FILES ${FLAGS_ICONS} DESTINATION ${GRASS_INSTALL_GUIDIR}/icons/flags)
+install(FILES ${GUI_ICONS} DESTINATION ${GRASS_INSTALL_GUIRESDIR}/icons)
+install(FILES ${GRASS_ICONS} DESTINATION ${GRASS_INSTALL_GUIRESDIR}/icons/grass)
+install(FILES ${FLAGS_ICONS} DESTINATION ${GRASS_INSTALL_GUIRESDIR}/icons/flags)
 install(FILES ${GRASS_ICONS} DESTINATION ${GRASS_INSTALL_DOCDIR}/icons)
 install(FILES grass.desktop DESTINATION ${GRASS_INSTALL_SHAREDIR}/applications)
 foreach(

@@ -35,6 +35,22 @@ $(DSTDIR)/resource_paths.py: resource_paths.py
 	-e 's#@GRASS_VERSION_NUMBER@#$(GRASS_VERSION_NUMBER)#' \
 	-e 's#@LD_LIBRARY_PATH_VAR@#$(LD_LIBRARY_PATH_VAR)#' \
 	-e 's#@START_UP@#$(GRASS_NAME)#' \
+	-e 's#@GRASS_COLORSDIR@#etc/colors#' \
+	-e 's#@GRASS_DOCDIR@#docs/html#' \
+	-e 's#@GRASS_ETCBINDIR@#etc#' \
+	-e 's#@GRASS_ETCDIR@#etc#' \
+	-e 's#@GRASS_FONTSDIR@#fonts#' \
+	-e 's#@GRASS_GRAPHICSDIR@#docs/html#' \
+	-e 's#@GRASS_GUIRESDIR@#gui#' \
+	-e 's#@GRASS_GUISCRIPTDIR@#gui/scripts#' \
+	-e 's#@GRASS_GUIWXDIR@#gui/wxpython#' \
+	-e 's#@GRASS_GUIXMLDIR@#gui/wxpython/xml#' \
+	-e 's#@GRASS_LIBDIR@#lib#' \
+	-e 's#@GRASS_LOCALEDIR@#locale#' \
+	-e 's#@GRASS_MANDIR@#docs/man/man1#' \
+	-e 's#@GRASS_MISCDIR@##' \
+	-e 's#@GRASS_MKDOCSDIR@#docs/mkdocs#' \
+	-e 's#@GRASS_PYDIR@#etc/python#' \
 	$< > $@
 
 $(ARCH_DISTDIR)/resource_paths.py:

@@ -8,7 +8,7 @@
 
 Usage:
 
-    from core.units import Units
+    from grassgui.core.units import Units
 
 Classes:
  - units::BaseUnits
@@ -209,7 +209,7 @@ def doc_test():
     :return: a number of failed tests
     """
     import doctest
-    from core.utils import do_doctest_gettext_workaround
+    from grassgui.core.utils import do_doctest_gettext_workaround
 
     do_doctest_gettext_workaround()
     return doctest.testmod().failed

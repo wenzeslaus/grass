@@ -28,33 +28,33 @@ import copy
 import os
 from typing import TYPE_CHECKING
 
-from core import globalvar
+from grassgui.core import globalvar
 
 # isort: split
 import wx
 import wx.aui
-from core.debug import Debug
-from core.gcmd import GError, GMessage, RunCommand
-from core.giface import Notification
-from core.settings import UserSettings
-from core.utils import GetLayerNameFromCmd, ListOfCatsToRange
-from gui_core.dialogs import GetImageHandlers, ImageSizeDialog
-from gui_core.forms import GUI
-from gui_core.mapdisp import FrameMixin, SingleMapPanel
-from gui_core.query import PrepareQueryResults, QueryDialog
-from gui_core.vselect import VectorSelectBase, VectorSelectHighlighter
-from gui_core.wrap import Menu
-from main_window.page import MainPageBase
-from mapdisp import statusbar as sb
-from mapdisp.gprint import PrintOptions
-from mapdisp.toolbars import MapToolbar, NvizIcons
-from mapwin.analysis import (
+from grassgui.core.debug import Debug
+from grassgui.core.gcmd import GError, GMessage, RunCommand
+from grassgui.core.giface import Notification
+from grassgui.core.settings import UserSettings
+from grassgui.core.utils import GetLayerNameFromCmd, ListOfCatsToRange
+from grassgui.gui_core.dialogs import GetImageHandlers, ImageSizeDialog
+from grassgui.gui_core.forms import GUI
+from grassgui.gui_core.mapdisp import FrameMixin, SingleMapPanel
+from grassgui.gui_core.query import PrepareQueryResults, QueryDialog
+from grassgui.gui_core.vselect import VectorSelectBase, VectorSelectHighlighter
+from grassgui.gui_core.wrap import Menu
+from grassgui.main_window.page import MainPageBase
+from grassgui.mapdisp import statusbar as sb
+from grassgui.mapdisp.gprint import PrintOptions
+from grassgui.mapdisp.toolbars import MapToolbar, NvizIcons
+from grassgui.mapwin.analysis import (
     MeasureAreaController,
     MeasureDistanceController,
     ProfileController,
 )
-from mapwin.buffered import BufferedMapWindow
-from mapwin.decorations import (
+from grassgui.mapwin.buffered import BufferedMapWindow
+from grassgui.mapwin.decorations import (
     ArrowController,
     BarscaleController,
     DtextController,
@@ -67,8 +67,8 @@ from grass.pydispatch.signal import Signal
 from grass.exceptions import ScriptError
 
 if TYPE_CHECKING:
-    import lmgr.frame
-    import main_window.frame
+    import grassgui.lmgr.frame
+    import grassgui.main_window.frame
 
 
 class MapPanel(SingleMapPanel, MainPageBase):
@@ -84,7 +84,7 @@ class MapPanel(SingleMapPanel, MainPageBase):
         toolbars=["map"],
         statusbar=True,
         tree=None,
-        lmgr: main_window.frame.GMFrame | lmgr.frame.GMFrame | None = None,
+        lmgr: grassgui.main_window.frame.GMFrame | grassgui.lmgr.frame.GMFrame | None = None,
         Map=None,
         auimgr=None,
         dockable=False,
@@ -304,11 +304,11 @@ class MapPanel(SingleMapPanel, MainPageBase):
 
     def _addToolbarVDigit(self):
         """Add vector digitizer toolbar"""
-        from vdigit.main import VDigit, haveVDigit
-        from vdigit.toolbars import VDigitToolbar
+        from grassgui.vdigit.main import VDigit, haveVDigit
+        from grassgui.vdigit.toolbars import VDigitToolbar
 
         if not haveVDigit:
-            from vdigit import errorMsg
+            from grassgui.vdigit import errorMsg
 
             self.toolbars["map"].combo.SetValue(_("2D view"))
 
@@ -319,7 +319,7 @@ class MapPanel(SingleMapPanel, MainPageBase):
             return
 
         if not self.MapWindowVDigit:
-            from vdigit.mapwindow import VDigitWindow
+            from grassgui.vdigit.mapwindow import VDigitWindow
 
             self.MapWindowVDigit = VDigitWindow(
                 parent=self,
@@ -409,7 +409,7 @@ class MapPanel(SingleMapPanel, MainPageBase):
 
     def AddNviz(self):
         """Add 3D view mode window"""
-        from nviz.main import GLWindow, errorMsg, haveNviz
+        from grassgui.nviz.main import GLWindow, errorMsg, haveNviz
 
         # check for GLCanvas and OpenGL
         if not haveNviz:
@@ -1268,7 +1268,7 @@ class MapPanel(SingleMapPanel, MainPageBase):
 
     def Profile(self, rasters=None):
         """Launch profile tool"""
-        from wxplot.profile import ProfileFrame
+        from grassgui.wxplot.profile import ProfileFrame
 
         self.profileController = ProfileController(
             self._giface, mapWindow=self.GetMapWindow()
@@ -1293,7 +1293,7 @@ class MapPanel(SingleMapPanel, MainPageBase):
             if layer.maplayer.GetType() == "raster"
         ]
 
-        from wxplot.histogram import HistogramPlotFrame
+        from grassgui.wxplot.histogram import HistogramPlotFrame
 
         win = HistogramPlotFrame(parent=self, giface=self._giface, rasterList=raster)
         win.CentreOnParent()
@@ -1307,7 +1307,7 @@ class MapPanel(SingleMapPanel, MainPageBase):
             if layer.maplayer.GetType() == "raster"
         ]
 
-        from wxplot.scatter import ScatterFrame
+        from grassgui.wxplot.scatter import ScatterFrame
 
         win = ScatterFrame(parent=self, giface=self._giface, rasterList=raster)
 
@@ -1319,7 +1319,7 @@ class MapPanel(SingleMapPanel, MainPageBase):
 
     def OnHistogram(self, event):
         """Init histogram display canvas and tools"""
-        from modules.histogram import HistogramFrame
+        from grassgui.modules.histogram import HistogramFrame
 
         win = HistogramFrame(self, giface=self._giface)
 
@@ -1586,7 +1586,7 @@ class MapPanel(SingleMapPanel, MainPageBase):
             self.dialogs["vnet"].Raise()
             return
 
-        from vnet.dialogs import VNETDialog
+        from grassgui.vnet.dialogs import VNETDialog
 
         self.dialogs["vnet"] = VNETDialog(parent=self, giface=self._giface)
         self.closingVNETDialog.connect(self.dialogs["vnet"].OnCloseDialog)
@@ -1611,8 +1611,8 @@ class MapPanel(SingleMapPanel, MainPageBase):
     def AddRDigit(self):
         """Adds raster digitizer: creates toolbar and digitizer controller,
         binds events and signals."""
-        from rdigit.controller import EVT_UPDATE_PROGRESS, RDigitController
-        from rdigit.toolbars import RDigitToolbar
+        from grassgui.rdigit.controller import EVT_UPDATE_PROGRESS, RDigitController
+        from grassgui.rdigit.toolbars import RDigitToolbar
 
         self.rdigit = RDigitController(self._giface, mapWindow=self.GetMapWindow())
         self.toolbars["rdigit"] = RDigitToolbar(

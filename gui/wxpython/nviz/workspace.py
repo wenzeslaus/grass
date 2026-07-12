@@ -16,10 +16,10 @@ This program is free software under the GNU General Public License
 
 import copy
 
-from core.settings import UserSettings
+from grassgui.core.settings import UserSettings
 
 try:
-    from nviz import wxnviz
+    from grassgui.nviz import wxnviz
 except ImportError:
     wxnviz = None
 

@@ -39,8 +39,8 @@ from threading import Thread
 from typing import TYPE_CHECKING, AnyStr, TextIO, overload
 
 import wx
-from core.debug import Debug
-from core.globalvar import SCT_EXT
+from grassgui.core.debug import Debug
+from grassgui.core.globalvar import SCT_EXT
 
 from grass.script import core as grass
 from grass.script.utils import decode, encode

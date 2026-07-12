@@ -44,7 +44,7 @@ def main():
 
     set_gui_path()
 
-    from psmap.frame import PsMapFrame
+    from grassgui.psmap.frame import PsMapFrame
 
     app = wx.App()
     frame = PsMapFrame(

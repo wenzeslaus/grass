@@ -18,21 +18,21 @@ This program is free software under the GNU General Public License
 import os
 import platform
 
-from core import globalvar
+from grassgui.core import globalvar
 import wx
 import wx.aui
 
-from mapdisp.toolbars import MapToolbar
-from gcp.toolbars import GCPDisplayToolbar, GCPManToolbar
-from mapdisp.gprint import PrintOptions
-from core.gcmd import GMessage
-from gui_core.dialogs import GetImageHandlers, ImageSizeDialog
-from gui_core.mapdisp import SingleMapPanel
-from gui_core.wrap import Menu
-from mapwin.buffered import BufferedMapWindow
+from grassgui.mapdisp.toolbars import MapToolbar
+from grassgui.gcp.toolbars import GCPDisplayToolbar, GCPManToolbar
+from grassgui.mapdisp.gprint import PrintOptions
+from grassgui.core.gcmd import GMessage
+from grassgui.gui_core.dialogs import GetImageHandlers, ImageSizeDialog
+from grassgui.gui_core.mapdisp import SingleMapPanel
+from grassgui.gui_core.wrap import Menu
+from grassgui.mapwin.buffered import BufferedMapWindow
 
-import mapdisp.statusbar as sb
-import gcp.statusbar as sbgcp
+import grassgui.mapdisp.statusbar as sb
+import grassgui.gcp.statusbar as sbgcp
 
 # for standalone app
 cmdfilename = None

@@ -25,10 +25,10 @@ from grass.script import raster as grast
 from grass.exceptions import CalledModuleError, ScriptError
 from grass.pydispatch.signal import Signal
 
-from core.gcmd import GError, GMessage
-from core.settings import UserSettings
-from core.gthread import gThread
-from rdigit.dialogs import NewRasterDialog
+from grassgui.core.gcmd import GError, GMessage
+from grassgui.core.settings import UserSettings
+from grassgui.core.gthread import gThread
+from grassgui.rdigit.dialogs import NewRasterDialog
 
 updateProgress, EVT_UPDATE_PROGRESS = NewEvent()
 

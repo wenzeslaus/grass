@@ -19,21 +19,21 @@ import tempfile
 
 from grass.pydispatch.signal import Signal
 
-from dbmgr.dialogs import DisplayAttributesDialog
-from core.gcmd import RunCommand, GMessage, GError
-from core.debug import Debug
-from mapwin.buffered import BufferedMapWindow
-from core.settings import UserSettings
-from core.utils import ListOfCatsToRange
-from core.units import ConvertValue as UnitsConvertValue
-from core.globalvar import QUERYLAYER
-from vdigit.dialogs import (
+from grassgui.dbmgr.dialogs import DisplayAttributesDialog
+from grassgui.core.gcmd import RunCommand, GMessage, GError
+from grassgui.core.debug import Debug
+from grassgui.mapwin.buffered import BufferedMapWindow
+from grassgui.core.settings import UserSettings
+from grassgui.core.utils import ListOfCatsToRange
+from grassgui.core.units import ConvertValue as UnitsConvertValue
+from grassgui.core.globalvar import QUERYLAYER
+from grassgui.vdigit.dialogs import (
     VDigitCategoryDialog,
     VDigitZBulkDialog,
     VDigitDuplicatesDialog,
 )
-from gui_core import gselect
-from gui_core.wrap import PseudoDC, NewId
+from grassgui.gui_core import gselect
+from grassgui.gui_core.wrap import PseudoDC, NewId
 
 
 class VDigitWindow(BufferedMapWindow):

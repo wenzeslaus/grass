@@ -28,7 +28,7 @@ try:
     hasPIL = True
 except ImportError:
     hasPIL = False
-from gui_core.wrap import NewId
+from grassgui.gui_core.wrap import NewId
 
 
 class OverlayController:

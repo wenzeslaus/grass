@@ -9,9 +9,6 @@ set(data_files
     ${CMAKE_CURRENT_SOURCE_DIR}/parser_standard_options.js)
 install(FILES ${data_files} DESTINATION ${GRASS_INSTALL_DOCDIR})
 
-# TODO(FHS): remove this if condition
-if(NOT WITH_FHS)
-
 string(TIMESTAMP YEAR %Y)
 add_custom_target(
   build_full_index
@@ -114,5 +111,3 @@ add_custom_target(
   DEPENDS ${category_targets} build_class_graphical ALL_MODULES LIB_PYTHON GUI_WXPYTHON
   COMMENT "man generation: check output")
 set_target_properties(build_check PROPERTIES FOLDER Man)
-
-endif() # NOT WITH_FHS

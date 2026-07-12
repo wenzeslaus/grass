@@ -32,7 +32,7 @@ try:
 except ImportError:
     import wx.lib.customtreectrl as CT
 
-from core.globalvar import CheckWxVersion, gtk3, wxPythonPhoenix
+from grassgui.core.globalvar import CheckWxVersion, gtk3, wxPythonPhoenix
 
 if wxPythonPhoenix:
     import wx.adv

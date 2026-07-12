@@ -15,9 +15,9 @@ This program is free software under the GNU General Public License
 """
 
 import wx
-from gui_core.toolbars import BaseToolbar
-from gui_core.wrap import SearchCtrl
-from icons.icon import MetaIcon
+from grassgui.gui_core.toolbars import BaseToolbar
+from grassgui.gui_core.wrap import SearchCtrl
+from grassgui.icons.icon import MetaIcon
 
 icons = {
     "reloadTree": MetaIcon(img="redraw", label=_("Reload GRASS projects")),

@@ -26,7 +26,7 @@ This program is free software under the GNU General Public License
 import os
 
 import wx
-from core import globalvar
+from grassgui.core import globalvar
 
 if globalvar.wxPythonPhoenix:
     try:
@@ -36,10 +36,10 @@ if globalvar.wxPythonPhoenix:
 else:
     import wx.lib.flatnotebook as FN
 
-from core.gcmd import GMessage
-from dbmgr.base import DbMgrBase
-from gui_core.widgets import GNotebook
-from gui_core.wrap import Button, ClearButton, CloseButton
+from grassgui.core.gcmd import GMessage
+from grassgui.dbmgr.base import DbMgrBase
+from grassgui.gui_core.widgets import GNotebook
+from grassgui.gui_core.wrap import Button, ClearButton, CloseButton
 
 
 class AttributeManager(wx.Frame, DbMgrBase):

@@ -58,7 +58,7 @@ import re
 from bisect import bisect
 from datetime import datetime
 from pathlib import Path
-from core.globalvar import wxPythonPhoenix
+from grassgui.core.globalvar import wxPythonPhoenix
 
 import wx
 import wx.lib.mixins.listctrl as listmix
@@ -88,10 +88,10 @@ from grass.script import core as grass
 
 from grass.pydispatch.signal import Signal
 
-from core import globalvar
-from core.gcmd import GMessage, GError
-from core.debug import Debug
-from gui_core.wrap import (
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GMessage, GError
+from grassgui.core.debug import Debug
+from grassgui.gui_core.wrap import (
     Button,
     SearchCtrl,
     Slider,
@@ -1752,7 +1752,7 @@ class ColorTablesComboBox(PictureComboBox):
 
     def _getPath(self, name):
         return os.path.join(
-            os.getenv("GISBASE"), "docs", "html", "colortables", "%s.png" % name
+            os.getenv("GRASS_GRAPHICSDIR"), "colortables", "%s.png" % name
         )
 
 
@@ -1760,9 +1760,7 @@ class BarscalesComboBox(PictureComboBox):
     """ComboBox with barscales for d.barscale."""
 
     def _getPath(self, name):
-        return os.path.join(
-            os.getenv("GISBASE"), "docs", "html", "barscales", name + ".png"
-        )
+        return os.path.join(os.getenv("GRASS_GRAPHICSDIR"), "barscales", name + ".png")
 
 
 class NArrowsComboBox(PictureComboBox):
@@ -1770,7 +1768,7 @@ class NArrowsComboBox(PictureComboBox):
 
     def _getPath(self, name):
         return os.path.join(
-            os.getenv("GISBASE"), "docs", "html", "northarrows", "%s.png" % name
+            os.getenv("GRASS_GRAPHICSDIR"), "northarrows", "%s.png" % name
         )
 
 

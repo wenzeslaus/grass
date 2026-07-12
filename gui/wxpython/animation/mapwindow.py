@@ -16,8 +16,8 @@ This program is free software under the GNU General Public License
 """
 
 import wx
-from core.debug import Debug
-from gui_core.wrap import BitmapFromImage, EmptyBitmap, ImageFromBitmap, PseudoDC, Rect
+from grassgui.core.debug import Debug
+from grassgui.gui_core.wrap import BitmapFromImage, EmptyBitmap, ImageFromBitmap, PseudoDC, Rect
 from .utils import ComputeScaledRect
 
 

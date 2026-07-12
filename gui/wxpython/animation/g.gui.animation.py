@@ -67,10 +67,10 @@ def main():
 
     set_gui_path()
 
-    from core.giface import StandaloneGrassInterface
-    from core.layerlist import LayerList
-    from animation.frame import AnimationFrame, MAX_COUNT
-    from animation.data import AnimLayer
+    from grassgui.core.giface import StandaloneGrassInterface
+    from grassgui.core.layerlist import LayerList
+    from grassgui.animation.frame import AnimationFrame, MAX_COUNT
+    from grassgui.animation.data import AnimLayer
 
     rast = options["raster"]
     vect = options["vector"]

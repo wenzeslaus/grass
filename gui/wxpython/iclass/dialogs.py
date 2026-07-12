@@ -26,13 +26,13 @@ import wx
 import wx.lib.mixins.listctrl as listmix
 import wx.lib.scrolledpanel as scrolled
 
-from core import globalvar
-from core.settings import UserSettings
-from core.gcmd import GError, RunCommand, GMessage
-from gui_core.dialogs import SimpleDialog, GroupDialog
-from gui_core import gselect
-from gui_core.widgets import SimpleValidator
-from gui_core.wrap import (
+from grassgui.core import globalvar
+from grassgui.core.settings import UserSettings
+from grassgui.core.gcmd import GError, RunCommand, GMessage
+from grassgui.gui_core.dialogs import SimpleDialog, GroupDialog
+from grassgui.gui_core import gselect
+from grassgui.gui_core.widgets import SimpleValidator
+from grassgui.gui_core.wrap import (
     CheckBox,
     Button,
     StaticText,

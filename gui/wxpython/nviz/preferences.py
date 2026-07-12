@@ -22,10 +22,10 @@ import copy
 import wx
 import wx.lib.colourselect as csel
 
-from core import globalvar
-from core.settings import UserSettings
-from gui_core.preferences import PreferencesBaseDialog
-from gui_core.wrap import SpinCtrl, CheckBox, StaticText, StaticBox
+from grassgui.core import globalvar
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.preferences import PreferencesBaseDialog
+from grassgui.gui_core.wrap import SpinCtrl, CheckBox, StaticText, StaticBox
 
 
 class NvizPreferencesDialog(PreferencesBaseDialog):

@@ -18,8 +18,8 @@ import sys
 
 import wx
 
-from gui_core.toolbars import BaseToolbar, BaseIcons
-from icons.icon import MetaIcon
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.icons.icon import MetaIcon
 
 
 class PsMapToolbar(BaseToolbar):
@@ -58,7 +58,7 @@ class PsMapToolbar(BaseToolbar):
 
         self.Realize()
 
-        from psmap.frame import havePILImage
+        from grassgui.psmap.frame import havePILImage
 
         if not havePILImage:
             self.EnableTool(self.preview, False)

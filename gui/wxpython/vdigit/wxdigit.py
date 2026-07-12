@@ -31,9 +31,9 @@ import sys
 from ctypes import byref, c_double, c_int, create_string_buffer, pointer
 
 import grass.script.core as grass
-from core.debug import Debug
-from core.gcmd import GError
-from core.settings import UserSettings
+from grassgui.core.debug import Debug
+from grassgui.core.gcmd import GError
+from grassgui.core.settings import UserSettings
 
 try:
     from grass.lib.dbmi import (
@@ -171,7 +171,7 @@ try:
 except (ImportError, OSError, TypeError) as e:
     print("wxdigit.py: {}".format(e), file=sys.stderr)
 from grass.pydispatch.signal import Signal
-from vdigit.wxdisplay import DisplayDriver, GetLastError
+from grassgui.vdigit.wxdisplay import DisplayDriver, GetLastError
 
 
 class VDigitError:

@@ -57,10 +57,10 @@ def main():
 
     set_gui_path()
 
-    from core.settings import UserSettings
-    from core.giface import StandaloneGrassInterface
-    from core import globalvar
-    from mapswipe.frame import SwipeMapDisplay
+    from grassgui.core.settings import UserSettings
+    from grassgui.core.giface import StandaloneGrassInterface
+    from grassgui.core import globalvar
+    from grassgui.mapswipe.frame import SwipeMapDisplay
 
     driver = UserSettings.Get(group="display", key="driver", subkey="type")
     if driver == "png":

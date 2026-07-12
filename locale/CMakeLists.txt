@@ -174,10 +174,5 @@ set_target_properties(translation_statistics PROPERTIES FOLDER Locale)
 install(DIRECTORY ${OUTDIR}/${GRASS_INSTALL_LOCALEDIR}/
         DESTINATION ${GRASS_INSTALL_LOCALEDIR})
 
-# TODO(FHS): remove this if condition
-if(NOT WITH_FHS)
-
 install(FILES ${OUTDIR}/${GRASS_INSTALL_MISCDIR}/translation_status.json
         DESTINATION ${GRASS_INSTALL_MISCDIR})
-
-endif() # NOT WITH_FHS

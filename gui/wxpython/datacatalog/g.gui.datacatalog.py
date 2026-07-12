@@ -39,8 +39,8 @@ def main():
 
     set_gui_path()
 
-    from core.giface import StandaloneGrassInterface
-    from datacatalog.frame import DataCatalogFrame
+    from grassgui.core.giface import StandaloneGrassInterface
+    from grassgui.datacatalog.frame import DataCatalogFrame
 
     app = wx.App()
 

@@ -37,7 +37,7 @@ import copy
 import math
 import functools
 
-from core import globalvar
+from grassgui.core import globalvar
 import wx
 import wx.lib.mixins.listctrl as listmix
 
@@ -53,16 +53,16 @@ import wx.lib.scrolledpanel as scrolled
 import grass.script as gs
 from grass.script.utils import decode
 
-from dbmgr.sqlbuilder import SQLBuilderSelect, SQLBuilderUpdate
-from core.gcmd import RunCommand, GException, GError, GMessage, GWarning
-from core.utils import ListOfCatsToRange
-from gui_core.dialogs import CreateNewVector
-from gui_core.widgets import GNotebook
-from dbmgr.vinfo import VectorDBInfo, GetUnicodeValue, CreateDbInfoDesc, GetDbEncoding
-from core.debug import Debug
-from dbmgr.dialogs import ModifyTableRecord, AddColumnDialog
-from core.settings import UserSettings
-from gui_core.wrap import (
+from grassgui.dbmgr.sqlbuilder import SQLBuilderSelect, SQLBuilderUpdate
+from grassgui.core.gcmd import RunCommand, GException, GError, GMessage, GWarning
+from grassgui.core.utils import ListOfCatsToRange
+from grassgui.gui_core.dialogs import CreateNewVector
+from grassgui.gui_core.widgets import GNotebook
+from grassgui.dbmgr.vinfo import VectorDBInfo, GetUnicodeValue, CreateDbInfoDesc, GetDbEncoding
+from grassgui.core.debug import Debug
+from grassgui.dbmgr.dialogs import ModifyTableRecord, AddColumnDialog
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.wrap import (
     Button,
     CheckBox,
     ComboBox,
@@ -74,7 +74,7 @@ from gui_core.wrap import (
     StaticText,
     TextCtrl,
 )
-from core.utils import cmp
+from grassgui.core.utils import cmp
 
 
 class Log:

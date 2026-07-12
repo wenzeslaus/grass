@@ -16,10 +16,10 @@ This program is free software under the GNU General Public License
 
 import wx
 
-from icons.icon import MetaIcon
-from gui_core.toolbars import BaseToolbar, BaseIcons
-from core.gcmd import RunCommand
-from iscatt.dialogs import SettingsDialog
+from grassgui.icons.icon import MetaIcon
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.core.gcmd import RunCommand
+from grassgui.iscatt.dialogs import SettingsDialog
 
 
 def get_tool_name(tool_name, tool_name_type=tuple):

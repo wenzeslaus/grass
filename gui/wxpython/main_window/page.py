@@ -16,7 +16,7 @@ This program is free software under the GNU General Public License
 """
 
 from grass.pydispatch.signal import Signal
-from gui_core.menu import MenuItem as GMenuItem, Menu as GMenu
+from grassgui.gui_core.menu import MenuItem as GMenuItem, Menu as GMenu
 
 
 class MainPageBase:

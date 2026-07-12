@@ -22,9 +22,9 @@ import wx
 import grass.script as gs
 
 import json
-from core.gcmd import RunCommand
-from core.watchdog import watchdog_used
-from gui_core.wrap import Button
+from grassgui.core.gcmd import RunCommand
+from grassgui.core.watchdog import watchdog_used
+from grassgui.gui_core.wrap import Button
 
 
 class SbMain:

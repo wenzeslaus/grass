@@ -39,16 +39,16 @@ except ImportError:
 import wx.lib.colourselect as csel
 import wx.lib.mixins.listctrl as listmix
 
-from core import globalvar
-from core.gcmd import RunCommand, GMessage
-from core.settings import UserSettings
+from grassgui.core import globalvar
+from grassgui.core.gcmd import RunCommand, GMessage
+from grassgui.core.settings import UserSettings
 
-from dbmgr.base import DbMgrBase
+from grassgui.dbmgr.base import DbMgrBase
 
-from gui_core.widgets import GNotebook
-from gui_core.goutput import GConsoleWindow
-from gui_core.gselect import Select, LayerSelect, ColumnSelect
-from gui_core.wrap import (
+from grassgui.gui_core.widgets import GNotebook
+from grassgui.gui_core.goutput import GConsoleWindow
+from grassgui.gui_core.gselect import Select, LayerSelect, ColumnSelect
+from grassgui.gui_core.wrap import (
     BitmapButton,
     BitmapFromImage,
     Button,
@@ -63,10 +63,10 @@ from gui_core.wrap import (
     TextCtrl,
 )
 
-from vnet.widgets import PointsList
-from vnet.toolbars import MainToolbar, PointListToolbar, AnalysisToolbar
-from vnet.vnet_core import VNETManager
-from vnet.vnet_utils import (
+from grassgui.vnet.widgets import PointsList
+from grassgui.vnet.toolbars import MainToolbar, PointListToolbar, AnalysisToolbar
+from grassgui.vnet.vnet_core import VNETManager
+from grassgui.vnet.vnet_utils import (
     DegreesToRadians,
     RadiansToDegrees,
     GetNearestNodeCat,

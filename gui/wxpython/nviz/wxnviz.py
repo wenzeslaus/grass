@@ -31,11 +31,11 @@ from math import sqrt
 from typing import TYPE_CHECKING, Literal, TypedDict, overload
 
 import wx
-from core.debug import Debug
-from core.gcmd import DecodeString
-from core.globalvar import wxPythonPhoenix
-from core.utils import autoCropImageFromFile
-from gui_core.wrap import Rect
+from grassgui.core.debug import Debug
+from grassgui.core.gcmd import DecodeString
+from grassgui.core.globalvar import wxPythonPhoenix
+from grassgui.core.utils import autoCropImageFromFile
+from grassgui.gui_core.wrap import Rect
 
 import grass.script as gs
 

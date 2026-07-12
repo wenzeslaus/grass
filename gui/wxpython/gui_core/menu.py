@@ -28,13 +28,13 @@ import os
 from pathlib import Path
 import wx
 
-from core import globalvar
-from core import utils
-from core.gcmd import EncodeString
-from gui_core.treeview import CTreeView
-from gui_core.wrap import Button, SearchCtrl
-from gui_core.wrap import Menu as MenuWidget
-from icons.icon import MetaIcon
+from grassgui.core import globalvar
+from grassgui.core import utils
+from grassgui.core.gcmd import EncodeString
+from grassgui.gui_core.treeview import CTreeView
+from grassgui.gui_core.wrap import Button, SearchCtrl
+from grassgui.gui_core.wrap import Menu as MenuWidget
+from grassgui.icons.icon import MetaIcon
 
 from grass.pydispatch.signal import Signal
 

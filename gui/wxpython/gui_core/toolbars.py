@@ -24,12 +24,12 @@ from pathlib import Path
 import wx
 from wx.lib.agw import aui
 
-from core import globalvar
-from core.debug import Debug
-from icons.icon import MetaIcon
+from grassgui.core import globalvar
+from grassgui.core.debug import Debug
+from grassgui.icons.icon import MetaIcon
 from collections import defaultdict
-from core.globalvar import IMGDIR
-from gui_core.wrap import ToolBar, Menu, BitmapButton, NewId
+from grassgui.core.globalvar import IMGDIR
+from grassgui.gui_core.wrap import ToolBar, Menu, BitmapButton, NewId
 
 from grass.pydispatch.signal import Signal
 

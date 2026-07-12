@@ -24,17 +24,17 @@ import wx
 import wx.lib.scrolledpanel as scrolled
 import wx.lib.mixins.listctrl as listmix
 
-from core import globalvar
-from core.gcmd import GError, GMessage
+from grassgui.core import globalvar
+from grassgui.core.gcmd import GError, GMessage
 
-from gui_core.dialogs import SetOpacityDialog
-from gui_core.wrap import StaticBox, Menu, ListCtrl
-from iscatt.controllers import ScattsManager
-from iscatt.toolbars import MainToolbar, EditingToolbar, CategoryToolbar
-from iscatt.iscatt_core import idScattToidBands
-from iscatt.dialogs import ManageBusyCursorMixin, RenameClassDialog
-from iscatt.plots import ScatterPlotWidget
-from iclass.dialogs import ContrastColor
+from grassgui.gui_core.dialogs import SetOpacityDialog
+from grassgui.gui_core.wrap import StaticBox, Menu, ListCtrl
+from grassgui.iscatt.controllers import ScattsManager
+from grassgui.iscatt.toolbars import MainToolbar, EditingToolbar, CategoryToolbar
+from grassgui.iscatt.iscatt_core import idScattToidBands
+from grassgui.iscatt.dialogs import ManageBusyCursorMixin, RenameClassDialog
+from grassgui.iscatt.plots import ScatterPlotWidget
+from grassgui.iclass.dialogs import ContrastColor
 
 try:
     from agw import aui

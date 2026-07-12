@@ -19,10 +19,10 @@ import textwrap
 import wx
 import wx.lib.colourselect as csel
 
-from gui_core.gselect import ColumnSelect
-from core.units import Units
-from core.settings import UserSettings
-from gui_core.wrap import Button, CheckBox, FloatSpin, SpinCtrl, StaticBox, StaticText
+from grassgui.gui_core.gselect import ColumnSelect
+from grassgui.core.units import Units
+from grassgui.core.settings import UserSettings
+from grassgui.gui_core.wrap import Button, CheckBox, FloatSpin, SpinCtrl, StaticBox, StaticText
 
 
 class VDigitSettingsDialog(wx.Dialog):

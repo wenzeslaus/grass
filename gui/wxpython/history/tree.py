@@ -23,20 +23,20 @@ import datetime
 
 import wx
 
-from core import globalvar
+from grassgui.core import globalvar
 
-from core.gcmd import GError, GException
-from core.utils import (
+from grassgui.core.gcmd import GError, GException
+from grassgui.core.utils import (
     parse_mapcalc_cmd,
     replace_module_cmd_special_flags,
     split,
 )
-from gui_core.forms import GUI
-from core.treemodel import TreeModel, DictFilterNode
-from gui_core.treeview import CTreeView
-from gui_core.wrap import Menu
+from grassgui.gui_core.forms import GUI
+from grassgui.core.treemodel import TreeModel, DictFilterNode
+from grassgui.gui_core.treeview import CTreeView
+from grassgui.gui_core.wrap import Menu
 
-from icons.icon import MetaIcon
+from grassgui.icons.icon import MetaIcon
 
 from grass.pydispatch.signal import Signal
 

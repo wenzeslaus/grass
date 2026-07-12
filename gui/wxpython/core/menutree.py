@@ -40,12 +40,12 @@ import xml.etree.ElementTree as ET
 
 import wx
 
-from core.treemodel import TreeModel, ModuleNode
-from core.settings import UserSettings
-from core.toolboxes import expandAddons as expAddons
-from core.toolboxes import getMessages as getToolboxMessages
-from core.toolboxes import clearMessages as clearToolboxMessages
-from core.gcmd import GError
+from grassgui.core.treemodel import TreeModel, ModuleNode
+from grassgui.core.settings import UserSettings
+from grassgui.core.toolboxes import expandAddons as expAddons
+from grassgui.core.toolboxes import getMessages as getToolboxMessages
+from grassgui.core.toolboxes import clearMessages as clearToolboxMessages
+from grassgui.core.gcmd import GError
 
 if not os.getenv("GISBASE"):
     sys.exit("GRASS is not running. Exiting...")
@@ -232,25 +232,25 @@ if __name__ == "__main__":
 
     # FIXME: cross-dependencies
     if menu == "manager":
-        from lmgr.menudata import LayerManagerMenuData
-        from core.globalvar import WXGUIDIR
+        from grassgui.lmgr.menudata import LayerManagerMenuData
+        from grassgui.core.globalvar import GUIXMLDIR
 
-        filename = os.path.join(WXGUIDIR, "xml", "menudata.xml")
+        filename = os.path.join(GUIXMLDIR, "menudata.xml")
         menudata = LayerManagerMenuData(filename)
     # FIXME: since module descriptions are used again we have now the third
     # copy of the same string (one is in modules)
     elif menu == "module_tree":
-        from lmgr.menudata import LayerManagerModuleTree
-        from core.globalvar import WXGUIDIR
+        from grassgui.lmgr.menudata import LayerManagerModuleTree
+        from grassgui.core.globalvar import GUIXMLDIR
 
-        filename = os.path.join(WXGUIDIR, "xml", "module_tree_menudata.xml")
+        filename = os.path.join(GUIXMLDIR, "module_tree_menudata.xml")
         menudata = LayerManagerModuleTree(filename)
     elif menu == "modeler":
-        from gmodeler.menudata import ModelerMenuData
+        from grassgui.gmodeler.menudata import ModelerMenuData
 
         menudata = ModelerMenuData()
     elif menu == "psmap":
-        from psmap.menudata import PsMapMenuData
+        from grassgui.psmap.menudata import PsMapMenuData
 
         menudata = PsMapMenuData()
     else:

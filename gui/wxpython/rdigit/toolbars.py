@@ -16,12 +16,12 @@ for details.
 
 import wx
 
-from gui_core.toolbars import BaseToolbar
-from icons.icon import MetaIcon
-from gui_core.widgets import FloatValidator
+from grassgui.gui_core.toolbars import BaseToolbar
+from grassgui.icons.icon import MetaIcon
+from grassgui.gui_core.widgets import FloatValidator
 import wx.lib.colourselect as csel
-from gui_core.wrap import TextCtrl, StaticText, ColourSelect
-from gui_core.toolbars import BaseIcons
+from grassgui.gui_core.wrap import TextCtrl, StaticText, ColourSelect
+from grassgui.gui_core.toolbars import BaseIcons
 
 
 rdigitIcons = {

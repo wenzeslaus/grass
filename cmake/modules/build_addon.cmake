@@ -199,7 +199,9 @@ function(_build_addon)
   else()
     find_package(GRASS REQUIRED COMPONENTS ${G_GRASSLIBS})
 
-    set(CMAKE_INSTALL_RPATH $ENV{GISBASE}/lib)
+    # The GRASS libraries live in GRASS_LIBRARY_DIR (from GRASSConfig),
+    # which is not GISBASE/lib in the FHS layout.
+    set(CMAKE_INSTALL_RPATH ${GRASS_LIBRARY_DIR})
 
     list(TRANSFORM G_GRASSLIBS PREPEND "GRASS::")
 

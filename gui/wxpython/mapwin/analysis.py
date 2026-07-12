@@ -20,9 +20,9 @@ import os
 import math
 import wx
 
-from core import units
-from core.gcmd import RunCommand
-from core.giface import Notification
+from grassgui.core import units
+from grassgui.core.gcmd import RunCommand
+from grassgui.core.giface import Notification
 
 from grass.pydispatch.signal import Signal
 from grass.script.utils import parse_key_val

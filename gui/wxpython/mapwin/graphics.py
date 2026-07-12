@@ -19,7 +19,7 @@ from copy import copy
 
 import wx
 
-from gui_core.wrap import NewId
+from grassgui.gui_core.wrap import NewId
 
 
 class GraphicsSet:

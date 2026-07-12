@@ -40,7 +40,7 @@ def main():
 
     set_gui_path()
 
-    from dbmgr.manager import AttributeManager
+    from grassgui.dbmgr.manager import AttributeManager
 
     mapName = gs.find_file(options["map"], element="vector")["fullname"]
     if not mapName:

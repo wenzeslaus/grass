@@ -45,10 +45,10 @@ from grass.script.core import create_environment
 from grass.script.utils import try_remove
 from grass.script import gisenv
 
-from core.gcmd import GError, GMessage, RunCommand
-from gui_core.dialogs import TextEntryDialog
-from location_wizard.dialogs import RegionDef
-from gui_core.widgets import GenericValidator
+from grassgui.core.gcmd import GError, GMessage, RunCommand
+from grassgui.gui_core.dialogs import TextEntryDialog
+from grassgui.location_wizard.dialogs import RegionDef
+from grassgui.gui_core.widgets import GenericValidator
 
 
 class MapsetDialog(TextEntryDialog):
@@ -160,7 +160,7 @@ def create_location_interactively(guiparent, grassdb):
     Returns tuple (database, location, mapset) where mapset is "PERMANENT"
     by default or another mapset a user created and may want to switch to.
     """
-    from location_wizard.wizard import LocationWizard
+    from grassgui.location_wizard.wizard import LocationWizard
 
     gWizard = LocationWizard(parent=guiparent, grassdatabase=grassdb)
 
@@ -321,7 +321,7 @@ def download_location_interactively(guiparent, grassdb):
     by default or in future it could be the mapset the user may want to
     switch to.
     """
-    from startup.locdownload import LocationDownloadDialog
+    from grassgui.startup.locdownload import LocationDownloadDialog
 
     result = (None, None, None)
     loc_download = LocationDownloadDialog(parent=guiparent, database=grassdb)

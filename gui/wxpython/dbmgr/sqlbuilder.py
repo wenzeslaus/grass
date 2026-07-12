@@ -28,14 +28,14 @@ This program is free software under the GNU General Public License
 import os
 import sys
 
-from core import globalvar
+from grassgui.core import globalvar
 import wx
 
 from grass.pydispatch.signal import Signal
 
-from core.gcmd import RunCommand, GError, GMessage
-from dbmgr.vinfo import CreateDbInfoDesc, VectorDBInfo, GetUnicodeValue
-from gui_core.wrap import (
+from grassgui.core.gcmd import RunCommand, GError, GMessage
+from grassgui.dbmgr.vinfo import CreateDbInfoDesc, VectorDBInfo, GetUnicodeValue
+from grassgui.gui_core.wrap import (
     ApplyButton,
     Button,
     ClearButton,

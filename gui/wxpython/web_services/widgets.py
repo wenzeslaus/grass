@@ -22,7 +22,7 @@ import sys
 import shutil
 
 from copy import deepcopy
-from core import globalvar
+from grassgui.core import globalvar
 
 from xml.etree.ElementTree import ParseError
 
@@ -37,19 +37,19 @@ else:
     import wx.lib.flatnotebook as FN
 import wx.lib.colourselect as csel
 
-from core.debug import Debug
-from core.gcmd import GMessage
-from core.gconsole import CmdThread, GStderr, EVT_CMD_DONE, EVT_CMD_OUTPUT
+from grassgui.core.debug import Debug
+from grassgui.core.gcmd import GMessage
+from grassgui.core.gconsole import CmdThread, GStderr, EVT_CMD_DONE, EVT_CMD_OUTPUT
 
-from web_services.cap_interface import (
+from grassgui.web_services.cap_interface import (
     WMSCapabilities,
     WMTSCapabilities,
     OnEarthCapabilities,
 )
 
-from gui_core.widgets import GNotebook
-from gui_core.widgets import ManageSettingsWidget
-from gui_core.wrap import (
+from grassgui.gui_core.widgets import GNotebook
+from grassgui.gui_core.widgets import ManageSettingsWidget
+from grassgui.gui_core.wrap import (
     Button,
     ScrolledPanel,
     SpinCtrl,
@@ -62,7 +62,7 @@ from gui_core.wrap import (
 import grass.script as gs
 from grass.pydispatch.signal import Signal
 
-rinwms_path = os.path.join(os.getenv("GISBASE"), "etc", "r.in.wms")
+rinwms_path = os.path.join(os.getenv("GRASS_ETCBINDIR"), "r.in.wms")
 if rinwms_path not in sys.path:
     sys.path.append(rinwms_path)
 

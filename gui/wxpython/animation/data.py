@@ -23,16 +23,16 @@ from grass.script.utils import parse_key_val
 from grass.script import core as gcore
 from grass.exceptions import ScriptError
 
-from core.gcmd import GException
-from animation.nviztask import NvizTask
-from animation.utils import (
+from grassgui.core.gcmd import GException
+from grassgui.animation.nviztask import NvizTask
+from grassgui.animation.utils import (
     validateMapNames,
     getRegisteredMaps,
     checkSeriesCompatibility,
     validateTimeseriesName,
     interpolate,
 )
-from core.layerlist import LayerList, Layer
+from grassgui.core.layerlist import LayerList, Layer
 
 
 class AnimationData:

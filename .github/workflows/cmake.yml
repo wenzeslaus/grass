@@ -24,6 +24,13 @@ permissions:
 
 jobs:
   build-cmake:
+    strategy:
+      matrix:
+        # Build both the legacy Autotools-compatible layout and the FHS
+        # layout (WITH_FHS=ON).
+        fhs: ["OFF", "ON"]
+      fail-fast: false
+    name: build-cmake (FHS ${{ matrix.fhs }})
     runs-on: ubuntu-24.04
     env:
       CMAKE_VERSION: "3.22.0"
@@ -52,6 +59,10 @@ jobs:
           sudo apt-get update -y
           xargs -a <(awk '! /^ *(#|$)/' ".github/workflows/apt.txt") -r -- \
               sudo apt-get install -y --no-install-recommends --no-install-suggests
+      - name: Install Python test dependencies
+        run: |
+          python3 -m pip install --break-system-packages pytest pytest-timeout \
+              pytest-github-actions-annotate-failures pytest-xdist
       - name: Print build environment variables
         shell: bash -el {0}
         run: |
@@ -65,7 +76,7 @@ jobs:
         run: |
           cmake -S "${GITHUB_WORKSPACE}" -B "${GITHUB_WORKSPACE}/build" -G Ninja \
             -DCMAKE_INSTALL_PREFIX="${HOME}/install" -DWITH_READLINE=ON -DWITH_ODBC=ON \
-            -DWITH_NETCDF=ON -DWITH_BZLIB=ON
+            -DWITH_NETCDF=ON -DWITH_BZLIB=ON -DWITH_FHS=${{ matrix.fhs }}
       - name: Print CMakeCache.txt
         shell: bash -el {0}
         run: |
@@ -84,12 +95,34 @@ jobs:
         run: .github/workflows/print_versions.sh
       - name: Test executing of the grass command
         run: .github/workflows/test_simple.sh
+      - name: Run pytest with multiple workers in parallel
+        run: |
+          PYTHONPATH="$(grass --config python_path):${PYTHONPATH}"
+          LD_LIBRARY_PATH="$(grass --config lib_path):${LD_LIBRARY_PATH}"
+          export PYTHONPATH
+          export LD_LIBRARY_PATH
+          pytest \
+            @.github/workflows/pytest_args_ci.txt \
+            @.github/workflows/pytest_args_parallel.txt \
+            --junitxml=pytest.xdist.junit.xml \
+            -k 'not testsuite'
+      - name: Run pytest with a single worker (for tests marked with needs_solo_run)
+        run: |
+          PYTHONPATH="$(grass --config python_path):${PYTHONPATH}"
+          LD_LIBRARY_PATH="$(grass --config lib_path):${LD_LIBRARY_PATH}"
+          export PYTHONPATH
+          export LD_LIBRARY_PATH
+          pytest \
+            @.github/workflows/pytest_args_ci.txt \
+            @.github/workflows/pytest_args_not_parallel.txt \
+            --junitxml=pytest.needs_solo_run.junit.xml \
+            -k 'not testsuite'
       - name: Run tests
         run: .github/workflows/test_thorough.sh --config .gunittest.cfg --min-success 100
       - name: Make HTML test report available
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: testreport-CMake
+          name: testreport-CMake-FHS-${{ matrix.fhs }}
           path: testreport
           retention-days: 3

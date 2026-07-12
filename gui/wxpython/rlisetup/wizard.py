@@ -25,7 +25,7 @@ import os
 from typing import TYPE_CHECKING
 
 import wx
-from core.globalvar import wxPythonPhoenix
+from grassgui.core.globalvar import wxPythonPhoenix
 
 if wxPythonPhoenix or TYPE_CHECKING:
     from wx import adv as wiz
@@ -35,12 +35,12 @@ else:
     from wx.wizard import Wizard
 
 import wx.lib.scrolledpanel as scrolled
-from core.gcmd import GError, GMessage, RunCommand
-from gui_core import gselect
-from gui_core.wrap import Button, StaticText, TextCtrl
-from location_wizard.wizard import GridBagSizerTitledPage as TitledPage
-from rlisetup.functions import checkValue, retRLiPath
-from rlisetup.sampling_frame import RLiSetupMapPanel
+from grassgui.core.gcmd import GError, GMessage, RunCommand
+from grassgui.gui_core import gselect
+from grassgui.gui_core.wrap import Button, StaticText, TextCtrl
+from grassgui.location_wizard.wizard import GridBagSizerTitledPage as TitledPage
+from grassgui.rlisetup.functions import checkValue, retRLiPath
+from grassgui.rlisetup.sampling_frame import RLiSetupMapPanel
 
 from grass.exceptions import CalledModuleError
 from grass.script import core as grass

@@ -44,7 +44,7 @@ from typing import TYPE_CHECKING
 
 import wx
 import wx.lib.mixins.listctrl as listmix
-from core import globalvar
+from grassgui.core import globalvar
 
 if globalvar.wxPythonPhoenix or TYPE_CHECKING:
     from wx import adv as wiz
@@ -55,11 +55,11 @@ else:
     from wx.wizard import WizardPageSimple
 
 import wx.lib.scrolledpanel as scrolled
-from core import utils
-from core.gcmd import GError, GWarning, RunCommand
-from core.utils import cmp
-from gui_core.widgets import GenericMultiValidator
-from gui_core.wrap import (
+from grassgui.core import utils
+from grassgui.core.gcmd import GError, GWarning, RunCommand
+from grassgui.core.utils import cmp
+from grassgui.gui_core.widgets import GenericMultiValidator
+from grassgui.gui_core.wrap import (
     Button,
     CheckBox,
     HyperlinkCtrl,
@@ -71,7 +71,7 @@ from gui_core.wrap import (
     StaticText,
     TextCtrl,
 )
-from location_wizard.dialogs import SelectTransformDialog
+from grassgui.location_wizard.dialogs import SelectTransformDialog
 
 from grass.exceptions import OpenError, ScriptError
 from grass.grassdb.checks import location_exists

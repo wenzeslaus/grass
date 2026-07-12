@@ -18,10 +18,10 @@ import sys
 
 import wx
 
-from core.globalvar import CheckWxVersion
-from gui_core.toolbars import BaseToolbar, BaseIcons
+from grassgui.core.globalvar import CheckWxVersion
+from grassgui.gui_core.toolbars import BaseToolbar, BaseIcons
 
-from icons.icon import MetaIcon
+from grassgui.icons.icon import MetaIcon
 
 
 class ModelerToolbar(BaseToolbar):

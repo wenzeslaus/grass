@@ -47,7 +47,7 @@ def main():
     set_gui_path()
 
     try:
-        from timeline.frame import TimelineFrame
+        from grassgui.timeline.frame import TimelineFrame
     except ImportError as e:
         # TODO: why do we need this special check here, the reason of error
         # is wrong installation or something, no need to report this to the

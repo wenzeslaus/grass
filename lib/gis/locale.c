@@ -39,14 +39,14 @@ void G_init_locale(void)
 #ifdef LC_MESSAGES
     setlocale(LC_MESSAGES, "");
 #endif
-    const char *gisbase = getenv("GISBASE");
+    /* Read the variable directly instead of using G_locale_dir():
+       G_locale_dir() calls G_fatal_error() when the variable is not set,
+       and G_fatal_error() translates its message, which re-enters
+       G_init_locale() and recurses without bound. Missing translations
+       must never be fatal here. */
+    const char *localedir = getenv("GRASS_LOCALEDIR");
 
-    if (gisbase && *gisbase) {
-        char localedir[GPATH_MAX];
-
-        strcpy(localedir, gisbase);
-        strcat(localedir, "/locale");
-
+    if (localedir && *localedir) {
         bindtextdomain("grasslibs", localedir);
         bindtextdomain("grassmods", localedir);
     }
