@@ -54,7 +54,7 @@ int com_line_Gwater(INPUT *input, OUTPUT *output)
         input->com_line_ram = (char *)G_calloc(400, sizeof(char));
         prog_name = G_store(RAM_NAME);
         snprintf(input->com_line_ram, (400 * sizeof(char)), "\"%s/water/%s\"",
-                 G_etc_dir(), RAM_NAME);
+                 G_etcbin_dir(), RAM_NAME);
         fprintf(stderr,
                 "\nIf there is not enough ram for the fast mode (%s) to run,\n",
                 RAM_NAME);
@@ -64,7 +64,7 @@ int com_line_Gwater(INPUT *input, OUTPUT *output)
             input->slow = 1;
             input->com_line_seg = (char *)G_calloc(400, sizeof(char));
             snprintf(input->com_line_seg, (400, sizeof(char)),
-                     "\"%s/water/%s\"", G_etc_dir(), SEG_NAME);
+                     "\"%s/water/%s\"", G_etcbin_dir(), SEG_NAME);
         }
     }
     else {
@@ -72,7 +72,7 @@ int com_line_Gwater(INPUT *input, OUTPUT *output)
         prog_name = G_store(SEG_NAME);
         input->com_line_seg = (char *)G_calloc(400, sizeof(char));
         snprintf(input->com_line_seg, (400, sizeof(char)), "\"%s/water/%s\"",
-                 G_etc_dir(), SEG_NAME);
+                 G_etcbin_dir(), SEG_NAME);
     }
 
     G_message(_("\nIf you hit <return> by itself for the next question, this"));
