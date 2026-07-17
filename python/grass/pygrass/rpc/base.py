@@ -13,6 +13,7 @@ for details.
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import threading
 import time
@@ -32,13 +33,19 @@ logger: logging.Logger = logging.getLogger(__name__)
 ###############################################################################
 
 
-def dummy_server(lock: _LockLike, conn: Connection) -> NoReturn:
+def dummy_server(lock: _LockLike, conn: Connection, env: dict[str, str]) -> NoReturn:
     """Dummy server process
 
     :param lock: A multiprocessing.Lock
     :param conn: A multiprocessing.connection.Connection object obtained from
                  multiprocessing.Pipe
+    :param env: The environment of the session the server serves, applied
+                as the process environment. Passing it explicitly makes the
+                server independent of the multiprocessing start method,
+                which determines what a child process inherits.
     """
+    os.environ.clear()
+    os.environ.update(env)
 
     while True:
         # Avoid busy waiting
@@ -95,13 +102,17 @@ class RPCServerBase:
 
     """
 
-    def __init__(self) -> None:
+    def __init__(self, env: dict[str, str] | None = None) -> None:
         self.client_conn: Connection | None = None
         self.server_conn: Connection | None = None
         self.queue = None
         self.server = None
         self.checkThread: threading.Thread | None = None
         self.threadLock = threading.Lock()
+        # The server process serves the session captured here, no matter
+        # which multiprocessing start method spawns it. Server restarts
+        # reuse it, so a restarted server stays in the same session.
+        self.env = dict(env) if env is not None else os.environ.copy()
         self.start_server()
         self.start_checker_thread()
         self.stopThread = False
@@ -144,7 +155,9 @@ class RPCServerBase:
 
         self.client_conn, self.server_conn = Pipe(True)
         self.lock = Lock()
-        self.server = Process(target=dummy_server, args=(self.lock, self.server_conn))
+        self.server = Process(
+            target=dummy_server, args=(self.lock, self.server_conn, self.env)
+        )
         self.server.daemon = True
         self.server.start()
 
