@@ -635,6 +635,9 @@ def init(
         if message_interface is not None:
             message_interface.stop()
             message_interface = None
+            # get_msgr() caches the Messenger per process; without the
+            # reset it would keep returning the stopped instance.
+            messages.reset_msgr()
         if c_library_interface is not None:
             c_library_interface.stop()
             c_library_interface = None

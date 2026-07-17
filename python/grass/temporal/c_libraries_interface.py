@@ -13,6 +13,7 @@ for details.
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from ctypes import CFUNCTYPE, POINTER, byref, c_int, c_void_p, cast
 from datetime import datetime
@@ -1186,14 +1187,20 @@ def _stop(lock: _LockLike, conn: Connection, data) -> None:
 ###############################################################################
 
 
-def c_library_server(lock: _LockLike, conn: Connection) -> None:
+def c_library_server(lock: _LockLike, conn: Connection, env: dict[str, str]) -> None:
     """The GRASS C-libraries server function designed to be a target for
     multiprocessing.Process
 
     :param lock: A multiprocessing.Lock
     :param conn: A multiprocessing.connection.Connection object obtained from
                  multiprocessing.Pipe
+    :param env: The environment of the session the server serves, applied
+                as the process environment. Passing it explicitly makes the
+                server independent of the multiprocessing start method,
+                which determines what a child process inherits.
     """
+    os.environ.clear()
+    os.environ.update(env)
 
     def error_handler(data) -> None:
         """This function will be called in case of a fatal error in libgis"""
@@ -1467,14 +1474,14 @@ class CLibrariesInterface(RPCServerBase):
 
     """  # noqa: E501
 
-    def __init__(self) -> None:
-        RPCServerBase.__init__(self)
+    def __init__(self, env: dict[str, str] | None = None) -> None:
+        RPCServerBase.__init__(self, env=env)
 
     def start_server(self) -> None:
         self.client_conn, self.server_conn = Pipe(True)
         self.lock = Lock()
         self.server = Process(
-            target=c_library_server, args=(self.lock, self.server_conn)
+            target=c_library_server, args=(self.lock, self.server_conn, self.env)
         )
         self.server.daemon = True
         self.server.start()
