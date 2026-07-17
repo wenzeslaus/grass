@@ -10,6 +10,7 @@ for details.
 :authors: Soeren Gebbert
 """
 
+import os
 import sys
 from ctypes import CFUNCTYPE, c_void_p
 from multiprocessing import Lock, Pipe, Process
@@ -194,14 +195,20 @@ def _stop(lock, conn, data):
 ###############################################################################
 
 
-def data_provider_server(lock, conn):
+def data_provider_server(lock, conn, env):
     """The PyGRASS data provider server designed to be a target for
     multiprocessing.Process
 
     :param lock: A multiprocessing.Lock
     :param conn: A multiprocessing.connection.Connection object obtained from
                  multiprocessing.Pipe
+    :param env: The environment of the session the server serves, applied
+                as the process environment. Passing it explicitly makes the
+                server independent of the multiprocessing start method,
+                which determines what a child process inherits.
     """
+    os.environ.clear()
+    os.environ.update(env)
 
     def error_handler(data):
         """This function will be called in case of a fatal error in libgis"""
@@ -244,15 +251,15 @@ test_raster_name = "data_provider_raster_map"
 class DataProvider(RPCServerBase):
     """Fast and exit-safe interface to PyGRASS data delivery functions"""
 
-    def __init__(self):
-        RPCServerBase.__init__(self)
+    def __init__(self, env=None):
+        RPCServerBase.__init__(self, env=env)
 
     def start_server(self):
         """This function must be re-implemented in the subclasses"""
         self.client_conn, self.server_conn = Pipe(True)
         self.lock = Lock()
         self.server = Process(
-            target=data_provider_server, args=(self.lock, self.server_conn)
+            target=data_provider_server, args=(self.lock, self.server_conn, self.env)
         )
         self.server.daemon = True
         self.server.start()
