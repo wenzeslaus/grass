@@ -145,6 +145,15 @@ jobs:
           echo "MAKEFLAGS=-j$(nproc)" >> "${GITHUB_ENV}"
 
       - uses: rui314/setup-mold@9c9c13bf4c3f1adef0cc596abc155580bcb04444 # v1
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # v1.2.23
+        with:
+          create-symlink: true
+          verbose: 2
+          evict-old-files: 7d
+          key: ${{ github.workflow }}-${{ matrix.os }}
+
       - name: Build
         run: |
           ".github/workflows/build_${MATRIX_OS}.sh" "${HOME}/install"

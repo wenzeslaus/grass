@@ -55,6 +55,13 @@ jobs:
           printenv | sort
           gcc --version
           ldd --version
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # v1.2.23
+        with:
+          create-symlink: true
+          verbose: 2
+          evict-old-files: 7d
+          key: ${{ github.workflow }}-${{ matrix.c }}-${{ matrix.cpp }}
       - name: Build
         env:
           # TODO: -pedantic-errors here won't go through ./configure (with GNU C)
