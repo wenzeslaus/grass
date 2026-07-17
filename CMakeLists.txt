@@ -165,6 +165,7 @@ option(
 option(WITH_DOCS "Build documentation" ON)
 option(WITH_GUI "Build GUI" ON)
 option(WITH_FHS "Install with FHS" OFF)
+option(WITH_DOXYGEN "Build the Doxygen programmer's manual" OFF)
 
 include(check_target)
 include(CheckDependentLibraries)
@@ -447,5 +448,13 @@ install(
         ${CMAKE_CURRENT_BINARY_DIR}/GRASSConfigVersion.cmake
     DESTINATION ${GRASS_INSTALL_CMAKECONFDIR}/GRASS
 )
+
+# Opt-in Doxygen programmer's manual (default OFF). Included here so the version
+# variables set above (including GRASS_VERSION_GIT from repo_status) are in
+# scope; it adds only the explicitly-invoked "doxygen" target, never touching
+# the default build.
+if(WITH_DOXYGEN)
+    include(build_doxygen)
+endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS YES)
