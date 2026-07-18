@@ -359,14 +359,17 @@ ARG GRASS_CONFIG="$GRASS_CONFIG $GRASS_NO_GUI_CONFIG"
 # hadolint ignore=DL3006
 FROM build_grass_${GUI}_gui AS build_grass
 
-# Configure compile and install GRASS
+# Configure compile and install GRASS. Remove the build tree in the same
+# step so that object files do not end up in the layer and its cache.
 # hadolint ignore=SC2086,DL3008
 RUN make -j $NUMTHREADS distclean || echo "nothing to clean" \
     && ./configure $GRASS_CONFIG \
     && make -j $NUMTHREADS \
     && make install && ldconfig \
     && rm -rf /usr/local/grass86/demolocation \
-    && cp /usr/local/grass86/gui/wxpython/xml/module_items.xml module_items.xml
+    && cp /usr/local/grass86/gui/wxpython/xml/module_items.xml module_items.xml \
+    && rm -rf bin.* dist.* \
+    && find . -name "OBJ.*" -type d -prune -exec rm -rf {} +
 
 FROM build_grass AS build_grass_with_gui_built
 RUN echo "GUI selected, skipping GUI related cleanup"

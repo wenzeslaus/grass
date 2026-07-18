@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.25@sha256:0adf442eae370b6087e08edc7c50b552d80ddf261576f4ebd6421006b2461f12
+
 FROM debian:13.5-slim@sha256:28de0877c2189802884ccd20f15ee41c203573bd87bb6b883f5f46362d24c5c2
 
 # apt-get update && apt-get install lsb-release -y && lsb_release -a
@@ -128,14 +130,11 @@ RUN wget -q \
       -DWITH_LAZPERF=ON \
       -DWITH_TESTS=ON && \
     make -j $NUMTHREADS && \
-    make install
+    make install && \
+    cd /src && \
+    rm -rf PDAL-${PDAL_VERSION}-src PDAL-${PDAL_VERSION}-src.tar.gz
 
-# copy grass gis source
-WORKDIR /src
-COPY . /src/grass_build/
 WORKDIR /src/grass_build
-# Cleanup potentially leftover GISRC file with wrong path to "demolocation"
-RUN rm -f /src/grass_build/dist.*/demolocation/.grassrc*
 
 # Set environmental variables for GRASS compilation, without debug symbols
 # Set gcc/g++ environmental variables for GRASS compilation, without debug symbols
@@ -147,10 +146,13 @@ ENV LDFLAGS="$MYLDFLAGS"
 ENV CFLAGS="$MYCFLAGS"
 ENV CXXFLAGS="$MYCXXFLAGS"
 
-# Configure compile and install GRASS
+# Configure compile and install GRASS. The source is mounted from the build
+# context instead of copied: the whole build tree is discarded when the step
+# ends and only the installed files are kept in the image.
 ENV NUMTHREADS=4
-RUN make distclean || echo "nothing to clean"
-RUN /src/grass_build/configure \
+RUN --mount=type=bind,source=.,target=/src/grass_build,rw \
+    (make distclean || echo "nothing to clean") && \
+    /src/grass_build/configure \
   --enable-largefile \
   --with-bzlib \
   --with-cairo --with-cairo-ldflags=-lfontconfig \
@@ -201,7 +203,6 @@ RUN grass --tmp-project EPSG:4326 --exec g.version -rge && \
 # Reduce the image size
 RUN apt-get autoremove -y
 RUN apt-get clean -y
-RUN rm -r /src/grass_build/.git
 
 WORKDIR /scripts
 

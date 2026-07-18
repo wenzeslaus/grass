@@ -160,12 +160,15 @@ RUN echo "Install main packages";\
 COPY . /src/grass_build/
 WORKDIR /src/grass_build/
 
-# Configure compile and install GRASS
+# Configure compile and install GRASS. Remove the build tree in the same
+# step so that object files do not end up in the layer and its cache.
 RUN echo "  => Configure and compile grass" && \
     /src/grass_build/configure $GRASS_CONFIG && \
     make -j $NUMTHREADS && \
     make install && \
-    ldconfig /etc/ld.so.conf.d
+    ldconfig /etc/ld.so.conf.d && \
+    rm -rf bin.* dist.* && \
+    find . -name "OBJ.*" -type d -prune -exec rm -rf {} +
 
 # Build the GDAL-GRASS plugin
 # renovate: datasource=github-tags depName=OSGeo/gdal-grass
@@ -174,7 +177,8 @@ RUN git clone --branch $GDAL_GRASS_VERSION --depth 1 https://github.com/OSGeo/gd
 WORKDIR /src/gdal-grass
 RUN cmake -B build -DAUTOLOAD_DIR=/usr/lib/gdalplugins -DBUILD_TESTING=OFF && \
     cmake --build build && \
-    cmake --install build
+    cmake --install build && \
+    rm -rf build
 
 # Get rid of version number here, restore in next stage via symbolic link
 RUN mv /usr/local/grass86 /usr/local/grass

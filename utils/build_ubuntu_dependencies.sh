@@ -111,4 +111,11 @@ cmake --install build
 # Update shared library cache
 ldconfig
 
+# Remove the downloaded archive and the source and build trees so that only
+# the installed files end up in the Docker image layer.
+echo "Cleaning up ${LIB_NAME_UPPER} source and build trees..."
+SRC_DIR=$(basename "$PWD")
+cd ..
+rm -rf "$SRC_DIR" "$SRC_DIR".tar.*
+
 echo "${LIB_NAME_UPPER} ${LIB_VERSION} has been successfully installed."
