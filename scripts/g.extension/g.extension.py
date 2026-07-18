@@ -52,7 +52,7 @@
 # % type: string
 # % key_desc: url
 # % label: URL or directory to get the extension from (supported only on Linux and Mac)
-# % description: The official repository is used by default. User can specify a ZIP file, directory or a repository on common hosting services. If not identified, Subversion repository is assumed. See manual for all options.
+# % description: The official repository is used by default. User can specify a ZIP file, directory or a repository on common hosting services. See manual for all options.
 # %end
 # %option
 # % key: prefix
@@ -152,14 +152,13 @@ import atexit
 import shutil
 import zipfile
 import tempfile
-import json
 import xml.etree.ElementTree as ET
 from functools import partial
 from pathlib import Path
 from subprocess import PIPE
 from urllib import request as urlrequest
 from urllib.error import HTTPError, URLError
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 # Get the XML parsing exceptions to catch. The behavior changed with Python 2.7
 # and ElementTree 1.3.
@@ -171,28 +170,57 @@ else:
     ETREE_EXCEPTIONS = expat.ExpatError
 
 import grass.script as gs
-from grass.script import task as gtask
 from grass.script.utils import try_rmdir
 from grass.app.runtime import RuntimePaths
+from grass.addons import config as addons_config
+from grass.addons import resolve as addons_resolve
+from grass.addons.config import (
+    HTTP_HEADERS as HEADERS,
+    OFFICIAL_REPOSITORY_URL as GIT_URL,
+    default_make_program,
+)
+from grass.addons.exceptions import AddonsError
+from grass.addons.registry import LocalRegistry, etree_fromfile, get_optional_params
 
 # temp dir
 REMOVE_TMPDIR = True
 PROXIES = {}
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-}
-GIT_URL = "https://github.com/OSGeo/grass-addons/"
 
-# MAKE command
-# GRASS Makefile are type of GNU Make and not BSD Make
-# On FreeBSD (and other BSD and maybe unix) we have to
-# use GNU Make program often "gmake" to distinct with the (bsd) "make"
-if sys.platform.startswith("freebsd"):
-    MAKE = "gmake"
-else:
-    MAKE = "make"
+MAKE = default_make_program()
 
 copy_tree = partial(shutil.copytree, dirs_exist_ok=True)
+
+
+class GrassReporter:
+    """Reporter forwarding grass.addons messages to grass.script messaging"""
+
+    def message(self, text):
+        gs.message(text)
+
+    def verbose(self, text):
+        gs.verbose(text)
+
+    def debug(self, text):
+        gs.debug(text, 1)
+
+    def warning(self, text):
+        gs.warning(text)
+
+    def check_cancelled(self):
+        pass
+
+
+REPORTER = GrassReporter()
+
+
+def _registry():
+    """Create access to the metadata files in the install prefix"""
+    return LocalRegistry(
+        options["prefix"],
+        version_major=VERSION[0],
+        libgis_revision=gs.version()["libgis_revision"],
+        reporter=REPORTER,
+    )
 
 
 class GitAdapter:
@@ -498,73 +526,11 @@ def urlopen(url, *args, **kwargs):
 
 
 def get_version_branch(major_version):
-    """Check if version branch for the current GRASS version exists,
-    if not, take branch for the previous version
-    For the official repo we assume that at least one version branch is present"""
-    version_branch = f"grass{major_version}"
-    if sys.platform == "win32":
-        return version_branch
-    branch = gs.Popen(
-        ["git", "ls-remote", "--heads", GIT_URL, f"refs/heads/{version_branch}"],
-        stdout=PIPE,
-        stderr=PIPE,
-    )
-    branch, stderr = branch.communicate()
-    if stderr:
-        gs.fatal(
-            _(
-                "Failed to get branch from the Git repository <{repo_path}>.\n{error}"
-            ).format(
-                repo_path=GIT_URL,
-                error=gs.decode(stderr),
-            )
-        )
-    branch = gs.decode(branch)
-    if version_branch not in branch:
-        version_branch = "grass{}".format(int(major_version) - 1)
-    return version_branch
-
-
-def get_default_branch(full_url):
-    """Get default branch for repository in known hosting services
-    (currently only implemented for github, gitlab and bitbucket API)
-    In all other cases "main" is used as default"""
-    # Parse URL
-    url_parts = urlparse(full_url)
-    # Get organization and repository component
+    """Get the addons repository branch for the given GRASS major version"""
     try:
-        organization, repository = url_parts.path.split("/")[1:3]
-    except URLError:
-        gs.fatal(
-            _("Cannot retrieve organization and repository from URL: <{}>.").format(
-                full_url
-            )
-        )
-    # Construct API call and retrieve default branch
-    api_calls = {
-        "github.com": f"https://api.github.com/repos/{organization}/{repository}",
-        "gitlab.com": f"https://gitlab.com/api/v4/projects/{organization}%2F{repository}",  # noqa: E501
-        "bitbucket.org": f"https://api.bitbucket.org/2.0/repositories/{organization}/{repository}/branching-model?",  # noqa: E501
-    }
-    # Try to get default branch via API. The API call is known to fail a) if the
-    # full_url does not belong to an implemented hosting service or b) if the rate
-    # limit of the API is exceeded
-    try:
-        req = urlrequest.urlopen(api_calls.get(url_parts.netloc))
-        content = json.loads(req.read())
-        # For github and gitlab
-        default_branch = content.get("default_branch")
-        # For bitbucket
-        if not default_branch:
-            default_branch = content.get("development").get("name")
-    except URLError:
-        default_branch = "main"
-    return default_branch
-
-
-def etree_fromfile(filename):
-    """Create XML element tree from a given file name"""
-    return ET.fromstring(Path(filename).read_text())
+        return addons_resolve.get_version_branch(major_version)
+    except AddonsError as error:
+        gs.fatal(str(error))
 
 
 def etree_fromurl(url):
@@ -584,66 +550,18 @@ def etree_fromurl(url):
 
 def check_progs():
     """Check if the necessary programs are available"""
-    # git to be tested once supported instead of `svn`
     for prog in (MAKE, "gcc", "git"):
         if not gs.find_program(prog, "--help"):
             gs.fatal(_("'%s' required. Please install '%s' first.") % (prog, prog))
 
 
-# expand prefix to class name
-
-
-def expand_module_class_name(class_letters):
-    """Convert module class (family) letter or letters to class (family) name
-
-    The letter or letters are used in module names, e.g. r.slope.aspect.
-    The names are used in directories in Addons but also in the source code.
-
-    >>> expand_module_class_name("r")
-    'raster'
-    >>> expand_module_class_name("v")
-    'vector'
-    """
-    name = {
-        "d": "display",
-        "db": "db",
-        "g": "general",
-        "i": "imagery",
-        "m": "misc",
-        "ps": "postscript",
-        "p": "paint",
-        "r": "raster",
-        "r3": "raster3d",
-        "s": "sites",
-        "t": "temporal",
-        "v": "vector",
-        "wx": "gui/wxpython",
-    }
-
-    return name.get(class_letters, class_letters)
-
-
-def get_module_class_name(module_name):
-    """Return class (family) name for a module
-
-    The names are used in directories in Addons but also in the source code.
-
-    >>> get_module_class_name("r.slope.aspect")
-    'raster'
-    >>> get_module_class_name("v.to.rast")
-    'vector'
-    """
-    classchar = module_name.split(".", 1)[0]
-    return expand_module_class_name(classchar)
-
-
 def get_installed_extensions(force=False):
     """Get list of installed extensions or toolboxes (if -t is set)"""
     if flags["t"]:
-        return get_installed_toolboxes(force)
+        return _registry().get_installed_toolboxes(force)
 
     # TODO: extension != module
-    return get_installed_modules(force)
+    return _registry().get_installed_modules(force, shell_format=flags["g"])
 
 
 def list_installed_extensions(toolboxes=False):
@@ -660,68 +578,6 @@ def list_installed_extensions(toolboxes=False):
         gs.info(_("No extension (toolbox) installed"))
     else:
         gs.info(_("No extension (module) installed"))
-
-
-def get_installed_toolboxes(force=False):
-    """Get list of installed toolboxes
-
-    Writes toolboxes file if it does not exist.
-    Creates a new toolboxes file if it is not possible
-    to read the current one.
-    """
-    xml_file = os.path.join(options["prefix"], "toolboxes.xml")
-    if not Path(xml_file).exists():
-        write_xml_toolboxes(xml_file)
-    # read XML file
-    try:
-        tree = etree_fromfile(xml_file)
-    except ETREE_EXCEPTIONS + (OSError, IOError):
-        os.remove(xml_file)
-        write_xml_toolboxes(xml_file)
-        return []
-    ret = []
-    for tnode in tree.findall("toolbox"):
-        ret.append(tnode.get("code"))
-    return ret
-
-
-def get_installed_modules(force=False):
-    """Get list of installed modules.
-
-    Writes modules file if it does not exist and *force* is set to ``True``.
-    Creates a new modules file if it is not possible
-    to read the current one.
-    """
-    xml_file = os.path.join(options["prefix"], "modules.xml")
-    if not Path(xml_file).exists():
-        if force:
-            write_xml_modules(xml_file)
-        else:
-            gs.debug("No addons metadata file available", 1)
-        return []
-    # read XML file
-    try:
-        tree = etree_fromfile(xml_file)
-    except ETREE_EXCEPTIONS + (OSError, IOError):
-        os.remove(xml_file)
-        write_xml_modules(xml_file)
-        return []
-    ret = []
-    for tnode in tree.findall("task"):
-        if flags["g"]:
-            desc, keyw = get_optional_params(tnode)
-            ret.extend(
-                (
-                    "name={0}".format(tnode.get("name").strip()),
-                    "description={0}".format(desc),
-                    "keywords={0}".format(keyw),
-                    "executables={0}".format(",".join(get_module_executables(tnode))),
-                )
-            )
-        else:
-            ret.append(tnode.get("name").strip())
-
-    return ret
 
 
 # list extensions (read XML file from gs.osgeo.org/addons)
@@ -810,61 +666,6 @@ def get_toolbox_extensions(url, name):
     return edict
 
 
-def get_module_files(mnode):
-    """Return list of module files
-
-    :param mnode: XML node for a module
-    """
-    flist = []
-    if mnode.find("binary") is None:
-        return flist
-    for file_node in mnode.find("binary").findall("file"):
-        filepath = file_node.text
-        flist.append(filepath)
-
-    return flist
-
-
-def get_module_executables(mnode):
-    """Return list of module executables
-
-    :param mnode: XML node for a module
-    """
-    flist = []
-    for filepath in get_module_files(mnode):
-        if filepath.startswith(options["prefix"] + os.path.sep + "bin") or (
-            sys.platform != "win32"
-            and filepath.startswith(options["prefix"] + os.path.sep + "scripts")
-        ):
-            filename = os.path.basename(filepath)
-            if sys.platform == "win32":
-                filename = os.path.splitext(filename)[0]
-            flist.append(filename)
-
-    return flist
-
-
-def get_optional_params(mnode):
-    """Return description and keywords of a module as a tuple
-
-    :param mnode: XML node for a module
-    """
-    try:
-        desc = mnode.find("description").text
-    except AttributeError:
-        desc = ""
-    if desc is None:
-        desc = ""
-    try:
-        keyw = mnode.find("keywords").text
-    except AttributeError:
-        keyw = ""
-    if keyw is None:
-        keyw = ""
-
-    return desc, keyw
-
-
 def list_available_modules(url, mlist=None):
     """List modules available in the repository
 
@@ -878,17 +679,9 @@ def list_available_modules(url, mlist=None):
     try:
         tree = etree_fromurl(file_url)
     except ETREE_EXCEPTIONS:
-        gs.warning(
-            _(
-                "Unable to parse '{url}'. Trying to scan"
-                " Git repository (may take some time)..."
-            ).format(url=file_url)
-        )
-        list_available_extensions_svn(url)
-        return
-    except (HTTPError, URLError, OSError):
-        list_available_extensions_svn(url)
-        return
+        gs.fatal(_("Unable to parse '{url}'").format(url=file_url))
+    except (HTTPError, URLError, OSError) as error:
+        gs.fatal(_("Unable to read '{url}': {error}").format(url=file_url, error=error))
 
     for mnode in tree.findall("task"):
         name = mnode.get("name").strip()
@@ -909,96 +702,6 @@ def list_available_modules(url, mlist=None):
             print(name)
 
 
-# TODO: this is now broken/dead code, SVN is basically not used
-# fallback for Trac should parse Trac HTML page
-# this might be useful for potential SVN repos or anything
-# which would list the extensions/addons as list
-# TODO: fail when nothing is accessible
-def list_available_extensions_svn(url):
-    """List available extensions from HTML given by URL
-
-    Filename is generated based on the module class/family.
-    This works well for the structure which is in grass-addons repository.
-
-    ``<li><a href=...`` is parsed to find module names.
-    This works well for HTML page generated by Subversion.
-
-    :param url: a directory URL (filename will be attached)
-    """
-    gs.debug("list_available_extensions_svn(url=%s)" % url, 2)
-    gs.message(
-        _(
-            "Fetching list of extensions from"
-            " GRASS-Addons SVN repository (be patient)..."
-        )
-    )
-    pattern = re.compile(r'(<li><a href=".+">)(.+)(</a></li>)', re.IGNORECASE)
-
-    if flags["c"]:
-        gs.warning(_("Flag 'c' ignored, addons metadata file not available"))
-    if flags["g"]:
-        gs.warning(_("Flag 'g' ignored, addons metadata file not available"))
-
-    prefixes = ["d", "db", "g", "i", "m", "ps", "p", "r", "r3", "s", "t", "v"]
-    for prefix in prefixes:
-        modclass = expand_module_class_name(prefix)
-        gs.verbose(_("Checking for '%s' modules...") % modclass)
-
-        # construct a full URL of a file
-        file_url = "%s/%s" % (url, modclass)
-        gs.debug("url = %s" % file_url, debug=2)
-        try:
-            file_ = urlopen(url)
-        except (HTTPError, OSError):
-            gs.debug(_("Unable to fetch '%s'") % file_url, debug=1)
-            continue
-
-        for line in file_.readlines():
-            # list extensions
-            sline = pattern.search(line)
-            if not sline:
-                continue
-            name = sline.group(2).rstrip("/")
-            if name.split(".", 1)[0] == prefix:
-                print(name)
-
-    # get_wxgui_extensions(url)
-
-
-# TODO: this is a dead code, not clear why not used, but seems not needed
-def get_wxgui_extensions(url):
-    """Return list of extensions/addons in wxGUI directory at given URL
-
-    :param url: a directory URL (filename will be attached)
-    """
-    mlist = []
-    gs.debug(
-        "Fetching list of wxGUI extensions from "
-        "GRASS-Addons SVN repository (be patient)..."
-    )
-    pattern = re.compile(r'(<li><a href=".+">)(.+)(</a></li>)', re.IGNORECASE)
-    gs.verbose(_("Checking for '%s' modules...") % "gui/wxpython")
-
-    # construct a full URL of a file
-    url = "%s/%s" % (url, "gui/wxpython")
-    gs.debug("url = %s" % url, debug=2)
-    file_ = urlopen(url)
-    if not file_:
-        gs.warning(_("Unable to fetch '%s'") % url)
-        return None
-
-    for line in file_.readlines():
-        # list extensions
-        sline = pattern.search(line)
-        if not sline:
-            continue
-        name = sline.group(2).rstrip("/")
-        if name not in {"..", "Makefile"}:
-            mlist.append(name)
-
-    return mlist
-
-
 def cleanup():
     """Cleanup after the downloads and compilation"""
     if REMOVE_TMPDIR:
@@ -1006,146 +709,13 @@ def cleanup():
 
 
 def write_xml_modules(name, tree=None):
-    """Write element tree as a modules metadata file
-
-    If the *tree* is not given, an empty file is created.
-
-    :param name: file name
-    :param tree: XML element tree
-    """
-    file_ = open(name, "w")
-    file_.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-    file_.write('<!DOCTYPE task SYSTEM "grass-addons.dtd">\n')
-    file_.write(f'<addons version="{VERSION[0]}">\n')
-
-    libgis_revison = gs.version()["libgis_revision"]
-    if tree is not None:
-        for tnode in tree.findall("task"):
-            indent = 4
-            file_.write('%s<task name="%s">\n' % (" " * indent, tnode.get("name")))
-            indent += 4
-            file_.write(
-                "%s<description>%s</description>\n"
-                % (" " * indent, tnode.find("description").text)
-            )
-            file_.write(
-                "%s<keywords>%s</keywords>\n"
-                % (" " * indent, tnode.find("keywords").text)
-            )
-            bnode = tnode.find("binary")
-            if bnode is not None:
-                file_.write("%s<binary>\n" % (" " * indent))
-                indent += 4
-                file_.writelines(
-                    "%s<file>%s</file>\n"
-                    % (" " * indent, os.path.join(options["prefix"], fnode.text))
-                    for fnode in bnode.findall("file")
-                )
-                indent -= 4
-                file_.write("%s</binary>\n" % (" " * indent))
-            file_.write('%s<libgis revision="%s" />\n' % (" " * indent, libgis_revison))
-            indent -= 4
-            file_.write("%s</task>\n" % (" " * indent))
-
-    file_.write("</addons>\n")
-    file_.close()
+    """Write element tree as a modules metadata file"""
+    _registry().write_xml_modules(name, tree)
 
 
 def write_xml_extensions(name, tree=None):
-    """Write element tree as a modules metadata file
-
-    If the *tree* is not given, an empty file is created.
-
-    :param name: file name
-    :param tree: XML element tree
-    """
-    file_ = open(name, "w")
-    file_.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-    file_.write('<!DOCTYPE task SYSTEM "grass-addons.dtd">\n')
-    file_.write(f'<addons version="{VERSION[0]}">\n')
-
-    libgis_revison = gs.version()["libgis_revision"]
-    if tree is not None:
-        for tnode in tree.findall("task"):
-            indent = 4
-            # extension name
-            file_.write('%s<task name="%s">\n' % (" " * indent, tnode.get("name")))
-            indent += 4
-
-            # file_.write(
-            #     "%s<description>%s</description>\n"
-            #     % (" " * indent, tnode.find("description").text)
-            # )
-            # file_.write(
-            #     "%s<keywords>%s</keywords>\n"
-            #     % (" " * indent, tnode.find("keywords").text)
-            # )
-
-            # extension files
-            bnode = tnode.find("binary")
-            if bnode is not None:
-                file_.write("%s<binary>\n" % (" " * indent))
-                indent += 4
-                file_.writelines(
-                    "%s<file>%s</file>\n"
-                    % (" " * indent, os.path.join(options["prefix"], fnode.text))
-                    for fnode in bnode.findall("file")
-                )
-                indent -= 4
-                file_.write("%s</binary>\n" % (" " * indent))
-            # extension modules
-            mnode = tnode.find("modules")
-            if mnode is not None:
-                file_.write("%s<modules>\n" % (" " * indent))
-                indent += 4
-                file_.writelines(
-                    "%s<module>%s</module>\n" % (" " * indent, fnode.text)
-                    for fnode in mnode.findall("module")
-                )
-                indent -= 4
-                file_.write("%s</modules>\n" % (" " * indent))
-
-            file_.write('%s<libgis revision="%s" />\n' % (" " * indent, libgis_revison))
-            indent -= 4
-            file_.write("%s</task>\n" % (" " * indent))
-
-    file_.write("</addons>\n")
-    file_.close()
-
-
-def write_xml_toolboxes(name, tree=None):
-    """Write element tree as a toolboxes metadata file
-
-    If the *tree* is not given, an empty file is created.
-
-    :param name: file name
-    :param tree: XML element tree
-    """
-    file_ = open(name, "w")
-    file_.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-    file_.write('<!DOCTYPE toolbox SYSTEM "grass-addons.dtd">\n')
-    file_.write(f'<addons version="{VERSION[0]}">\n')
-    if tree is not None:
-        for tnode in tree.findall("toolbox"):
-            indent = 4
-            file_.write(
-                '%s<toolbox name="%s" code="%s">\n'
-                % (" " * indent, tnode.get("name"), tnode.get("code"))
-            )
-            indent += 4
-            file_.writelines(
-                '%s<correlate code="%s" />\n' % (" " * indent, tnode.get("code"))
-                for cnode in tnode.findall("correlate")
-            )
-            file_.writelines(
-                '%s<task name="%s" />\n' % (" " * indent, mnode.get("name"))
-                for mnode in tnode.findall("task")
-            )
-            indent -= 4
-            file_.write("%s</toolbox>\n" % (" " * indent))
-
-    file_.write("</addons>\n")
-    file_.close()
+    """Write element tree as an extensions metadata file"""
+    _registry().write_xml_extensions(name, tree)
 
 
 def install_extension(source=None, url=None, xmlurl=None, branch=None):
@@ -1269,55 +839,6 @@ def get_toolboxes_metadata(url):
     return data
 
 
-def install_toolbox_xml(url, name):
-    """Update local toolboxes metadata file"""
-    # read metadata from remote server (toolboxes)
-    url += "toolboxes.xml"
-    data = get_toolboxes_metadata(url)
-    if not data:
-        gs.warning(_("No addons metadata available"))
-        return
-    if name not in data:
-        gs.warning(_("No addons metadata available for <%s>") % name)
-        return
-
-    xml_file = os.path.join(options["prefix"], "toolboxes.xml")
-    # create an empty file if not exists
-    if not Path(xml_file).exists():
-        write_xml_modules(xml_file)
-
-    # read XML file
-    tree = ET.fromstring(Path(xml_file).read_text())
-
-    # update tree
-    tnode = None
-    for node in tree.findall("toolbox"):
-        if node.get("code") == name:
-            tnode = node
-            break
-
-    tdata = data[name]
-    if tnode is not None:
-        # update existing node
-        for cnode in tnode.findall("correlate"):
-            tnode.remove(cnode)
-        for mnode in tnode.findall("task"):
-            tnode.remove(mnode)
-    else:
-        # create new node for task
-        tnode = ET.Element("toolbox", attrib={"name": tdata["name"], "code": name})
-        tree.append(tnode)
-
-    for cname in tdata["correlate"]:
-        cnode = ET.Element("correlate", attrib={"code": cname})
-        tnode.append(cnode)
-    for tname in tdata["modules"]:
-        mnode = ET.Element("task", attrib={"name": tname})
-        tnode.append(mnode)
-
-    write_xml_toolboxes(xml_file, tree)
-
-
 def get_addons_metadata(url, mlist):
     """Return metadata for list of modules from given URL
 
@@ -1372,78 +893,8 @@ def get_addons_metadata(url, mlist):
 
 
 def install_extension_xml(edict):
-    """Update XML files with metadata about installed modules and toolbox
-    of an private addon
-
-    """
-    # TODO toolbox
-    # if len(mlist) > 1:
-    #     # read metadata from remote server (toolboxes)
-    #     install_toolbox_xml(url, options['extension'])
-
-    xml_file = os.path.join(options["prefix"], "extensions.xml")
-    # create an empty file if not exists
-    if not Path(xml_file).exists():
-        write_xml_extensions(xml_file)
-
-    # read XML file
-    tree = etree_fromfile(xml_file)
-
-    # update tree
-    for name in edict:
-        # so far extensions do not have description or keywords
-        # only modules have
-
-        # try:
-        #     desc = gtask.parse_interface(name).description
-        #     # mname = gtask.parse_interface(name).name
-        #     keywords = gtask.parse_interface(name).keywords
-        # except Exception as e:
-        #     gs.warning(
-        #         _("No addons metadata available. Addons metadata file not updated.")
-        #     )
-        #     return []
-
-        tnode = None
-        for node in tree.findall("task"):
-            if node.get("name") == name:
-                tnode = node
-                break
-
-        if tnode is None:
-            # create new node for task
-            tnode = ET.Element("task", attrib={"name": name})
-
-            # dnode = ET.Element("description")
-            # dnode.text = desc
-            # tnode.append(dnode)
-            # knode = ET.Element("keywords")
-            # knode.text = (",").join(keywords)
-            # tnode.append(knode)
-
-            # create binary
-            bnode = ET.Element("binary")
-            # list of all installed files for this extension
-            for file_name in edict[name]["flist"]:
-                fnode = ET.Element("file")
-                fnode.text = file_name
-                bnode.append(fnode)
-            tnode.append(bnode)
-
-            # create modules
-            msnode = ET.Element("modules")
-            # list of all installed modules for this extension
-            for module_name in edict[name]["mlist"]:
-                mnode = ET.Element("module")
-                mnode.text = module_name
-                msnode.append(mnode)
-            tnode.append(msnode)
-            tree.append(tnode)
-        else:
-            gs.verbose(
-                "Extension already listed in metadata file; metadata not updated!"
-            )
-    write_xml_extensions(xml_file, tree)
+    """Update the extensions metadata file with an installed extension"""
+    _registry().install_extension_xml(edict)
 
 
 def get_multi_addon_addons_which_install_only_html_man_page():
@@ -1496,98 +947,18 @@ def filter_multi_addon_addons(mlist):
 
 
 def install_module_xml(mlist, source=None):
-    """Update XML files with metadata about installed modules and toolbox
-    of an private addon
-
-    """
-
-    xml_file = os.path.join(options["prefix"], "modules.xml")
-    # create an empty file if not exists
-    if not Path(xml_file).exists():
-        write_xml_modules(xml_file)
-
-    # read XML file
-    tree = etree_fromfile(xml_file)
-
+    """Update the modules metadata file with installed modules"""
     # Identifying multi-addon addons queries the official repository over
     # the network, so skip it for other sources (e.g. a local directory).
-    if sys.platform != "win32" and source in {"official", "official_fork"}:
-        # Filter multi-addon addons
-        if len(mlist) > 1:
-            mlist = filter_multi_addon_addons(
-                mlist.copy()
-            )  # mlist.copy() keep the original list of add-ons
+    if (
+        sys.platform != "win32"
+        and source in {"official", "official_fork"}
+        and len(mlist) > 1
+    ):
+        # mlist.copy() keeps the original list of add-ons
+        mlist = filter_multi_addon_addons(mlist.copy())
 
-    # update tree
-    for name in mlist:
-        try:
-            desc = gtask.parse_interface(name).description
-            # mname = gtask.parse_interface(name).name
-            keywords = gtask.parse_interface(name).keywords
-        except Exception as error:
-            gs.warning(
-                _("No metadata available for module '{name}': {error}").format(
-                    name=name, error=error
-                )
-            )
-            continue
-
-        tnode = None
-        for node in tree.findall("task"):
-            if node.get("name") == name:
-                tnode = node
-                break
-
-        if tnode is None:
-            # create new node for task
-            tnode = ET.Element("task", attrib={"name": name})
-            dnode = ET.Element("description")
-            dnode.text = desc
-            tnode.append(dnode)
-            knode = ET.Element("keywords")
-            knode.text = (",").join(keywords)
-            tnode.append(knode)
-
-            # binary files installed with an extension are now
-            # listed in extensions.xml
-
-            # # create binary
-            # bnode = etree.Element("binary")
-            # list_of_binary_files = []
-            # for file_name in os.listdir(url):
-            #     file_type = os.path.splitext(file_name)[-1]
-            #     file_n = os.path.splitext(file_name)[0]
-            #     html_path = os.path.join(options["prefix"], "docs", "html")
-            #     c_path = os.path.join(options["prefix"], "bin")
-            #     py_path = os.path.join(options["prefix"], "scripts")
-            #     # html or image file
-            #     if file_type in [".html", ".jpg", ".png"] and file_n in os.listdir(
-            #         html_path
-            #     ):
-            #         list_of_binary_files.append(os.path.join(html_path, file_name))
-            #     # c file
-            #     elif file_type in [".c"] and file_name in os.listdir(c_path):
-            #         list_of_binary_files.append(os.path.join(c_path, file_n))
-            #     # python file
-            #     elif file_type in [".py"] and file_name in os.listdir(py_path):
-            #         list_of_binary_files.append(os.path.join(py_path, file_n))
-            # # man file
-            # man_path = os.path.join(options["prefix"], "docs", "man", "man1")
-            # if name + ".1" in os.listdir(man_path):
-            #     list_of_binary_files.append(os.path.join(man_path, name + ".1"))
-            # # add binaries to xml file
-            # for binary_file_name in list_of_binary_files:
-            #     fnode = etree.Element("file")
-            #     fnode.text = binary_file_name
-            #     bnode.append(fnode)
-            # tnode.append(bnode)
-            tree.append(tnode)
-        else:
-            gs.verbose(
-                "Extension module already listed in metadata file; metadata not "
-                "updated!"
-            )
-    write_xml_modules(xml_file, tree)
+    _registry().install_module_xml(mlist)
 
     return mlist
 
@@ -1670,35 +1041,6 @@ def install_extension_win(name):
     return 0, module_list, file_list
 
 
-def download_source_code_svn(url, name, outdev, directory=None):
-    """Download source code from a Subversion repository
-
-    .. note::
-        Stdout is passed to to *outdev* while stderr is will be just printed.
-
-    :param url: URL of the repository
-        (module class/family and name are attached)
-    :param name: module name
-    :param outdev: output divide for the standard output of the svn command
-    :param directory: directory where the source code will be downloaded
-        (default is the current directory with name attached)
-
-    :returns: full path to the directory with the source code
-        (useful when you not specify directory, if *directory* is specified
-        the return value is equal to it)
-    """
-    if not gs.find_program("svn", "--help"):
-        gs.fatal(_("svn not found but needed to fetch AddOns from an SVN repository"))
-    if not directory:
-        directory = os.path.join(os.getcwd, name)
-    classchar = name.split(".", 1)[0]
-    moduleclass = expand_module_class_name(classchar)
-    url = url + "/" + moduleclass + "/" + name
-    if gs.call(["svn", "checkout", url, directory], stdout=outdev) != 0:
-        gs.fatal(_("GRASS Addons <%s> not found") % name)
-    return directory
-
-
 def download_source_code_official_github(url, name, branch, directory=None):
     """Download source code from a official GitHub repository
 
@@ -1728,7 +1070,6 @@ def download_source_code_official_github(url, name, branch, directory=None):
             branch=branch,
         )
     except RuntimeError:
-        # if gs.call(["svn", "export", url, directory], stdout=outdev) != 0
         gs.fatal(_("GRASS Addons <%s> not found") % name)
 
     ga.fetch_addons([name])
@@ -1874,13 +1215,15 @@ def download_source_code(
         directory, url = download_source_code_official_github(
             url, name, branch, directory=directory
         )
-    elif source == "svn":
-        gs.message(
-            _("Fetching <{name}> from <{url}> (be patient)...").format(
-                name=name, url=url
-            )
+    elif source == "url":
+        gs.fatal(
+            _(
+                "Installing from the plain URL <{url}> is not supported."
+                " Provide a ZIP or tar archive URL, a URL of a repository"
+                " on a known hosting service (GitHub, GitLab, Bitbucket,"
+                " OSGeo Trac), or a local path."
+            ).format(url=url)
         )
-        download_source_code_svn(url, name, outdev, directory)
     elif source == "remote_zip":
         gs.message(
             _("Fetching <{name}> from <{url}> (be patient)...").format(
@@ -2372,50 +1715,9 @@ def remove_extension_std(name, force=False):
             shutil.rmtree(libpath)
 
 
-def remove_from_toolbox_xml(name):
-    """Update local meta-file when removing existing toolbox"""
-    xml_file = os.path.join(options["prefix"], "toolboxes.xml")
-    if not Path(xml_file).exists():
-        return
-    # read XML file
-    tree = etree_fromfile(xml_file)
-    for node in tree.findall("toolbox"):
-        if node.get("code") != name:
-            continue
-        tree.remove(node)
-
-    write_xml_toolboxes(xml_file, tree)
-
-
 def remove_extension_xml(mlist, edict):
     """Update local meta-file when removing existing extension"""
-    if len(edict) > 1:
-        # update also toolboxes metadata
-        remove_from_toolbox_xml(options["extension"])
-
-    # modules
-    xml_file = os.path.join(options["prefix"], "modules.xml")
-    if Path(xml_file).exists():
-        # read XML file
-        tree = etree_fromfile(xml_file)
-        for name in mlist:
-            for node in tree.findall("task"):
-                if node.get("name") != name:
-                    continue
-                tree.remove(node)
-        write_xml_modules(xml_file, tree)
-
-    # extensions
-    xml_file = os.path.join(options["prefix"], "extensions.xml")
-    if Path(xml_file).exists():
-        # read XML file
-        tree = etree_fromfile(xml_file)
-        for name in edict:
-            for node in tree.findall("task"):
-                if node.get("name") != name:
-                    continue
-                tree.remove(node)
-        write_xml_extensions(xml_file, tree)
+    _registry().remove_extension_xml(mlist, edict, options["extension"])
 
 
 # check links in CSS
@@ -2548,286 +1850,39 @@ def update_manual_page(module, source=None):
 
 def resolve_install_prefix(path, to_system):
     """Determine and check the path for installation"""
-    if to_system:
-        path = os.environ["GISBASE"]
-    if path == "$GRASS_ADDON_BASE":
-        if not os.getenv("GRASS_ADDON_BASE"):
-            from grass.app.runtime import get_grass_config_dir_for_version
-
-            path = os.path.join(
-                get_grass_config_dir_for_version(
-                    VERSION[0], VERSION[1], env=os.environ
-                ),
-                "addons",
-            )
-            gs.warning(
-                _("GRASS_ADDON_BASE is not defined, installing to {}").format(path)
-            )
-        else:
-            path = os.environ["GRASS_ADDON_BASE"]
-    if Path(path).exists() and not os.access(path, os.W_OK):
-        gs.fatal(
-            _(
-                "You don't have permission to install extension to <{0}>."
-                " Try to run {1} with administrator rights"
-                " (su or sudo)."
-            ).format(path, "g.extension")
+    try:
+        result = addons_config.resolve_install_prefix(
+            path,
+            to_system,
+            major_version=VERSION[0],
+            minor_version=VERSION[1],
+            env=os.environ,
+            reporter=REPORTER,
         )
-    # ensure dir sep at the end for cases where path is used as URL and pasted
-    # together with file names
-    if not path.endswith(os.path.sep):
-        path += os.path.sep
-    os.environ["GRASS_PREFIX_ADDON_BASE"] = os.path.abspath(
-        path
-    )  # make likes absolute paths
-    return os.environ["GRASS_PREFIX_ADDON_BASE"]
+    except AddonsError as error:
+        gs.fatal(str(error))
+    os.environ["GRASS_PREFIX_ADDON_BASE"] = result  # make likes absolute paths
+    return result
 
 
 def resolve_xmlurl_prefix(url, source=None):
-    """Determine and check the URL where the XML metadata files are stored
-
-    It ensures that there is a single slash at the end of URL, so we can attach
-     file name easily:
-
-    >>> resolve_xmlurl_prefix("https://grass.osgeo.org/addons")
-    'https://grass.osgeo.org/addons/'
-    >>> resolve_xmlurl_prefix("https://grass.osgeo.org/addons/")
-    'https://grass.osgeo.org/addons/'
-    """
-    gs.debug("resolve_xmlurl_prefix(url={0}, source={1})".format(url, source))
-    if source in {"official", "official_fork"}:
-        # use pregenerated modules XML file
-        # Define branch to fetch from (latest or current version)
-        version_branch = get_version_branch(VERSION[0])
-
-        url = "https://grass.osgeo.org/addons/{}/".format(version_branch)
-    # else try to get extensions XMl from SVN repository (provided URL)
-    # the exact action depends on subsequent code (somewhere)
-
-    if not url.endswith("/"):
-        url += "/"
-    return url
-
-
-KNOWN_HOST_SERVICES_INFO = {
-    "OSGeo Trac": {
-        "domain": "trac.osgeo.org",
-        "ignored_suffixes": ["format=zip"],
-        "possible_starts": ["", "https://", "http://"],
-        "url_start": "https://",
-        "url_end": "?format=zip",
-    },
-    "GitHub": {
-        "domain": "github.com",
-        "ignored_suffixes": [".zip", ".tar.gz"],
-        "possible_starts": ["", "https://", "http://"],
-        "url_start": "https://",
-        "url_end": "/archive/{branch}.zip",
-    },
-    "GitLab": {
-        "domain": "gitlab.com",
-        "ignored_suffixes": [".zip", ".tar.gz", ".tar.bz2", ".tar"],
-        "possible_starts": ["", "https://", "http://"],
-        "url_start": "https://",
-        "url_end": "/-/archive/{branch}/{name}-{branch}.zip",
-    },
-    "Bitbucket": {
-        "domain": "bitbucket.org",
-        "ignored_suffixes": [".zip", ".tar.gz", ".gz", ".bz2"],
-        "possible_starts": ["", "https://", "http://"],
-        "url_start": "https://",
-        "url_end": "/get/{branch}.zip",
-    },
-}
-
-# TODO: support ZIP URLs which don't end with zip
-# https://gitlab.com/user/reponame/repository/archive.zip?ref=b%C3%A9po
-
-
-def resolve_known_host_service(url, name, branch):
-    """Determine source type and full URL for known hosting service
-
-    If the service is not determined from the provided URL, tuple with
-    is two ``None`` values is returned.
-
-    :param url: URL
-    :param name: module name
-    """
-    match = None
-    actual_start = None
-    for key, value in KNOWN_HOST_SERVICES_INFO.items():
-        for start in value["possible_starts"]:
-            if url.startswith(start + value["domain"]):
-                match = value
-                actual_start = start
-                gs.verbose(_("Identified {0} as known hosting service").format(key))
-                for suffix in value["ignored_suffixes"]:
-                    if url.endswith(suffix):
-                        gs.verbose(
-                            _(
-                                "Not using {service} as known hosting service"
-                                " because the URL ends with '{suffix}'"
-                            ).format(service=key, suffix=suffix)
-                        )
-                        return None, None
-    if match:
-        actual_start = match["url_start"] if not actual_start else ""
-        if "branch" in match["url_end"]:
-            suffix = match["url_end"].format(
-                name=name,
-                branch=branch or get_default_branch(url),
-            )
-        else:
-            suffix = match["url_end"].format(name=name)
-        url = "{prefix}{base}{suffix}".format(
-            prefix=actual_start, base=url.rstrip("/"), suffix=suffix
+    """Determine and check the URL where the XML metadata files are stored"""
+    try:
+        return addons_resolve.resolve_xmlurl_prefix(
+            url, source, major_version=VERSION[0], reporter=REPORTER
         )
-        gs.verbose(_("Will use the following URL for download: {0}").format(url))
-        return "remote_zip", url
-    return None, None
+    except AddonsError as error:
+        gs.fatal(str(error))
 
 
-def validate_url(url):
-    if not Path(url).exists():
-        url_validated = False
-        message = None
-        if url.startswith("http"):
-            try:
-                open_url = urlopen(url)
-                open_url.close()
-                url_validated = True
-            except URLError as error:
-                message = error
-        else:
-            try:
-                open_url = urlopen("http://" + url)
-                open_url.close()
-                url_validated = True
-            except URLError as error:
-                message = error
-            try:
-                open_url = urlopen("https://" + url)
-                open_url.close()
-                url_validated = True
-            except URLError as error:
-                message = error
-        if not url_validated:
-            gs.fatal(
-                _("Cannot open URL <{url}>: {error}").format(url=url, error=message)
-            )
-    return True
-
-
-# TODO: add also option to enforce the source type
-# TODO: workaround, https://github.com/OSGeo/grass-addons/issues/528
 def resolve_source_code(url=None, name=None, branch=None, fork=False):
-    """Return type and URL or path of the source code
-
-    Local paths are not presented as URLs to be usable in standard functions.
-    Path is identified as local path if the directory of file exists which
-    has the unfortunate consequence that the not existing files are evaluated
-    as remote URLs. When path is not evaluated, Subversion is assumed for
-    backwards compatibility. When GitHub repository is specified, ZIP file
-    link is returned. The ZIP is for {branch} branch, not the default one because
-    GitHub does not provide the default branch in the URL (July 2015).
-
-    :returns: tuple with type of source and full URL or path
-
-    Official repository:
-
-    >>> resolve_source_code(name="g.example")  # doctest: +SKIP
-    ('official', 'https://trac.osgeo.org/.../general/g.example')
-
-    Subversion:
-
-    >>> resolve_source_code("https://svn.osgeo.org/grass/grass-addons/grass7")
-    ('svn', 'https://svn.osgeo.org/grass/grass-addons/grass7')
-
-    ZIP files online:
-
-    >>> resolve_source_code(
-    ...     "https://trac.osgeo.org/.../r.modis?format=zip"
-    ... )  # doctest: +SKIP
-    ('remote_zip', 'https://trac.osgeo.org/.../r.modis?format=zip')
-
-    Local directories and ZIP files:
-
-    >>> resolve_source_code(os.path.expanduser("~"))  # doctest: +ELLIPSIS
-    ('dir', '...')
-    >>> resolve_source_code("/local/directory/downloaded.zip")  # doctest: +SKIP
-    ('zip', '/local/directory/downloaded.zip')
-
-    OSGeo Trac:
-
-    >>> resolve_source_code("trac.osgeo.org/.../r.agent.aco")  # doctest: +SKIP
-    ('remote_zip', 'https://trac.osgeo.org/.../r.agent.aco?format=zip')
-    >>> resolve_source_code("https://trac.osgeo.org/.../r.agent.aco")  # doctest: +SKIP
-    ('remote_zip', 'https://trac.osgeo.org/.../r.agent.aco?format=zip')
-
-    GitHub:
-
-    >>> resolve_source_code("github.com/user/g.example")  # doctest: +SKIP
-    ('remote_zip', 'https://github.com/user/g.example/archive/master.zip')
-    >>> resolve_source_code("github.com/user/g.example/")  # doctest: +SKIP
-    ('remote_zip', 'https://github.com/user/g.example/archive/master.zip')
-    >>> resolve_source_code("https://github.com/user/g.example")  # doctest: +SKIP
-    ('remote_zip', 'https://github.com/user/g.example/archive/master.zip')
-    >>> resolve_source_code("https://github.com/user/g.example/")  # doctest: +SKIP
-    ('remote_zip', 'https://github.com/user/g.example/archive/master.zip')
-
-    GitLab:
-
-    >>> resolve_source_code("gitlab.com/JoeUser/GrassModule")  # doctest: +SKIP
-    ('remote_zip', 'https://gitlab.com/JoeUser/GrassModule/-/archive/master/GrassModule-master.zip')
-    >>> resolve_source_code("https://gitlab.com/JoeUser/GrassModule")  # doctest: +SKIP
-    ('remote_zip', 'https://gitlab.com/JoeUser/GrassModule/-/archive/master/GrassModule-master.zip')
-
-    Bitbucket:
-
-    >>> resolve_source_code("bitbucket.org/joe-user/grass-module")  # doctest: +SKIP
-    ('remote_zip', 'https://bitbucket.org/joe-user/grass-module/get/default.zip')
-    >>> resolve_source_code(
-    ...     "https://bitbucket.org/joe-user/grass-module"
-    ... )  # doctest: +SKIP
-    ('remote_zip', 'https://bitbucket.org/joe-user/grass-module/get/default.zip')
-    """  # noqa: E501
-    # Handle URL for the official repo
-    if not url or url == GIT_URL:
-        return "official", GIT_URL
-
-    # Check if URL can be found
-    # Catch corner case if local URL is given starting with file://
-    url = url[6:] if url.startswith("file://") else url
-    validate_url(url)
-
-    # Return validated URL for official fork
-    if fork:
-        return "official_fork", url
-
-    # Handle local URLs
-    if Path(url).is_dir():
-        return "dir", os.path.abspath(url)
-    if Path(url).exists():
-        if url.endswith(".zip"):
-            return "zip", os.path.abspath(url)
-        for suffix in extract_tar.supported_formats:
-            if url.endswith("." + suffix):
-                return suffix, os.path.abspath(url)
-    # Handle remote URLs
-    else:
-        source, resolved_url = resolve_known_host_service(url, name, branch)
-        if source:
-            return source, resolved_url
-        # we allow URL to end with =zip or ?zip and not only .zip
-        # unfortunately format=zip&version=89612 would require something else
-        # special option to force the source type would solve it
-        if url.endswith("zip"):
-            return "remote_zip", url
-        for suffix in extract_tar.supported_formats:
-            if url.endswith(suffix):
-                return "remote_" + suffix, url
-        # fallback to the classic behavior
-        return "svn", url
+    """Return type and URL or path of the source code"""
+    try:
+        return addons_resolve.resolve_source_code(
+            url=url, name=name, branch=branch, fork=fork, reporter=REPORTER
+        )
+    except AddonsError as error:
+        gs.fatal(str(error))
 
 
 def get_addons_paths(gg_addons_base_dir):
