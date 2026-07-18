@@ -127,7 +127,7 @@ jobs:
     concurrency:
       group: >-
         ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}-${{
-        matrix.name }}-${{ matrix.os }}-${{ matrix.extra-include }}
+        matrix.name }}-${{ matrix.os }}-${{ matrix.test-group }}
       cancel-in-progress: true
 
     runs-on: ${{ matrix.os }}
@@ -139,25 +139,14 @@ jobs:
           - "24.04"
           - minimum config
 
-        # Only run tests for these folders in this matrix job.
-        extra-include:
-          # All root folders that could contain tests are:
-          #   db display doc docker general gui
-          #   imagery lib misc ps python raster raster3d scripts
-          #   temporal testsuite utils vector visualization
-          #
-          # In order to split test executions, all these root folders are
-          # added as excluded folders, then items included for this matrix
-          # job are removed from that exclusion list.
-          #
-          # Using folded YAML multiline string block chomping (>-) to replace
-          # newlines with spaces, and strip newline at end.
-          # See https://yaml-multiline.info/
+        # Only run tests for the folders included in the test group of this
+        # matrix job. Groups are sized to run in roughly the same time and
+        # are labeled by their largest member.
+        test-group:
           - temporal
-          - >-
-            db display doc docker general gui
-            imagery lib misc ps python raster raster3d scripts
-            testsuite utils vector visualization
+          - raster
+          - python
+          - vector
 
         include:
           - name: "24.04"
@@ -166,6 +155,30 @@ jobs:
           - name: minimum config
             os: ubuntu-24.04
             config: ubuntu-24.04_without_x
+          # All root folders that could contain tests are:
+          #   db display doc docker general gui
+          #   imagery lib misc ps python raster raster3d scripts
+          #   temporal testsuite utils vector visualization
+          # Each folder must be in exactly one group.
+          #
+          # In order to split test executions, all these root folders are
+          # added as excluded folders, then items included for this matrix
+          # job are removed from that exclusion list.
+          #
+          # Using folded YAML multiline string block chomping (>-) to replace
+          # newlines with spaces, and strip newline at end.
+          # See https://yaml-multiline.info/
+          - test-group: temporal
+            extra-include: temporal
+          - test-group: raster
+            extra-include: raster raster3d
+          - test-group: python
+            extra-include: python scripts
+          - test-group: vector
+            extra-include: >-
+              db display doc docker general gui
+              imagery lib misc ps
+              testsuite utils vector visualization
       fail-fast: false
 
     steps:
@@ -280,7 +293,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: testreport-${{ matrix.os }}-${{ matrix.config }}-${{ matrix.extra-include }}
+          name: testreport-${{ matrix.os }}-${{ matrix.config }}-${{ matrix.test-group }}
           path: testreport
           retention-days: 3
 
