@@ -164,6 +164,7 @@ option(
 )
 option(WITH_DOCS "Build documentation" ON)
 option(WITH_GUI "Build GUI" ON)
+option(WITH_EXAMPLES "Build example modules under doc/examples" OFF)
 option(WITH_FHS "Install with FHS" OFF)
 
 include(check_target)
@@ -381,6 +382,12 @@ if(WITH_DOCS)
         DIRECTORY ${OUTDIR}/${GRASS_INSTALL_MANDIR}/
         DESTINATION ${GRASS_INSTALL_MANDIR}
     )
+endif()
+
+# Example modules (doc/examples) are demonstrations, not part of the default
+# build. They are opt-in and independent of WITH_DOCS.
+if(WITH_EXAMPLES)
+    add_subdirectory(doc/examples)
 endif()
 
 add_custom_target(
