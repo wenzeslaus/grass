@@ -16,6 +16,7 @@ for details.
 
 from __future__ import annotations
 
+import os
 import sys
 from multiprocessing import Lock, Pipe, Process
 from typing import TYPE_CHECKING, Literal, NoReturn
@@ -32,7 +33,7 @@ if TYPE_CHECKING:
     ]
 
 
-def message_server(lock: _LockLike, conn: Connection) -> NoReturn:
+def message_server(lock: _LockLike, conn: Connection, env: dict[str, str]) -> NoReturn:
     """The GRASS message server function designed to be a target for
     multiprocessing.Process
 
@@ -40,6 +41,10 @@ def message_server(lock: _LockLike, conn: Connection) -> NoReturn:
     :param lock: A multiprocessing.Lock
     :param conn: A multiprocessing.connection.Connection object obtained from
                  multiprocessing.Pipe
+    :param env: The environment of the session the server serves, applied
+                as the process environment. Passing it explicitly makes the
+                server independent of the multiprocessing start method,
+                which determines what a child process inherits.
 
     This function will use the G_* message C-functions from grass.lib.gis
     to provide an interface to the GRASS C-library messaging system.
@@ -70,6 +75,8 @@ def message_server(lock: _LockLike, conn: Connection) -> NoReturn:
     - Percent:  ["PERCENT", n, d, s]
 
     """
+    os.environ.clear()
+    os.environ.update(env)
     libgis.G_debug(1, "Start messenger server")
 
     while True:
@@ -181,17 +188,19 @@ class Messenger:
 
     def __init__(self, raise_on_error: bool = False) -> None:
         self.raise_on_error = raise_on_error
-        self.client_conn, self.server_conn = Pipe()
-        self.lock = Lock()
-        self.server = Process(target=message_server, args=(self.lock, self.server_conn))
-        self.server.daemon = True
-        self.server.start()
+        # The server process serves the session captured here, no matter
+        # which multiprocessing start method spawns it. Server restarts
+        # reuse it, so a restarted server stays in the same session.
+        self.env = os.environ.copy()
+        self.start_server()
 
     def start_server(self) -> None:
         """Start the messenger server and open the pipe"""
         self.client_conn, self.server_conn = Pipe()
         self.lock = Lock()
-        self.server = Process(target=message_server, args=(self.lock, self.server_conn))
+        self.server = Process(
+            target=message_server, args=(self.lock, self.server_conn, self.env)
+        )
         self.server.daemon = True
         self.server.start()
 
@@ -339,13 +348,10 @@ class Messenger:
         time.sleep(1)
 
 
-def get_msgr(
-    instance=[
-        None,
-    ],
-    *args,
-    **kwargs,
-) -> Messenger:
+_msgr: Messenger | None = None
+
+
+def get_msgr(*args, **kwargs) -> Messenger:
     """Return a Messenger instance.
 
        :returns: the Messenger instance.
@@ -358,9 +364,21 @@ def get_msgr(
     >>> msgr0 is msgr2
     False
     """
-    if not instance[0]:
-        instance[0] = Messenger(*args, **kwargs)
-    return instance[0]
+    global _msgr
+    if _msgr is None:
+        _msgr = Messenger(*args, **kwargs)
+    return _msgr
+
+
+def reset_msgr() -> None:
+    """Forget the cached Messenger instance.
+
+    The next get_msgr() call creates a new Messenger, e.g. one serving a
+    new session after a session change. Stopping the old instance is the
+    caller's responsibility.
+    """
+    global _msgr
+    _msgr = None
 
 
 if __name__ == "__main__":
