@@ -130,13 +130,13 @@ class RPCServerBase:
             self.checkThread.join(None)
 
     def thread_checker(self):
-        """Check every 200 micro seconds if the server process is alive"""
+        """Check every 200 milliseconds if the server process is alive"""
         while True:
             time.sleep(0.2)
-            self._check_restart_server(caller="Server check thread")
             with self.threadLock:
                 if self.stopThread is True:
                     return
+            self._check_restart_server(caller="Server check thread")
 
     def start_server(self):
         """This function must be re-implemented in the subclasses"""
@@ -153,6 +153,12 @@ class RPCServerBase:
 
     def _check_restart_server(self, caller="main thread") -> None:
         """Restart the server if it was terminated"""
+        if sys.is_finalizing():
+            # The interpreter is shutting down: multiprocessing is tearing
+            # down its own machinery, so the server can no longer be
+            # restarted and is not needed anymore.
+            return
+
         logger.debug("Check libgis server restart")
 
         with self.threadLock:
