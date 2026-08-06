@@ -1,4 +1,5 @@
 set(PYDIRS
+    addons
     benchmark
     exceptions
     experimental
