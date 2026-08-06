@@ -34,14 +34,21 @@ def test_init_restarts_subprocesses_on_session_change(two_projects):
     with gs.setup.init(project_a / "a"):
         tgis.init()
         first_ciface = tgis.get_tgis_c_library_interface()
+        first_messenger = tgis.get_tgis_message_interface()
         assert first_ciface.available_mapsets() == ["a", "PERMANENT"]
 
     with gs.setup.init(project_b / "b"):
         tgis.init()
         second_ciface = tgis.get_tgis_c_library_interface()
+        second_messenger = tgis.get_tgis_message_interface()
 
         # The C-library interface must have been replaced. Without this,
         # the subprocess is still bound to session A's deleted GISRC and
         # the call below fails.
         assert second_ciface is not first_ciface
         assert second_ciface.available_mapsets() == ["b", "PERMANENT"]
+
+        # The messenger must be a new working instance, not the stopped
+        # one cached by get_msgr() for the previous session.
+        assert second_messenger is not first_messenger
+        second_messenger.message("Messenger works after a session change")
