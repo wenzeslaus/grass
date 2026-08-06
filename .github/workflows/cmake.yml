@@ -41,12 +41,31 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
-      - name: Install CMake
+      - name: Cache CMake download
+        id: cached-cmake
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: cmake-*.tar.gz
+          key: cmake-${{ env.CMAKE_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+      - name: Download CMake
+        if: steps.cached-cmake.outputs.cache-hit != 'true'
         run: |
           cd "${GITHUB_WORKSPACE}" || exit
           arch="$(echo "$(uname -s)"-"$(uname -m)" | awk '{print tolower($0)}')"
           v="v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-${arch}.tar.gz"
           wget "https://github.com/Kitware/CMake/releases/download/$v"
+      - name: Save CMake download to cache
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        # Do not write to cache on pull_request events to prevent cache poisoning.
+        # Fork PRs can otherwise overwrite shared cache keys used by main branch runs.
+        if: steps.cached-cmake.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
+        with:
+          path: cmake-*.tar.gz
+          key: cmake-${{ env.CMAKE_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+      - name: Install CMake
+        run: |
+          cd "${GITHUB_WORKSPACE}" || exit
+          arch="$(echo "$(uname -s)"-"$(uname -m)" | awk '{print tolower($0)}')"
           tar xzf "cmake-${CMAKE_VERSION}-${arch}.tar.gz"
           echo "CMAKE_DIR=${GITHUB_WORKSPACE}/cmake-${CMAKE_VERSION}-${arch}/bin" >> "${GITHUB_ENV}"
           echo "${GITHUB_WORKSPACE}/cmake-${CMAKE_VERSION}-${arch}/bin" >> "${GITHUB_PATH}"
@@ -70,6 +89,12 @@ jobs:
       - name: Create installation directory
         run: |
           mkdir "${HOME}/install"
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # v1.2.23
+        with:
+          verbose: 2
+          evict-old-files: 7d
+          key: ${{ github.workflow }}-${{ github.job }}
       - name: Configure
         run: |
           cmake -S "${GITHUB_WORKSPACE}" -B "${GITHUB_WORKSPACE}/build" -G Ninja \
@@ -93,8 +118,34 @@ jobs:
         run: .github/workflows/print_versions.sh
       - name: Test executing of the grass command
         run: .github/workflows/test_simple.sh
+      - name: Cache GRASS Sample Dataset
+        id: cached-data
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: sample-data/nc_spm_full_v2beta1.tar.gz
+          key: nc_spm_full_v2beta1.tar.gz
+          enableCrossOsArchive: true
+      - name: Download GRASS Sample Dataset
+        if: steps.cached-data.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p sample-data
+          curl -L "${SAMPLE_DATA}" -o sample-data/nc_spm_full_v2beta1.tar.gz
+        env:
+          SAMPLE_DATA: "https://grass.osgeo.org/sampledata/north_carolina/\
+            nc_spm_full_v2beta1.tar.gz"
+      - name: Save GRASS Sample Dataset to cache
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        # Do not write to cache on pull_request events to prevent cache poisoning.
+        # Fork PRs can otherwise overwrite shared cache keys used by main branch runs.
+        if: steps.cached-data.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
+        with:
+          path: sample-data/nc_spm_full_v2beta1.tar.gz
+          key: nc_spm_full_v2beta1.tar.gz
       - name: Run tests
         run: .github/workflows/test_thorough.sh --config .gunittest.cfg --min-success 100
+        env:
+          SAMPLE_DATA_URL: "file://${{ github.workspace }}/sample-data/\
+            nc_spm_full_v2beta1.tar.gz"
       - name: Make HTML test report available
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
