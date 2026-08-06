@@ -72,6 +72,17 @@ jobs:
         run: |
           echo "MAKEFLAGS=-j$(nproc)" >> "${GITHUB_ENV}"
 
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03 # v1.2.23
+        with:
+          create-symlink: true
+          verbose: 2
+          evict-old-files: 7d
+          # ccache caches only C/C++ compilation which does not depend on
+          # Python, so jobs for all Python versions share one cache. The
+          # Python-dependent parts of the build run fresh in every job.
+          key: ${{ github.workflow }}-${{ matrix.os }}
+
       - name: Build
         run: |
           ".github/workflows/build_${MATRIX_OS}.sh" "${HOME}/install"
