@@ -1,10 +1,10 @@
-# syntax=docker/dockerfile:1.24@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
+# syntax=docker/dockerfile:1.25@sha256:0adf442eae370b6087e08edc7c50b552d80ddf261576f4ebd6421006b2461f12
 
 # Note: This file must be kept in sync in ./Dockerfile and ./docker/ubuntu/Dockerfile.
 #       Changes to this file must be copied over to the other file.
 ARG GUI=without
 
-FROM ubuntu:24.04@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae77ff1dc54 AS common_start
+FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90 AS common_start
 
 ARG BASE_NAME="ubuntu:24.04"
 ARG PYTHON_VERSION=3.12
@@ -13,7 +13,7 @@ ARG GEOS_VERSION=3.14.1
 # renovate: datasource=github-tags depName=OSGeo/PROJ
 ARG PROJ_VERSION=9.8.1
 # renovate: datasource=github-tags depName=OSGeo/gdal
-ARG GDAL_VERSION=3.13.1
+ARG GDAL_VERSION=3.13.2
 # renovate: datasource=github-tags depName=PDAL/PDAL
 ARG PDAL_VERSION=2.10.2
 # renovate: datasource=github-tags depName=OSGeo/gdal-grass
