@@ -7,6 +7,10 @@ is caught here, which makes this a guard for output compatibility.
 
 The reference values below were captured from the current implementation.
 
+The thread-safety test checks that the shared generator, drawn from by
+several threads at once, still hands out exactly the single-threaded
+sequence.
+
 The tests at the end instead cover the caller-owned generator, whose
 sequences are not pinned: what matters there is that a stream depends only
 on its seed and index, and not on the presence of other threads.
@@ -262,6 +266,43 @@ def test_srand48_is_reproducible():
     G_srand48(1337)
     second = [G_lrand48() for _ in range(20)]
     assert first == second
+
+
+@pytest.mark.parametrize(
+    "generate", [G_lrand48, G_mrand48, G_drand48], ids=["lrand48", "mrand48", "drand48"]
+)
+def test_shared_generator_is_thread_safe(generate):
+    """Threads together consume exactly the single-threaded sequence.
+
+    The shared generator serializes its state updates, so the threads
+    must between them receive every value of the sequence once; only which
+    thread gets which value depends on scheduling. Sorting removes that
+    order before comparing. A set comparison would not do, because a
+    correct sequence can contain duplicates. ctypes releases the GIL
+    around each call, so the threads do run the C code concurrently.
+    """
+    seed = 1337
+    num_threads = 4
+    per_thread = 2500
+
+    G_srand48(seed)
+    serial = [generate() for _ in range(num_threads * per_thread)]
+
+    threaded = [None] * num_threads
+
+    def worker(index):
+        threaded[index] = [generate() for _ in range(per_thread)]
+
+    G_srand48(seed)
+    threads = [
+        threading.Thread(target=worker, args=(index,)) for index in range(num_threads)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert sorted(value for values in threaded for value in values) == sorted(serial)
 
 
 def drand48_stream(seed, stream, count):
