@@ -287,9 +287,9 @@ void G_srand48_r(struct G_rand48_state *state, long seedval,
                  unsigned long stream)
 {
     if (stream >= STREAM_COUNT)
-        G_fatal_error(
-            _("Random number stream %lu is not below the maximum of %llu"),
-            stream, (unsigned long long)STREAM_COUNT);
+        G_fatal_error(_("Random number stream index %lu is out of range "
+                        "(must be less than %llu)"),
+                      stream, (unsigned long long)STREAM_COUNT);
 
     state->state = lcg_jump(lcg_seed(seedval), stream * STREAM_STRIDE);
 }
