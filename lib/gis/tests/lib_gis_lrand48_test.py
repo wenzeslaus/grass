@@ -11,11 +11,16 @@ The thread-safety test checks that the shared generator, drawn from by
 several threads at once, still hands out exactly the single-threaded
 sequence.
 
-The tests at the end instead cover the caller-owned generator, whose
-sequences are not pinned: what matters there is that a stream depends only
-on its seed and index, and not on the presence of other threads.
+The tests at the end instead cover the caller-owned generator. Its
+sequences need no reference values of their own: stream 0 is compared with
+the shared generator, and the start of every other stream with an
+independent computation of where the stream should begin. The remaining
+tests check that a stream depends only on its seed and index, and not on
+the presence of other threads.
 """
 
+import subprocess
+import sys
 import threading
 from ctypes import byref
 
@@ -349,14 +354,115 @@ def test_drand48_r_streams_do_not_run_into_each_other():
     """Neighbouring streams stay apart over a long run.
 
     The streams are stretches of one cycle, so the guarantee that they do
-    not overlap rests on the spacing between their starting points. Drawing
-    well past any plausible workload and finding no value of stream 1 in
-    stream 0 checks that the spacing is real.
+    not overlap rests on the spacing between their starting points. This
+    is a sanity check over a short run; the exact spacing is checked by
+    test_drand48_r_streams_are_a_stride_apart.
     """
     count = 200000
     first = drand48_stream(1337, 0, count)
     second = drand48_stream(1337, 1, count)
     assert not set(first) & set(second)
+
+
+# The generator constants and the split of its cycle into streams, as in
+# lrand48.c. Changing the split changes the numbers of every stream but
+# stream 0, so the tests below are meant to fail when that happens.
+LCG_A = 0x5DEECE66D
+LCG_B = 0xB
+LCG_MODULUS = 2**48
+STREAM_STRIDE = 2**36
+STREAM_COUNT = LCG_MODULUS // STREAM_STRIDE
+
+
+def lcg_jump_reference(state, steps):
+    """Generator state after the given number of steps, in closed form
+
+    Steps compose to a^n * x + b * (a^n - 1) / (a - 1) modulo 2^48. The
+    division is exact over the integers but a - 1 has no inverse modulo
+    2^48, so a^n is computed modulo 2^48 * (a - 1), which keeps the
+    quotient correct modulo 2^48. This shares no code or method with the
+    repeated squaring in the library.
+    """
+    power = pow(LCG_A, steps, LCG_MODULUS * (LCG_A - 1))
+    return (power * state + LCG_B * ((power - 1) // (LCG_A - 1))) % LCG_MODULUS
+
+
+def drand48_states(seed, stream, count):
+    """Generator states behind the values of drand48_stream()
+
+    A value is its state divided by 2^48, which a double holds exactly, so
+    the multiplication recovers the state without rounding.
+    """
+    return [int(value * LCG_MODULUS) for value in drand48_stream(seed, stream, count)]
+
+
+def seed_state(seed):
+    """Generator state which seeding with the given value produces"""
+    return ((seed & 0xFFFFFFFF) << 16) | 0x330E
+
+
+def test_lcg_jump_reference_matches_stepping():
+    """The closed form agrees with drawing from the generator step by step.
+
+    This ties the reference used below to the actual generator.
+    """
+    seed = 1337
+    expected = [lcg_jump_reference(seed_state(seed), n) for n in range(1, 1001)]
+    assert drand48_states(seed, 0, 1000) == expected
+
+
+@pytest.mark.parametrize("seed", [0, 1337, -1])
+@pytest.mark.parametrize("stream", [1, 2, 1000, STREAM_COUNT - 1])
+def test_drand48_r_streams_are_a_stride_apart(seed, stream):
+    """A stream starts exactly its index times the stride along the cycle.
+
+    This is what makes the streams disjoint. The last stream is included,
+    which also shows that the highest index is accepted.
+    """
+    expected = lcg_jump_reference(seed_state(seed), stream * STREAM_STRIDE + 1)
+    assert drand48_states(seed, stream, 1) == [expected]
+
+
+def test_streams_cover_the_cycle_exactly():
+    """One stride past the last stream is the start of stream 0.
+
+    An index beyond the last stream would therefore silently repeat another
+    stream, which is why G_srand48_r() must reject it.
+    """
+    start = seed_state(1337)
+    assert lcg_jump_reference(start, STREAM_COUNT * STREAM_STRIDE) == start
+
+
+SEED_STREAM_SCRIPT = """
+import sys
+from ctypes import byref
+
+from grass.lib.gis import G_srand48_r, struct_G_rand48_state
+
+state = struct_G_rand48_state()
+G_srand48_r(byref(state), 1337, int(sys.argv[1]))
+"""
+
+
+def test_drand48_r_rejects_stream_past_the_end(xy_session_for_module, tmp_path):
+    """A stream index equal to the number of streams is a fatal error.
+
+    Runs in a subprocess because a fatal error exits the calling process,
+    and with a session environment because without GISBASE the error
+    message is not printed.
+    """
+    script = tmp_path / "seed_stream.py"
+    script.write_text(SEED_STREAM_SCRIPT, encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(script), str(STREAM_COUNT)],
+        env=xy_session_for_module.env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode != 0, "out-of-range stream index was accepted"
+    assert "out of range" in result.stderr
 
 
 def test_drand48_r_seeds_differ():
