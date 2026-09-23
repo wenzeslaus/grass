@@ -409,10 +409,11 @@ LCG_A = 0x5DEECE66D
 LCG_B = 0xB
 LCG_MODULUS = 2**48
 
-# Splits to test: a power of two which divides the period, a count which
-# does not divide it, a count beyond the rows of a large raster, and the
-# largest count, which spaces the streams one step apart.
-STREAM_COUNTS = [4096, 3, 100000, 2**48]
+# Splits to test: a power of two, which the library turns into an odd
+# split, a count which does not divide the period, a count beyond the rows
+# of a large raster, and the largest count, which spaces the streams one
+# step apart.
+STREAM_COUNTS = [4096, 3, 100000, 2**48 - 1]
 
 
 def lcg_jump_reference(state, steps):
@@ -458,15 +459,15 @@ def test_lcg_jump_reference_matches_stepping():
 def test_random_streams_are_evenly_spaced(seed, count):
     """A stream starts exactly its index times the stride along the cycle.
 
-    The stride is the period divided by the count, rounded down, so all
-    the streams fit into one cycle without wrapping around to stream 0.
-    This is what makes them disjoint, and it is why an index equal to the
-    count must be rejected: that stream would start a full cycle, or just
-    short of one, after stream 0 and repeat its values. The first, a
-    middle and the last stream are checked; the last one also shows that
-    the highest index is accepted.
+    The stride is the period divided by the count, or by count + 1 for an
+    even count, rounded down, so all the streams fit into one cycle
+    without wrapping around to stream 0. This is what makes them disjoint,
+    and it is why an index equal to the count must be rejected: that
+    stream would start a full cycle, or just short of one, after stream 0
+    and repeat its values. The first, a middle and the last stream are
+    checked; the last one also shows that the highest index is accepted.
     """
-    stride = LCG_MODULUS // count
+    stride = LCG_MODULUS // (count | 1)
     for index in sorted({1, count // 2, count - 1}):
         expected = lcg_jump_reference(seed_state(seed), index * stride + 1)
         assert random_states(seed, index, count, 1) == [expected], index
@@ -488,9 +489,9 @@ G_random_seed_stream(byref(state), 1337, int(sys.argv[1]), int(sys.argv[2]))
     [
         (NSTREAMS, NSTREAMS, "out of range"),
         (0, 0, "must be positive"),
-        (0, 2**48 + 1, "period"),
+        (0, 2**48, "period"),
     ],
-    ids=["index_past_the_end", "no_streams", "more_streams_than_period"],
+    ids=["index_past_the_end", "no_streams", "as_many_streams_as_period"],
 )
 def test_random_seed_stream_rejects_impossible_stream(
     xy_session_for_module, tmp_path, index, count, message
@@ -513,6 +514,42 @@ def test_random_seed_stream_rejects_impossible_stream(
     )
     assert result.returncode != 0, "impossible stream was accepted"
     assert message in result.stderr
+
+
+def constant_shift(first, second, max_lag=4):
+    """Lag at which second is first plus a constant, or None if there is none.
+
+    A constant difference at some lag means the two streams are one
+    sequence shifted in time and in value, which is what streams a
+    power-of-two fraction of the cycle apart produce on this generator.
+    """
+    n = len(first)
+    for lag in range(-max_lag, max_lag + 1):
+        pairs = [(first[i], second[i + lag]) for i in range(n) if 0 <= i + lag < n]
+        if len({(b - a) % LCG_MODULUS for a, b in pairs}) == 1:
+            return lag
+    return None
+
+
+@pytest.mark.parametrize("count", [2, 4, 6, 64])
+def test_random_streams_have_no_lockstep_twins(count):
+    """No two streams of an even count are the same sequence plus a constant.
+
+    With the cycle split into an even number of parts, the streams 0 and
+    count / 2 would be half a cycle apart, where this generator repeats
+    itself up to a constant, and with a power-of-two count every stream
+    would be such a twin of stream 0. The library therefore splits the
+    cycle into an odd number of parts. This checks every pair of streams
+    over 100 draws and lags of up to 4 draws.
+    """
+    streams = [random_states(1337, index, count, 100) for index in range(count)]
+    twins = [
+        (i, j, constant_shift(streams[i], streams[j]))
+        for i in range(count)
+        for j in range(i + 1, count)
+        if constant_shift(streams[i], streams[j]) is not None
+    ]
+    assert twins == []
 
 
 def test_random_seeds_differ():

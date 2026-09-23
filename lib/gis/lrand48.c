@@ -277,9 +277,14 @@ void G_random_seed(struct G_random_state *state, unsigned long long seed)
 /*!
  * \brief Seed one of several caller-owned generators derived from one seed
  *
- * The \p count streams start evenly spaced along the generator cycle, so
- * they are disjoint as long as each draws fewer than period / \p count
- * values. The period of the current generator is 2^48 (about 2.8e14).
+ * The streams start evenly spaced along the generator cycle, which is
+ * split into \p count parts, or \p count + 1 parts when \p count is even,
+ * so they are disjoint as long as each draws fewer than period / (\p count
+ * + 1) values. The period of the current generator is 2^48 (about 2.8e14).
+ * The split is made odd because the period is a power of two: two streams
+ * a power-of-two fraction of the cycle apart would produce values which
+ * differ by a constant at every draw, and an even split contains such
+ * pairs, for example the streams 0 and \p count / 2.
  *
  * Stream 0 is what G_random_seed() gives, so code moving from the shared
  * generator to this one reproduces its single-threaded results with
@@ -293,7 +298,7 @@ void G_random_seed(struct G_random_state *state, unsigned long long seed)
  * The caller owns the state, so this function is thread-safe as long as
  * no two threads seed the same state.
  *
- * A \p count of zero or above the period, or an \p index not below
+ * A \p count of zero or not below the period, or an \p index not below
  * \p count, is a fatal error.
  *
  * \param[out] state generator state to seed
@@ -304,21 +309,26 @@ void G_random_seed(struct G_random_state *state, unsigned long long seed)
 void G_random_seed_stream(struct G_random_state *state, unsigned long long seed,
                           unsigned long long index, unsigned long long count)
 {
-    unsigned long long stride;
+    unsigned long long parts, stride;
 
     if (count == 0)
         G_fatal_error(
             _("The number of random number streams must be positive"));
-    if (count > LCG_PERIOD)
+    if (count >= LCG_PERIOD)
         G_fatal_error(_("Cannot derive %llu random number streams from one "
-                        "seed (the generator's period is %llu)"),
+                        "seed (the count must be below the generator's "
+                        "period of %llu)"),
                       count, (unsigned long long)LCG_PERIOD);
     if (index >= count)
         G_fatal_error(_("Random number stream index %llu is out of range "
                         "(must be less than %llu)"),
                       index, count);
 
-    stride = LCG_PERIOD / count;
+    /* An odd number of parts keeps every pair of streams away from the
+     * power-of-two fractions of the cycle at which this generator repeats
+     * itself up to a constant; see the description above. */
+    parts = count | 1;
+    stride = LCG_PERIOD / parts;
     state->state = lcg_jump(lcg_seed(seed), index * stride);
 }
 
