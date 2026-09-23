@@ -15,8 +15,8 @@ The tests at the end instead cover the caller-owned generator. Its
 sequences need no reference values of their own: stream 0 is compared with
 the shared generator, and the start of every other stream with an
 independent computation of where the stream should begin. The remaining
-tests check that a stream depends only on its seed and index, and not on
-the presence of other threads.
+tests check that a stream depends only on its seed, index and count, and
+not on the presence of other threads.
 """
 
 import subprocess
@@ -28,12 +28,13 @@ import pytest
 
 from grass.lib.gis import (
     G_drand48,
-    G_drand48_r,
     G_lrand48,
     G_mrand48,
+    G_random_double,
+    G_random_seed,
+    G_random_seed_stream,
     G_srand48,
-    G_srand48_r,
-    struct_G_rand48_state,
+    struct_G_random_state,
 )
 
 # First ten outputs of each generator after G_srand48(seed). The seeds cover
@@ -274,6 +275,23 @@ def test_srand48_is_reproducible():
 
 
 @pytest.mark.parametrize(
+    ("negative", "equivalent"), [(-1, 4294967295), (-2147483648, 2147483648)]
+)
+def test_srand48_negative_seed_wraps_to_32_bits(negative, equivalent):
+    """A negative seed seeds like its value modulo 2^32.
+
+    Only the low 32 bits of the seed reach the generator, so -1 seeds like
+    the largest 32-bit value, whose sequence is pinned in REFERENCE. This
+    guards the seeding code, which callers passing a long rely on.
+    """
+    G_srand48(negative)
+    first = [G_lrand48() for _ in range(20)]
+    G_srand48(equivalent)
+    second = [G_lrand48() for _ in range(20)]
+    assert first == second
+
+
+@pytest.mark.parametrize(
     "generate", [G_lrand48, G_mrand48, G_drand48], ids=["lrand48", "mrand48", "drand48"]
 )
 def test_shared_generator_is_thread_safe(generate):
@@ -310,36 +328,41 @@ def test_shared_generator_is_thread_safe(generate):
     assert sorted(value for values in threaded for value in values) == sorted(serial)
 
 
-def drand48_stream(seed, stream, count):
-    """Draw count values from the caller-owned generator (seed, stream)."""
-    state = struct_G_rand48_state()
-    G_srand48_r(byref(state), seed, stream)
-    return [G_drand48_r(byref(state)) for _ in range(count)]
+# The stream count used where a test needs some split but does not care
+# which one.
+NSTREAMS = 4096
 
 
-def test_drand48_r_is_reproducible():
-    """The same seed and stream give the same sequence."""
-    assert drand48_stream(1337, 0, 20) == drand48_stream(1337, 0, 20)
+def random_stream(seed, index, count, n):
+    """Draw n values from stream index of the count streams derived from seed."""
+    state = struct_G_random_state()
+    G_random_seed_stream(byref(state), seed, index, count)
+    return [G_random_double(byref(state)) for _ in range(n)]
 
 
-def test_drand48_r_range():
+def test_random_is_reproducible():
+    """The same seed, index and count give the same sequence."""
+    assert random_stream(1337, 0, NSTREAMS, 20) == random_stream(1337, 0, NSTREAMS, 20)
+
+
+def test_random_range():
     """Generated values lie in [0, 1)."""
-    assert all(0.0 <= value < 1.0 for value in drand48_stream(42, 3, 1000))
+    assert all(0.0 <= value < 1.0 for value in random_stream(42, 3, NSTREAMS, 1000))
 
 
-def test_drand48_r_streams_differ():
+def test_random_streams_differ():
     """Streams derived from one seed do not repeat each other.
 
     Consecutive stream indices are the case a caller is most likely to
     use, so checking that their first values are all distinct guards the
     step that spaces the streams out along the generator cycle.
     """
-    firsts = [drand48_stream(1337, stream, 1)[0] for stream in range(64)]
+    firsts = [random_stream(1337, index, NSTREAMS, 1)[0] for index in range(64)]
     assert len(set(firsts)) == len(firsts)
 
 
 @pytest.mark.parametrize("seed", sorted(REFERENCE))
-def test_drand48_r_stream_zero_matches_shared_generator(seed):
+def test_random_stream_zero_matches_shared_generator(seed):
     """Stream 0 continues to produce what the shared generator produces.
 
     This is what lets code switch from G_drand48() to a caller-owned
@@ -347,31 +370,49 @@ def test_drand48_r_stream_zero_matches_shared_generator(seed):
     """
     G_srand48(seed)
     shared = [G_drand48() for _ in range(100)]
-    assert drand48_stream(seed, 0, 100) == shared
+    assert random_stream(seed, 0, NSTREAMS, 100) == shared
 
 
-def test_drand48_r_streams_do_not_run_into_each_other():
+@pytest.mark.parametrize("seed", [0, 1337])
+def test_random_seed_is_stream_zero(seed):
+    """G_random_seed() gives stream 0, whatever the split into streams.
+
+    Stream 0 starts at the seed state however many streams the cycle is
+    split into, so a caller using a single stream can seed without
+    choosing a count.
+    """
+    state = struct_G_random_state()
+    G_random_seed(byref(state), seed)
+    single = [G_random_double(byref(state)) for _ in range(100)]
+    assert single == random_stream(seed, 0, 1, 100)
+    assert single == random_stream(seed, 0, NSTREAMS, 100)
+
+
+def test_random_streams_do_not_run_into_each_other():
     """Neighbouring streams stay apart over a long run.
 
     The streams are stretches of one cycle, so the guarantee that they do
     not overlap rests on the spacing between their starting points. This
     is a sanity check over a short run; the exact spacing is checked by
-    test_drand48_r_streams_are_a_stride_apart.
+    test_random_streams_are_evenly_spaced.
     """
-    count = 200000
-    first = drand48_stream(1337, 0, count)
-    second = drand48_stream(1337, 1, count)
+    n = 200000
+    first = random_stream(1337, 0, NSTREAMS, n)
+    second = random_stream(1337, 1, NSTREAMS, n)
     assert not set(first) & set(second)
 
 
-# The generator constants and the split of its cycle into streams, as in
-# lrand48.c. Changing the split changes the numbers of every stream but
-# stream 0, so the tests below are meant to fail when that happens.
+# The generator constants, as in lrand48.c. Changing the generator or the
+# way its cycle is split into streams changes the numbers of every stream
+# but stream 0, so the tests below are meant to fail when that happens.
 LCG_A = 0x5DEECE66D
 LCG_B = 0xB
 LCG_MODULUS = 2**48
-STREAM_STRIDE = 2**36
-STREAM_COUNT = LCG_MODULUS // STREAM_STRIDE
+
+# Splits to test: a power of two which divides the period, a count which
+# does not divide it, a count beyond the rows of a large raster, and the
+# largest count, which spaces the streams one step apart.
+STREAM_COUNTS = [4096, 3, 100000, 2**48]
 
 
 def lcg_jump_reference(state, steps):
@@ -380,20 +421,21 @@ def lcg_jump_reference(state, steps):
     Steps compose to a^n * x + b * (a^n - 1) / (a - 1) modulo 2^48. The
     division is exact over the integers but a - 1 has no inverse modulo
     2^48, so a^n is computed modulo 2^48 * (a - 1), which keeps the
-    quotient correct modulo 2^48. This shares no code or method with the
-    repeated squaring in the library.
+    quotient correct modulo 2^48. Unlike the library, which composes the
+    affine map by repeated squaring, this takes the additive term in
+    closed form and reuses none of the library's code.
     """
     power = pow(LCG_A, steps, LCG_MODULUS * (LCG_A - 1))
     return (power * state + LCG_B * ((power - 1) // (LCG_A - 1))) % LCG_MODULUS
 
 
-def drand48_states(seed, stream, count):
-    """Generator states behind the values of drand48_stream()
+def random_states(seed, index, count, n):
+    """Generator states behind the values of random_stream()
 
     A value is its state divided by 2^48, which a double holds exactly, so
     the multiplication recovers the state without rounding.
     """
-    return [int(value * LCG_MODULUS) for value in drand48_stream(seed, stream, count)]
+    return [int(value * LCG_MODULUS) for value in random_stream(seed, index, count, n)]
 
 
 def seed_state(seed):
@@ -408,44 +450,52 @@ def test_lcg_jump_reference_matches_stepping():
     """
     seed = 1337
     expected = [lcg_jump_reference(seed_state(seed), n) for n in range(1, 1001)]
-    assert drand48_states(seed, 0, 1000) == expected
+    assert random_states(seed, 0, 1, 1000) == expected
 
 
 @pytest.mark.parametrize("seed", [0, 1337, -1])
-@pytest.mark.parametrize("stream", [1, 2, 1000, STREAM_COUNT - 1])
-def test_drand48_r_streams_are_a_stride_apart(seed, stream):
+@pytest.mark.parametrize("count", STREAM_COUNTS)
+def test_random_streams_are_evenly_spaced(seed, count):
     """A stream starts exactly its index times the stride along the cycle.
 
-    This is what makes the streams disjoint. The last stream is included,
-    which also shows that the highest index is accepted.
+    The stride is the period divided by the count, rounded down, so all
+    the streams fit into one cycle without wrapping around to stream 0.
+    This is what makes them disjoint, and it is why an index equal to the
+    count must be rejected: that stream would start a full cycle, or just
+    short of one, after stream 0 and repeat its values. The first, a
+    middle and the last stream are checked; the last one also shows that
+    the highest index is accepted.
     """
-    expected = lcg_jump_reference(seed_state(seed), stream * STREAM_STRIDE + 1)
-    assert drand48_states(seed, stream, 1) == [expected]
-
-
-def test_streams_cover_the_cycle_exactly():
-    """One stride past the last stream is the start of stream 0.
-
-    An index beyond the last stream would therefore silently repeat another
-    stream, which is why G_srand48_r() must reject it.
-    """
-    start = seed_state(1337)
-    assert lcg_jump_reference(start, STREAM_COUNT * STREAM_STRIDE) == start
+    stride = LCG_MODULUS // count
+    for index in sorted({1, count // 2, count - 1}):
+        expected = lcg_jump_reference(seed_state(seed), index * stride + 1)
+        assert random_states(seed, index, count, 1) == [expected], index
 
 
 SEED_STREAM_SCRIPT = """
 import sys
 from ctypes import byref
 
-from grass.lib.gis import G_srand48_r, struct_G_rand48_state
+from grass.lib.gis import G_random_seed_stream, struct_G_random_state
 
-state = struct_G_rand48_state()
-G_srand48_r(byref(state), 1337, int(sys.argv[1]))
+state = struct_G_random_state()
+G_random_seed_stream(byref(state), 1337, int(sys.argv[1]), int(sys.argv[2]))
 """
 
 
-def test_drand48_r_rejects_stream_past_the_end(xy_session_for_module, tmp_path):
-    """A stream index equal to the number of streams is a fatal error.
+@pytest.mark.parametrize(
+    ("index", "count", "message"),
+    [
+        (NSTREAMS, NSTREAMS, "out of range"),
+        (0, 0, "must be positive"),
+        (0, 2**48 + 1, "period"),
+    ],
+    ids=["index_past_the_end", "no_streams", "more_streams_than_period"],
+)
+def test_random_seed_stream_rejects_impossible_stream(
+    xy_session_for_module, tmp_path, index, count, message
+):
+    """An index or count which does not describe a stream is a fatal error.
 
     Runs in a subprocess because a fatal error exits the calling process,
     and with a session environment because without GISBASE the error
@@ -454,57 +504,60 @@ def test_drand48_r_rejects_stream_past_the_end(xy_session_for_module, tmp_path):
     script = tmp_path / "seed_stream.py"
     script.write_text(SEED_STREAM_SCRIPT, encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, str(script), str(STREAM_COUNT)],
+        [sys.executable, str(script), str(index), str(count)],
         env=xy_session_for_module.env,
         capture_output=True,
         text=True,
         timeout=60,
         check=False,
     )
-    assert result.returncode != 0, "out-of-range stream index was accepted"
-    assert "out of range" in result.stderr
+    assert result.returncode != 0, "impossible stream was accepted"
+    assert message in result.stderr
 
 
-def test_drand48_r_seeds_differ():
+def test_random_seeds_differ():
     """The same stream index under different seeds gives different values."""
-    assert drand48_stream(1, 7, 10) != drand48_stream(2, 7, 10)
+    assert random_stream(1, 7, NSTREAMS, 10) != random_stream(2, 7, NSTREAMS, 10)
 
 
-def test_drand48_r_independent_of_shared_generator():
+def test_random_independent_of_shared_generator():
     """Drawing from the shared generator does not disturb a caller-owned one."""
-    expected = drand48_stream(1337, 5, 10)
+    expected = random_stream(1337, 5, NSTREAMS, 10)
 
-    state = struct_G_rand48_state()
-    G_srand48_r(byref(state), 1337, 5)
+    state = struct_G_random_state()
+    G_random_seed_stream(byref(state), 1337, 5, NSTREAMS)
     G_srand48(99)
     interleaved = []
     for _ in range(10):
         G_lrand48()
-        interleaved.append(G_drand48_r(byref(state)))
+        interleaved.append(G_random_double(byref(state)))
 
     assert interleaved == expected
 
 
-def test_drand48_r_unaffected_by_threading():
+def test_random_unaffected_by_threading():
     """Each stream yields the same values whether or not threads are used.
 
     This is the property the shared generator cannot offer: results depend
-    only on the seed and the stream index, never on how many threads run
-    or how they interleave.
+    only on the seed, the stream index and the count, never on how many
+    threads run or how they interleave. Each thread takes one of as many
+    streams as there are threads, as a caller would.
     """
     seed = 1337
     num_streams = 8
-    count = 5000
+    n = 5000
 
-    serial = [drand48_stream(seed, s, count) for s in range(num_streams)]
+    serial = [
+        random_stream(seed, index, num_streams, n) for index in range(num_streams)
+    ]
 
     threaded = [None] * num_streams
 
-    def worker(stream):
-        threaded[stream] = drand48_stream(seed, stream, count)
+    def worker(index):
+        threaded[index] = random_stream(seed, index, num_streams, n)
 
     threads = [
-        threading.Thread(target=worker, args=(stream,)) for stream in range(num_streams)
+        threading.Thread(target=worker, args=(index,)) for index in range(num_streams)
     ]
     for thread in threads:
         thread.start()

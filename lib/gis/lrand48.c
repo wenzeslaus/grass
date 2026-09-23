@@ -18,14 +18,14 @@
  * updates, so multi-threaded usage is safe only when compiled with C11
  * atomics. The seeding functions are not thread-safe; see G_srand48().
  *
- * The G_*rand48_r() functions instead advance a generator owned by the
+ * The G_random_*() functions instead advance a generator owned by the
  * caller. Threads holding separate states share nothing, so these need
  * neither atomics nor locks, are safe on every build, and give each
  * stream a reproducible sequence of its own. This is what parallel code
  * that must produce the same result for a given seed regardless of the
  * number of threads should use. The streams are disjoint stretches of the
- * same cycle the shared generator walks, and stream 0 starts where
- * G_srand48() does.
+ * same cycle the shared generator walks, split into as many streams as
+ * the caller asks for, and stream 0 starts where G_srand48() does.
  *
  * SPDX-FileCopyrightText: 2014-2026 GRASS Development Team
  * SPDX-License-Identifier: GPL-2.0-or-later
@@ -74,20 +74,14 @@ static inline unsigned long long lcg_step(unsigned long long cur)
 }
 
 /* Turn a seed value into a generator state the way drand48 does. */
-static inline unsigned long long lcg_seed(long seedval)
+static inline unsigned long long lcg_seed(unsigned long long seed)
 {
-    uint32 x = (uint32) * (unsigned long *)&seedval;
-
-    return ((unsigned long long)x << 16) | 0x330E;
+    return ((seed & 0xFFFFFFFF) << 16) | 0x330E;
 }
 
-/* Streams are carved out of the single generator cycle by starting each
- * one STREAM_STRIDE steps after the previous, which makes them disjoint by
- * construction rather than merely unlikely to collide. The stride sets the
- * trade between how many streams exist and how far each may run before
- * reaching the next: 2^36 gives 4096 streams of about 6.9e10 draws. */
-#define STREAM_STRIDE UINT64_C(0x1000000000) /* 2^36 */
-#define STREAM_COUNT  (MASK48 / STREAM_STRIDE + 1)
+/* The period of the generator: every state lies on one cycle of this
+ * length, and caller-owned streams are stretches of it. */
+#define LCG_PERIOD (MASK48 + 1)
 
 /* Advance the generator by an arbitrary number of steps without taking
  * them one at a time. One step is the affine map x -> a * x + c, and
@@ -137,9 +131,9 @@ static int seeded;
 void G_srand48(long seedval)
 {
 #if LRAND48_ATOMIC
-    atomic_store(&state, lcg_seed(seedval));
+    atomic_store(&state, lcg_seed((unsigned long long)seedval));
 #else
-    state = lcg_seed(seedval);
+    state = lcg_seed((unsigned long long)seedval);
 #endif
     seeded = 1;
 }
@@ -262,36 +256,70 @@ double G_drand48(void)
 /*!
  * \brief Seed a caller-owned pseudo-random number generator
  *
- * Sets up one of several independent generators derived from a single
- * user-visible seed. Each stream begins at a different point of the one
- * generator cycle, far enough apart that they do not run into one
- * another, so they can be drawn from concurrently without coordination.
+ * With the same seed, the generator produces the sequence the shared
+ * generator produces after G_srand48(), so code moving from the shared
+ * generator to a caller-owned one reproduces its existing results.
+ *
+ * The caller owns the state, so this function is thread-safe as long as
+ * no two threads seed the same state.
+ *
+ * The current generator uses the low 32 bits of the seed, so a seed held
+ * in a long, negative or not, gives the stream G_srand48() gives for it.
+ *
+ * \param[out] state generator state to seed
+ * \param[in] seed value to seed the generator with
+ */
+void G_random_seed(struct G_random_state *state, unsigned long long seed)
+{
+    G_random_seed_stream(state, seed, 0, 1);
+}
+
+/*!
+ * \brief Seed one of several caller-owned generators derived from one seed
+ *
+ * The \p count streams start evenly spaced along the generator cycle, so
+ * they are disjoint as long as each draws fewer than period / \p count
+ * values. The period of the current generator is 2^48 (about 2.8e14).
+ *
+ * Stream 0 is what G_random_seed() gives, so code moving from the shared
+ * generator to this one reproduces its single-threaded results with
+ * stream 0.
  *
  * Give each thread, or each unit of work, its own state and its own
  * stream index. Deriving the index from the work item rather than from
  * the thread number keeps results independent of how the work is
  * scheduled, and therefore of the number of threads.
  *
- * Stream 0 begins where G_srand48() would, so code moving from the shared
- * generator to this one reproduces its existing single-threaded results.
- *
  * The caller owns the state, so this function is thread-safe as long as
  * no two threads seed the same state.
  *
+ * A \p count of zero or above the period, or an \p index not below
+ * \p count, is a fatal error.
+ *
  * \param[out] state generator state to seed
- * \param[in] seedval 32-bit integer used to seed the PRNG
- * \param[in] stream index identifying this stream among those derived
- *            from \p seedval, less than 4096
+ * \param[in] seed value to seed the generator with
+ * \param[in] index index of this stream, less than \p count
+ * \param[in] count number of streams derived from \p seed
  */
-void G_srand48_r(struct G_rand48_state *state, long seedval,
-                 unsigned long stream)
+void G_random_seed_stream(struct G_random_state *state, unsigned long long seed,
+                          unsigned long long index, unsigned long long count)
 {
-    if (stream >= STREAM_COUNT)
-        G_fatal_error(_("Random number stream index %lu is out of range "
-                        "(must be less than %llu)"),
-                      stream, (unsigned long long)STREAM_COUNT);
+    unsigned long long stride;
 
-    state->state = lcg_jump(lcg_seed(seedval), stream * STREAM_STRIDE);
+    if (count == 0)
+        G_fatal_error(
+            _("The number of random number streams must be positive"));
+    if (count > LCG_PERIOD)
+        G_fatal_error(_("Cannot derive %llu random number streams from one "
+                        "seed (the generator's period is %llu)"),
+                      count, (unsigned long long)LCG_PERIOD);
+    if (index >= count)
+        G_fatal_error(_("Random number stream index %llu is out of range "
+                        "(must be less than %llu)"),
+                      index, count);
+
+    stride = LCG_PERIOD / count;
+    state->state = lcg_jump(lcg_seed(seed), index * stride);
 }
 
 /*!
@@ -302,11 +330,12 @@ void G_srand48_r(struct G_rand48_state *state, long seedval,
  * G_drand48(), this needs no atomics and so behaves identically on every
  * build.
  *
- * \param[in,out] state generator state, seeded with G_srand48_r()
+ * \param[in,out] state generator state, seeded with G_random_seed() or
+ *                G_random_seed_stream()
  *
  * \return the generated value
  */
-double G_drand48_r(struct G_rand48_state *state)
+double G_random_double(struct G_random_state *state)
 {
     state->state = lcg_step(state->state);
     /* The state is below 2^53, so the conversion to double is exact. */
