@@ -274,12 +274,14 @@ double G_drand48(void)
  * The caller owns the state, so this function is thread-safe as long as
  * no two threads seed the same state.
  *
- * The current generator uses the low 32 bits of the seed, so a seed held
- * in a long, negative or not, gives the stream G_srand48() gives for it,
- * and the limits described there apply: seeds equal modulo 2^32 are the
- * same seed, and seeds 2^31 or 2^30 apart give values shifted by one half
- * or one quarter. To obtain several independent streams, derive them from
- * one seed with G_random_seed_stream().
+ * The seed must lie between -2^31 and 2^32 - 1, the values the current
+ * generator can tell apart; anything else is a fatal error rather than a
+ * silent use of the low 32 bits. A negative seed gives the stream
+ * G_srand48() gives for it, that of its two's complement 32-bit value.
+ * Seeds 2^31 or 2^30 apart give values shifted by one half or one
+ * quarter, see G_srand48(); to obtain several independent streams, derive
+ * them from one seed with G_random_seed_stream() rather than from several
+ * seeds.
  *
  * \param[out] state generator state to seed
  * \param[in] seed value to seed the generator with
@@ -287,8 +289,7 @@ double G_drand48(void)
  * \return the number of values the generator produces before it repeats,
  *         see G_random_seed_stream()
  */
-unsigned long long G_random_seed(struct G_random_state *state,
-                                 unsigned long long seed)
+unsigned long long G_random_seed(struct G_random_state *state, long long seed)
 {
     return G_random_seed_stream(state, seed, 0, 1);
 }
@@ -317,8 +318,8 @@ unsigned long long G_random_seed(struct G_random_state *state,
  * The caller owns the state, so this function is thread-safe as long as
  * no two threads seed the same state.
  *
- * A \p count of zero or not below the period, or an \p index not below
- * \p count, is a fatal error.
+ * A \p seed outside -2^31 to 2^32 - 1, a \p count of zero or not below
+ * the period, or an \p index not below \p count, is a fatal error.
  *
  * The returned length is what the caller can compare with the number of
  * values it is going to draw from the stream, for example rows times
@@ -327,7 +328,7 @@ unsigned long long G_random_seed(struct G_random_state *state,
  * its length continues into the next stream and repeats its values.
  *
  * \param[out] state generator state to seed
- * \param[in] seed value to seed the generator with
+ * \param[in] seed value to seed the generator with, see G_random_seed()
  * \param[in] index index of this stream, less than \p count
  * \param[in] count number of streams derived from \p seed
  *
@@ -337,12 +338,16 @@ unsigned long long G_random_seed(struct G_random_state *state,
  *         returns ULLONG_MAX
  */
 unsigned long long G_random_seed_stream(struct G_random_state *state,
-                                        unsigned long long seed,
+                                        long long seed,
                                         unsigned long long index,
                                         unsigned long long count)
 {
     unsigned long long parts, stride;
 
+    if (seed < -(1LL << 31) || seed > (1LL << 32) - 1)
+        G_fatal_error(_("Random number seed %lld is outside the range from "
+                        "-2147483648 to 4294967295 the generator can use"),
+                      seed);
     if (count == 0)
         G_fatal_error(
             _("The number of random number streams must be positive"));
@@ -361,7 +366,7 @@ unsigned long long G_random_seed_stream(struct G_random_state *state,
      * itself up to a constant; see the description above. */
     parts = count | 1;
     stride = LCG_PERIOD / parts;
-    state->state = lcg_jump(lcg_seed(seed), index * stride);
+    state->state = lcg_jump(lcg_seed((unsigned long long)seed), index * stride);
 
     return stride;
 }

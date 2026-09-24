@@ -480,32 +480,42 @@ from ctypes import byref
 from grass.lib.gis import G_random_seed_stream, struct_G_random_state
 
 state = struct_G_random_state()
-G_random_seed_stream(byref(state), 1337, int(sys.argv[1]), int(sys.argv[2]))
+seed, index, count = (int(value) for value in sys.argv[1:4])
+G_random_seed_stream(byref(state), seed, index, count)
 """
 
 
 @pytest.mark.parametrize(
-    ("index", "count", "message"),
+    ("seed", "index", "count", "message"),
     [
-        (NSTREAMS, NSTREAMS, "out of range"),
-        (0, 0, "must be positive"),
-        (0, 2**48, "period"),
+        (1337, NSTREAMS, NSTREAMS, "out of range"),
+        (1337, 0, 0, "must be positive"),
+        (1337, 0, 2**48, "period"),
+        (2**32, 0, 1, "seed"),
+        (-(2**31) - 1, 0, 1, "seed"),
     ],
-    ids=["index_past_the_end", "no_streams", "as_many_streams_as_period"],
+    ids=[
+        "index_past_the_end",
+        "no_streams",
+        "as_many_streams_as_period",
+        "seed_past_32_bits",
+        "seed_below_minus_2_31",
+    ],
 )
 def test_random_seed_stream_rejects_impossible_stream(
-    xy_session_for_module, tmp_path, index, count, message
+    xy_session_for_module, tmp_path, seed, index, count, message
 ):
-    """An index or count which does not describe a stream is a fatal error.
+    """A seed, index or count which does not describe a stream is a fatal error.
 
     Runs in a subprocess because a fatal error exits the calling process,
     and with a session environment because without GISBASE the error
-    message is not printed.
+    message is not printed. A seed beyond 32 bits would otherwise be used
+    modulo 2^32, the same as a smaller seed, without notice.
     """
     script = tmp_path / "seed_stream.py"
     script.write_text(SEED_STREAM_SCRIPT, encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, str(script), str(index), str(count)],
+        [sys.executable, str(script), str(seed), str(index), str(count)],
         env=xy_session_for_module.env,
         capture_output=True,
         text=True,
@@ -571,13 +581,24 @@ def test_random_seed_returns_period():
     assert G_random_seed(byref(state), 1337) == LCG_MODULUS
 
 
-def test_random_seed_uses_low_32_bits():
-    """Seeds equal modulo 2^32 are the same seed.
+@pytest.mark.parametrize(
+    ("negative", "equivalent"), [(-1, 4294967295), (-2147483648, 2147483648)]
+)
+def test_random_negative_seed_is_its_32_bit_value(negative, equivalent):
+    """A negative seed gives the stream of its two's complement 32-bit value.
 
-    This pins the documented limit of the current generator, so that the
-    documentation changes with the code if seeding ever uses more bits.
+    This is the documented rule shared with G_srand48(), so a tool passing
+    its long seed to either function gets the same stream.
     """
-    assert random_stream(5, 0, 1, 20) == random_stream(5 + 2**32, 0, 1, 20)
+    assert random_stream(negative, 0, 1, 20) == random_stream(equivalent, 0, 1, 20)
+
+
+@pytest.mark.parametrize("seed", [-(2**31), 2**32 - 1])
+def test_random_seed_accepts_the_range_boundaries(seed):
+    """The documented seed range is inclusive at both ends."""
+    state = struct_G_random_state()
+    G_random_seed(byref(state), seed)
+    assert 0.0 <= G_random_double(byref(state)) < 1.0
 
 
 @pytest.mark.parametrize(("distance", "shift"), [(2**31, 0.5), (2**30, 0.25)])
