@@ -289,7 +289,7 @@ double G_drand48(void)
  * \return the number of values the generator produces before it repeats,
  *         see G_random_seed_stream()
  */
-unsigned long long G_random_seed(struct G_random_state *state, long long seed)
+long long G_random_seed(struct G_random_state *state, long long seed)
 {
     return G_random_seed_stream(state, seed, 0, 1);
 }
@@ -318,8 +318,9 @@ unsigned long long G_random_seed(struct G_random_state *state, long long seed)
  * The caller owns the state, so this function is thread-safe as long as
  * no two threads seed the same state.
  *
- * A \p seed outside -2^31 to 2^32 - 1, a \p count of zero or not below
- * the period, or an \p index not below \p count, is a fatal error.
+ * A \p seed outside -2^31 to 2^32 - 1, a \p count which is not positive
+ * or not below the period, or an \p index outside 0 to \p count - 1, is a
+ * fatal error.
  *
  * The returned length is what the caller can compare with the number of
  * values it is going to draw from the stream, for example rows times
@@ -329,18 +330,16 @@ unsigned long long G_random_seed(struct G_random_state *state, long long seed)
  *
  * \param[out] state generator state to seed
  * \param[in] seed value to seed the generator with, see G_random_seed()
- * \param[in] index index of this stream, less than \p count
- * \param[in] count number of streams derived from \p seed
+ * \param[in] index index of this stream, from 0 to \p count - 1
+ * \param[in] count number of streams derived from \p seed, positive
  *
  * \return the number of values this stream produces before it reaches
  *         the next one, the period divided by the number of parts; a
  *         generator with a longer period than the return type can hold
- *         returns ULLONG_MAX
+ *         returns LLONG_MAX
  */
-unsigned long long G_random_seed_stream(struct G_random_state *state,
-                                        long long seed,
-                                        unsigned long long index,
-                                        unsigned long long count)
+long long G_random_seed_stream(struct G_random_state *state, long long seed,
+                               long long index, long long count)
 {
     unsigned long long parts, stride;
 
@@ -348,27 +347,30 @@ unsigned long long G_random_seed_stream(struct G_random_state *state,
         G_fatal_error(_("Random number seed %lld is outside the range from "
                         "-2147483648 to 4294967295 the generator can use"),
                       seed);
-    if (count == 0)
+    if (count <= 0)
         G_fatal_error(
-            _("The number of random number streams must be positive"));
-    if (count >= LCG_PERIOD)
-        G_fatal_error(_("Cannot derive %llu random number streams from one "
+            _("The number of random number streams must be positive, not %lld"),
+            count);
+    if ((unsigned long long)count >= LCG_PERIOD)
+        G_fatal_error(_("Cannot derive %lld random number streams from one "
                         "seed (the count must be below the generator's "
                         "period of %llu)"),
                       count, (unsigned long long)LCG_PERIOD);
-    if (index >= count)
-        G_fatal_error(_("Random number stream index %llu is out of range "
-                        "(must be less than %llu)"),
-                      index, count);
+    if (index < 0 || index >= count)
+        G_fatal_error(_("Random number stream index %lld is out of range "
+                        "(must be between 0 and %lld)"),
+                      index, count - 1);
 
     /* An odd number of parts keeps every pair of streams away from the
      * power-of-two fractions of the cycle at which this generator repeats
-     * itself up to a constant; see the description above. */
-    parts = count | 1;
+     * itself up to a constant; see the description above. The arithmetic
+     * below is modular, so it is done in unsigned integers. */
+    parts = (unsigned long long)count | 1;
     stride = LCG_PERIOD / parts;
-    state->state = lcg_jump(lcg_seed((unsigned long long)seed), index * stride);
+    state->state = lcg_jump(lcg_seed((unsigned long long)seed),
+                            (unsigned long long)index * stride);
 
-    return stride;
+    return (long long)stride;
 }
 
 /*!

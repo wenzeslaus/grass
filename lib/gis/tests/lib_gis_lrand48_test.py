@@ -493,6 +493,8 @@ G_random_seed_stream(byref(state), seed, index, count)
         (1337, 0, 2**48, "period"),
         (2**32, 0, 1, "seed"),
         (-(2**31) - 1, 0, 1, "seed"),
+        (1337, -1, 4, "out of range"),
+        (1337, 0, -4, "must be positive"),
     ],
     ids=[
         "index_past_the_end",
@@ -500,6 +502,8 @@ G_random_seed_stream(byref(state), seed, index, count)
         "as_many_streams_as_period",
         "seed_past_32_bits",
         "seed_below_minus_2_31",
+        "negative_index",
+        "negative_count",
     ],
 )
 def test_random_seed_stream_rejects_impossible_stream(
@@ -510,7 +514,10 @@ def test_random_seed_stream_rejects_impossible_stream(
     Runs in a subprocess because a fatal error exits the calling process,
     and with a session environment because without GISBASE the error
     message is not printed. A seed beyond 32 bits would otherwise be used
-    modulo 2^32, the same as a smaller seed, without notice.
+    modulo 2^32, the same as a smaller seed, without notice, and a negative
+    index or count, the typical result of a caller's bug, is reported as
+    the negative number rather than as the huge value an unsigned parameter
+    would have made of it.
     """
     script = tmp_path / "seed_stream.py"
     script.write_text(SEED_STREAM_SCRIPT, encoding="utf-8")
