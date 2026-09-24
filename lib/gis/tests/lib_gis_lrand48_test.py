@@ -552,6 +552,25 @@ def test_random_streams_have_no_lockstep_twins(count):
     assert twins == []
 
 
+@pytest.mark.parametrize("count", STREAM_COUNTS)
+def test_random_seed_stream_returns_stream_length(count):
+    """The seeding call reports how many values a stream holds.
+
+    The length is the period divided by the number of parts the cycle is
+    split into, which is the stride between neighbouring streams, so a
+    caller can compare it with the number of values it will draw.
+    """
+    state = struct_G_random_state()
+    length = G_random_seed_stream(byref(state), 1337, 0, count)
+    assert length == LCG_MODULUS // (count | 1)
+
+
+def test_random_seed_returns_period():
+    """A single stream reports the whole period."""
+    state = struct_G_random_state()
+    assert G_random_seed(byref(state), 1337) == LCG_MODULUS
+
+
 def test_random_seeds_differ():
     """The same stream index under different seeds gives different values."""
     assert random_stream(1, 7, NSTREAMS, 10) != random_stream(2, 7, NSTREAMS, 10)

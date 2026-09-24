@@ -268,10 +268,14 @@ double G_drand48(void)
  *
  * \param[out] state generator state to seed
  * \param[in] seed value to seed the generator with
+ *
+ * \return the number of values the generator produces before it repeats,
+ *         see G_random_seed_stream()
  */
-void G_random_seed(struct G_random_state *state, unsigned long long seed)
+unsigned long long G_random_seed(struct G_random_state *state,
+                                 unsigned long long seed)
 {
-    G_random_seed_stream(state, seed, 0, 1);
+    return G_random_seed_stream(state, seed, 0, 1);
 }
 
 /*!
@@ -301,13 +305,26 @@ void G_random_seed(struct G_random_state *state, unsigned long long seed)
  * A \p count of zero or not below the period, or an \p index not below
  * \p count, is a fatal error.
  *
+ * The returned length is what the caller can compare with the number of
+ * values it is going to draw from the stream, for example rows times
+ * columns times draws per cell, and refuse or warn when the stream is
+ * too short for its layout. Checking is optional; a stream drawn past
+ * its length continues into the next stream and repeats its values.
+ *
  * \param[out] state generator state to seed
  * \param[in] seed value to seed the generator with
  * \param[in] index index of this stream, less than \p count
  * \param[in] count number of streams derived from \p seed
+ *
+ * \return the number of values this stream produces before it reaches
+ *         the next one, the period divided by the number of parts; a
+ *         generator with a longer period than the return type can hold
+ *         returns ULLONG_MAX
  */
-void G_random_seed_stream(struct G_random_state *state, unsigned long long seed,
-                          unsigned long long index, unsigned long long count)
+unsigned long long G_random_seed_stream(struct G_random_state *state,
+                                        unsigned long long seed,
+                                        unsigned long long index,
+                                        unsigned long long count)
 {
     unsigned long long parts, stride;
 
@@ -330,6 +347,8 @@ void G_random_seed_stream(struct G_random_state *state, unsigned long long seed,
     parts = count | 1;
     stride = LCG_PERIOD / parts;
     state->state = lcg_jump(lcg_seed(seed), index * stride);
+
+    return stride;
 }
 
 /*!
