@@ -126,7 +126,15 @@ static int seeded;
  * `G_srand48()` once *before* starting the worker threads; it must not
  * run concurrently with another thread seeding or generating values.
  *
- * \param[in] seedval 32-bit integer used to seed the PRNG
+ * Only the low 32 bits of the seed reach the generator: seeds equal
+ * modulo 2^32 give the same sequence, and a negative value seeds like its
+ * two's complement low 32 bits. Seeds which differ only in their top bits
+ * are not independent either: seeds 2^31 apart give values which differ
+ * by exactly one half at every draw, and seeds 2^30 apart by one quarter.
+ * Keep seeds below 2^30, and derive several independent sequences from
+ * one seed with G_random_seed_stream() rather than from several seeds.
+ *
+ * \param[in] seedval seed, used modulo 2^32
  */
 void G_srand48(long seedval)
 {
@@ -147,6 +155,9 @@ void G_srand48(long seedval)
  * This function is not thread-safe. In a multi-threaded program, call
  * `G_srand48_auto()` once *before* starting the worker threads; it must
  * not run concurrently with another thread seeding or generating values.
+ *
+ * A value of `GRASS_RANDOM_SEED` or `SOURCE_DATE_EPOCH` is used modulo
+ * 2^32, like any seed; see G_srand48().
  *
  * \return generated seed value passed to G_srand48()
  */
@@ -264,7 +275,11 @@ double G_drand48(void)
  * no two threads seed the same state.
  *
  * The current generator uses the low 32 bits of the seed, so a seed held
- * in a long, negative or not, gives the stream G_srand48() gives for it.
+ * in a long, negative or not, gives the stream G_srand48() gives for it,
+ * and the limits described there apply: seeds equal modulo 2^32 are the
+ * same seed, and seeds 2^31 or 2^30 apart give values shifted by one half
+ * or one quarter. To obtain several independent streams, derive them from
+ * one seed with G_random_seed_stream().
  *
  * \param[out] state generator state to seed
  * \param[in] seed value to seed the generator with

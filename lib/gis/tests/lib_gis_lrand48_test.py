@@ -571,6 +571,31 @@ def test_random_seed_returns_period():
     assert G_random_seed(byref(state), 1337) == LCG_MODULUS
 
 
+def test_random_seed_uses_low_32_bits():
+    """Seeds equal modulo 2^32 are the same seed.
+
+    This pins the documented limit of the current generator, so that the
+    documentation changes with the code if seeding ever uses more bits.
+    """
+    assert random_stream(5, 0, 1, 20) == random_stream(5 + 2**32, 0, 1, 20)
+
+
+@pytest.mark.parametrize(("distance", "shift"), [(2**31, 0.5), (2**30, 0.25)])
+def test_random_seeds_apart_by_high_powers_of_two_are_shifted(distance, shift):
+    """Seeds 2^31 or 2^30 apart give values differing by a half or a quarter.
+
+    The seed occupies bits 16 to 47 of the state, and a state difference of
+    2^47 or 2^46 survives every step up to a constant. This is a documented
+    limitation, pinned here so that the documentation is corrected if the
+    seeding changes.
+    """
+    first = random_states(5, 0, 1, 50)
+    second = random_states(5 + distance, 0, 1, 50)
+    assert {(b - a) % LCG_MODULUS for a, b in zip(first, second, strict=True)} == {
+        int(shift * LCG_MODULUS)
+    }
+
+
 def test_random_seeds_differ():
     """The same stream index under different seeds gives different values."""
     assert random_stream(1, 7, NSTREAMS, 10) != random_stream(2, 7, NSTREAMS, 10)
