@@ -316,8 +316,10 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  * needs no synchronization, and they still fit together: seeded with the
  * same seed and number of streams, they take disjoint parts of one
  * layout of the cycle, so their values do not collide, overlap or shift
- * each other by a constant. A state is seeded when its unit of work
- * starts drawing and not again while the unit lasts: a row's stream
+ * each other by a constant at the same draw. Seeding puts a state at the
+ * start of its stream whatever the state held before, so the same call
+ * always restarts the same sequence. A state is seeded when its unit of
+ * work starts drawing and not again while the unit lasts: a row's stream
  * continues across the row's columns, and in the same way a chunk's
  * stream continues across time steps. Where units are short and many,
  * as rows, each thread reuses one state and seeds it for every unit it
@@ -332,13 +334,28 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  * even, with an odd stride, so they are disjoint as long as each draws
  * fewer than the returned number of values, about period / (\p streams +
  * 1). The period of the current generator is 2^48 (about 2.8e14). The
- * split and the stride are made odd because the period is a power of two:
- * two streams a power-of-two fraction of the cycle apart produce values
- * which differ by a constant at every draw. An even split contains such
- * pairs, for example the streams 0 and \p streams / 2, and a stride with a
- * large power of two as a factor does too, for example 2^25 - 1 streams
- * would have a stride of exactly 2^23 and streams 2^23 apart would be 2^46
- * steps apart.
+ * number of parts and the stride are odd because two streams whose
+ * starts are a multiple of 2^46 steps apart, a quarter of the cycle, are
+ * one sequence up to a constant: one stream's values are the other's
+ * plus a constant at every draw. An even split contains such pairs: with
+ * 4096 parts, stream 2048 would start 2^47 steps after stream 0 and
+ * give, for seed 42, 0.2445, 0.8427, 0.6111 where stream 0 gives 0.7445,
+ * 0.3427, 0.1111, each value one half more. So does a stride which is a
+ * power of two, or three times one: with 2^25 - 1 streams the stride
+ * would be exactly 2^23, so stream 2^23 would start 2^46 steps after
+ * stream 0 and give 0.9945, 0.5927, 0.3611, one quarter more; with the
+ * stride rounded down to 8,388,607 it gives 0.2474, 0.2308, 0.7298. The
+ * rounding costs one value per part. Both rules remove twins at the same
+ * draw only; twins at a lag remain in every layout. With a stride s and
+ * m * 2^46 = q * s + d, for m = 1, 2, 3 and 0 <= d < s, stream j + q is
+ * stream j plus m / 4 at lag d, and stream j + q + 1 is stream j at lag
+ * s - d the other way round. With 2^25 - 1 streams, stream 2^23 + 1
+ * starts one step before the quarter mark, and its draw t + 1 is stream
+ * 0's draw t plus one quarter. A twin at a lag matters only when a
+ * stream is drawn past that lag. For counts far below 2^24 the lag is
+ * about a quarter of the stride for m = 1 and 3 and a half for m = 2;
+ * for counts around 2^24 and above it can be small, as in the example.
+ * See \ref gislib_random_streams_odd.
  *
  * Stream 0 is what G_random_seed() gives, so code moving from the shared
  * generator to this one reproduces its single-threaded results with
@@ -351,13 +368,14 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  * not positive or not below the period, or a \p stream outside 0 to
  * \p streams - 1, is a fatal error.
  *
- * The returned length is what the caller can compare with the number of
- * values it is going to draw from the stream, for example rows times
- * columns times draws per cell, and refuse or warn when the stream is
- * too short for its layout. Checking is optional; a stream drawn past
- * its length continues into the next stream and repeats its values. The
- * streams together cannot exceed the period, so the number of streams
- * times the values each draws must stay below 2^48. A million streams
+ * The returned length is what the caller can compare with the most
+ * values it is going to draw from the stream, for example columns times
+ * draws per cell for a row, and refuse or warn when the stream is too
+ * short for its layout. Nothing is enforced, since the library cannot
+ * know how many values a stream will draw; a stream drawn past its
+ * length continues into the next stream's part and from there produces
+ * that stream's values, shifted in time. The number of streams times
+ * the values each draws must therefore stay below 2^48. A million streams
  * are 281 million values long each, ten million streams 28 million, a
  * billion streams 281 thousand, and a hundred billion streams 2,813, so
  * a billion streams drawing ten thousand values each still fit and a
