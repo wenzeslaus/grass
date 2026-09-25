@@ -242,7 +242,7 @@ def test_steeper_slope_gives_less_depth(tmp_path):
             tools.r_mapcalc(expression=f"elevation = {ele_expr}")
             tools.r_mapcalc(expression=f"dx = {dx_value}")
             tools.r_mapcalc(expression="dy = 0.0")
-            return np.asarray(run_sim(session))
+            return run_sim(session)
 
     # gentle: drops 1 m per cell (elevation 5,4,3,2,1), dx = 1
     sum_gentle = float(np.sum(setup_and_run(tmp_path / "gentle", "6 - col()", 1)))
@@ -279,17 +279,15 @@ def test_discharge_within_mass_balance_bracket(east_slope_session):
     analytic_sum = rain_rate * sum(x + 0.5 for x in range(5))
 
     tools = Tools(session=east_slope_session)
-    discharge = np.asarray(
-        tools.r_sim_water(
-            elevation="elevation",
-            dx="dx",
-            dy="dy",
-            discharge=np.array,
-            rain_value=RAIN,
-            duration=DURATION,
-            random_seed=SEED,
-            nprocs=NPROCS,
-        )
+    discharge = tools.r_sim_water(
+        elevation="elevation",
+        dx="dx",
+        dy="dy",
+        discharge=np.array,
+        rain_value=RAIN,
+        duration=DURATION,
+        random_seed=SEED,
+        nprocs=NPROCS,
     )
     total = float(np.sum(discharge))
     assert analytic_sum / 3 < total < analytic_sum, (
@@ -355,8 +353,8 @@ def test_random_seed_flag(east_slope_session):
         "nprocs": NPROCS,
         "flags": "s",
     }
-    depth_a = np.asarray(tools.r_sim_water(**common))
-    depth_b = np.asarray(tools.r_sim_water(**common))
+    depth_a = tools.r_sim_water(**common)
+    depth_b = tools.r_sim_water(**common)
     assert np.sum(depth_a) > 0, "Expected positive depth with -s flag (run a)"
     assert np.sum(depth_b) > 0, "Expected positive depth with -s flag (run b)"
     assert not np.array_equal(depth_a, depth_b), (
@@ -638,16 +636,14 @@ def test_dx_dy_optional(tmp_path):
         tools = Tools(session=session)
         tools.g_region(w=0, e=5, s=0, n=1, res=1)
         tools.r_mapcalc(expression="elevation = 6 - col()")
-        depth = np.asarray(
-            tools.r_sim_water(
-                elevation="elevation",
-                depth=np.array,
-                rain_value=RAIN,
-                man_value=0.1,
-                duration=DURATION,
-                random_seed=SEED,
-                nprocs=NPROCS,
-            )
+        depth = tools.r_sim_water(
+            elevation="elevation",
+            depth=np.array,
+            rain_value=RAIN,
+            man_value=0.1,
+            duration=DURATION,
+            random_seed=SEED,
+            nprocs=NPROCS,
         )
         assert np.sum(depth) > 0, "Expected positive depth when dx/dy are omitted"
 
