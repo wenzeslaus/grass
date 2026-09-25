@@ -265,6 +265,35 @@ def test_drand48_sequence_matches_reference(seed):
     assert [G_drand48() for _ in range(len(expected))] == expected
 
 
+UNSEEDED_SCRIPT = """
+from grass.lib.gis import G_lrand48
+
+G_lrand48()
+"""
+
+
+def test_unseeded_shared_generator_is_fatal(xy_session_for_module, tmp_path):
+    """Drawing from the shared generator before seeding it is a fatal error.
+
+    Runs in a subprocess because a fatal error exits the calling process,
+    and with a session environment because without GISBASE the error
+    message is not printed. Without the check, the generator would
+    silently produce the sequence of an all-zero state.
+    """
+    script = tmp_path / "unseeded.py"
+    script.write_text(UNSEEDED_SCRIPT, encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        env=xy_session_for_module.env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode != 0, "unseeded generator produced a value"
+    assert "not seeded" in result.stderr
+
+
 def test_srand48_is_reproducible():
     """Re-seeding restarts the same sequence."""
     G_srand48(1337)
@@ -411,9 +440,10 @@ LCG_MODULUS = 2**48
 
 # Splits to test: a power of two, which the library turns into an odd
 # split, a count which does not divide the period, a count beyond the rows
-# of a large raster, and the largest count, which spaces the streams one
-# step apart.
-STREAM_COUNTS = [4096, 3, 100000, 2**48 - 1]
+# of a large raster, a count whose stride would be an even number (exactly
+# 2^23) without the rounding down to odd, and the largest count, which
+# spaces the streams one step apart.
+STREAM_COUNTS = [4096, 3, 100000, 2**25 - 1, 2**48 - 1]
 
 
 def lcg_jump_reference(state, steps):
