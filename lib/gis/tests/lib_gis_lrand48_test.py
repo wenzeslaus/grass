@@ -362,10 +362,10 @@ def test_shared_generator_is_thread_safe(generate):
 NSTREAMS = 4096
 
 
-def random_stream(seed, index, count, n):
-    """Draw n values from stream index of the count streams derived from seed."""
+def random_stream(seed, stream, streams, n):
+    """Draw n values from the given stream of the streams derived from seed."""
     state = struct_G_random_state()
-    G_random_seed_stream(byref(state), seed, index, count)
+    G_random_seed_stream(byref(state), seed, stream, streams)
     return [G_random_double(byref(state)) for _ in range(n)]
 
 
@@ -460,13 +460,15 @@ def lcg_jump_reference(state, steps):
     return (power * state + LCG_B * ((power - 1) // (LCG_A - 1))) % LCG_MODULUS
 
 
-def random_states(seed, index, count, n):
+def random_states(seed, stream, streams, n):
     """Generator states behind the values of random_stream()
 
     A value is its state divided by 2^48, which a double holds exactly, so
     the multiplication recovers the state without rounding.
     """
-    return [int(value * LCG_MODULUS) for value in random_stream(seed, index, count, n)]
+    return [
+        int(value * LCG_MODULUS) for value in random_stream(seed, stream, streams, n)
+    ]
 
 
 def seed_state(seed):

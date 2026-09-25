@@ -19,13 +19,15 @@
  * atomics. The seeding functions are not thread-safe; see G_srand48().
  *
  * The G_random_*() functions instead advance a generator owned by the
- * caller. Threads holding separate states share nothing, so these need
- * neither atomics nor locks, are safe on every build, and give each
+ * caller, one state per thread or per unit of work, never shared. These
+ * need neither atomics nor locks, are safe on every build, and give each
  * stream a reproducible sequence of its own. This is what parallel code
  * that must produce the same result for a given seed regardless of the
- * number of threads should use. The streams are disjoint stretches of the
- * same cycle the shared generator walks, split into as many streams as
- * the caller asks for, and stream 0 starts where G_srand48() does.
+ * number of threads should use: number the streams by the unit of work,
+ * the row, the chunk of walkers or the run. The streams are disjoint
+ * stretches of the same cycle the shared generator walks, split into as
+ * many streams as the caller asks for, and stream 0 starts where
+ * G_srand48() does.
  *
  * SPDX-FileCopyrightText: 2014-2026 GRASS Development Team
  * SPDX-License-Identifier: GPL-2.0-or-later
@@ -297,34 +299,46 @@ long long G_random_seed(struct G_random_state *state, long long seed)
 /*!
  * \brief Seed one of several caller-owned generators derived from one seed
  *
+ * Gives a unit of work its own stream: with one stream per raster row,
+ * pass the row number and the number of rows; with one stream per chunk
+ * of walkers, the chunk number and the number of chunks; with one stream
+ * per run of an ensemble, the run number and the number of runs. Numbering
+ * the streams by the unit of work rather than by the thread keeps results
+ * independent of how the work is scheduled, and therefore of the number
+ * of threads.
+ *
+ * A state is one generator and belongs to one thread at a time; the
+ * arguments are the same for every thread, the state is not. Two patterns
+ * cover the tools. When each unit of work is drawn once, as a raster row
+ * in r.mapcalc, every thread keeps one state and seeds it to the row's
+ * stream at the start of each row it processes. When a unit of work draws
+ * repeatedly over time, as a chunk of walkers over the time steps of
+ * r.sim.water, keep one state per unit for the whole run, since seeding
+ * it again would repeat the same values.
+ *
  * The streams start evenly spaced along the generator cycle, which is
- * split into \p count parts, or \p count + 1 parts when \p count is even,
- * with an odd stride, so they are disjoint as long as each draws fewer
- * than the returned number of values, about period / (\p count + 1). The
- * period of the current generator is 2^48 (about 2.8e14). The split and
- * the stride are made odd because the period is a power of two: two
- * streams a power-of-two fraction of the cycle apart produce values which
- * differ by a constant at every draw. An even split contains such pairs,
- * for example the streams 0 and \p count / 2, and a stride with a large
- * power of two as a factor does too, for example 2^25 - 1 streams would
- * have a stride of exactly 2^23 and streams 2^23 apart would be 2^46
+ * split into \p streams parts, or \p streams + 1 parts when \p streams is
+ * even, with an odd stride, so they are disjoint as long as each draws
+ * fewer than the returned number of values, about period / (\p streams +
+ * 1). The period of the current generator is 2^48 (about 2.8e14). The
+ * split and the stride are made odd because the period is a power of two:
+ * two streams a power-of-two fraction of the cycle apart produce values
+ * which differ by a constant at every draw. An even split contains such
+ * pairs, for example the streams 0 and \p streams / 2, and a stride with a
+ * large power of two as a factor does too, for example 2^25 - 1 streams
+ * would have a stride of exactly 2^23 and streams 2^23 apart would be 2^46
  * steps apart.
  *
  * Stream 0 is what G_random_seed() gives, so code moving from the shared
  * generator to this one reproduces its single-threaded results with
  * stream 0.
  *
- * Give each thread, or each unit of work, its own state and its own
- * stream index. Deriving the index from the work item rather than from
- * the thread number keeps results independent of how the work is
- * scheduled, and therefore of the number of threads.
- *
  * The caller owns the state, so this function is thread-safe as long as
  * no two threads seed the same state.
  *
- * A \p seed outside -2^31 to 2^32 - 1, a \p count which is not positive
- * or not below the period, or an \p index outside 0 to \p count - 1, is a
- * fatal error.
+ * A \p seed outside -2^31 to 2^32 - 1, a number of \p streams which is
+ * not positive or not below the period, or a \p stream outside 0 to
+ * \p streams - 1, is a fatal error.
  *
  * The returned length is what the caller can compare with the number of
  * values it is going to draw from the stream, for example rows times
@@ -334,8 +348,10 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  *
  * \param[out] state generator state to seed
  * \param[in] seed value to seed the generator with, see G_random_seed()
- * \param[in] index index of this stream, from 0 to \p count - 1
- * \param[in] count number of streams derived from \p seed, positive
+ * \param[in] stream number of this stream, from 0 to \p streams - 1, for
+ *            example the row, chunk or run number
+ * \param[in] streams number of streams derived from \p seed, for example
+ *            the number of rows, chunks or runs, positive
  *
  * \return the number of values this stream produces before it reaches
  *         the next one, the period divided by the number of parts; a
@@ -343,7 +359,7 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  *         returns LLONG_MAX
  */
 long long G_random_seed_stream(struct G_random_state *state, long long seed,
-                               long long index, long long count)
+                               long long stream, long long streams)
 {
     unsigned long long parts, stride;
 
@@ -351,19 +367,19 @@ long long G_random_seed_stream(struct G_random_state *state, long long seed,
         G_fatal_error(_("Random number seed %lld is outside the range from "
                         "-2147483648 to 4294967295 the generator can use"),
                       seed);
-    if (count <= 0)
+    if (streams <= 0)
         G_fatal_error(
             _("The number of random number streams must be positive, not %lld"),
-            count);
-    if ((unsigned long long)count >= LCG_PERIOD)
+            streams);
+    if ((unsigned long long)streams >= LCG_PERIOD)
         G_fatal_error(_("Cannot derive %lld random number streams from one "
-                        "seed (the count must be below the generator's "
+                        "seed (the number must be below the generator's "
                         "period of %llu)"),
-                      count, (unsigned long long)LCG_PERIOD);
-    if (index < 0 || index >= count)
-        G_fatal_error(_("Random number stream index %lld is out of range "
+                      streams, (unsigned long long)LCG_PERIOD);
+    if (stream < 0 || stream >= streams)
+        G_fatal_error(_("Random number stream %lld is out of range "
                         "(must be between 0 and %lld)"),
-                      index, count - 1);
+                      stream, streams - 1);
 
     /* An odd number of parts and an odd stride keep every pair of streams
      * away from the power-of-two fractions of the cycle at which this
@@ -371,12 +387,12 @@ long long G_random_seed_stream(struct G_random_state *state, long long seed,
      * above. The stride is rounded down to odd so that the parts still fit
      * into one cycle; a single stream keeps the whole period. The
      * arithmetic below is modular, so it is done in unsigned integers. */
-    parts = (unsigned long long)count | 1;
+    parts = (unsigned long long)streams | 1;
     stride = LCG_PERIOD / parts;
     if (parts > 1 && stride % 2 == 0)
         stride--;
     state->state = lcg_jump(lcg_seed((unsigned long long)seed),
-                            (unsigned long long)index * stride);
+                            (unsigned long long)stream * stride);
 
     return (long long)stride;
 }
