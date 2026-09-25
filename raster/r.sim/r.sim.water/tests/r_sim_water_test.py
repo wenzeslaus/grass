@@ -25,6 +25,10 @@ NPROCS = 1
 DURATION = 2  # minutes; sufficient for near-steady state on a small domain
 RAIN = 100  # mm/hr; generous signal-to-noise ratio on a small domain
 
+# Near-zero diffusion makes walkers move only downslope, which isolates the
+# effect of the time step in the mintimestep tests.
+NO_DIFFUSION = {"diffusion_coeff": 0.001}
+
 
 def run_sim(session, *, random_seed=SEED, **kwargs):
     """Run r.sim.water on the session's terrain; return depth as ndarray.
@@ -423,31 +427,73 @@ def test_error_output_is_zero(east_slope_session):
     assert np.all(error == 0), f"Expected all-zero error map:\n{error}"
 
 
-def test_mintimestep(east_slope_session):
-    """A larger minimum time step inflates depth by a bounded, measurable amount.
+def test_mintimestep_is_a_floor_and_harmless_within_one_cell_per_step(
+    east_slope_session, tmp_path
+):
+    """mintimestep must only raise the time step, and a small raise is harmless.
 
-    mintimestep sets a floor on the integration time step: a larger value
-    speeds up the simulation at the cost of accuracy. On these 1 m cells a
-    1 s floor lets walkers overshoot roughly one cell per step, so total depth
-    increases rather than staying the same. Measured across 12 seeds the ratio
-    sum_large_step / sum_default stayed in 1.88-2.51 (mean ~2.1, "roughly
-    doubling"); the large-step sum was effectively seed-independent while the
-    default sum carried the Monte Carlo variation. The same 1 s floor on 10 m
-    cells would have a negligible effect.
-
-    The bound is two-sided: the lower bound (1.3) enforces the documented
-    upward direction (and subsumes positivity), while the upper bound (3.0)
-    caps the inflation. Both lie well outside the observed range, so the test
-    passes for the real ~2x effect but fails if depth were off by an order of
-    magnitude in either direction (e.g. a vanishing or a 10x result).
+    The tool computes its own step, 0.025 s on this slope. A 0.01 s floor is
+    below that, so the result must be identical. A 0.1 s floor is above it
+    but moves walkers only one cell per step, so depth stays the same within
+    noise, and so it does with a 1 s floor on 10 m cells.
     """
-    sum_default = float(np.sum(run_sim(east_slope_session)))
-    sum_large_step = float(np.sum(run_sim(east_slope_session, mintimestep=1.0)))
-    ratio = sum_large_step / sum_default
-    assert 1.3 < ratio < 3.0, (
-        f"Large mintimestep depth ({sum_large_step:.3e}) relative to default "
-        f"({sum_default:.3e}) gives ratio {ratio:.3f}, outside expected (1.3, 3.0)"
+    depth_default = run_sim(east_slope_session)
+    np.testing.assert_array_equal(
+        run_sim(east_slope_session, mintimestep=0.01), depth_default
     )
+
+    # Across 13 seeds the two ratios below stayed within 0.96 and 1.05.
+    sum_default = float(np.sum(run_sim(east_slope_session, **NO_DIFFUSION)))
+    sum_one_cell = float(
+        np.sum(run_sim(east_slope_session, mintimestep=0.1, **NO_DIFFUSION))
+    )
+    assert sum_one_cell / sum_default == pytest.approx(1, rel=0.1), (
+        f"A 0.1 s floor changed depth by a factor of {sum_one_cell / sum_default:.3f}"
+    )
+
+    project = tmp_path / "coarse"
+    gs.create_project(project)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        tools = Tools(session=session)
+        tools.g_region(w=0, e=50, s=0, n=10, res=10)
+        tools.r_mapcalc(expression="elevation = 6 - col()")
+        tools.r_mapcalc(expression="dx = 1.0")
+        tools.r_mapcalc(expression="dy = 0.0")
+        coarse_default = float(np.sum(run_sim(session, **NO_DIFFUSION)))
+        coarse_floor = float(np.sum(run_sim(session, mintimestep=1.0, **NO_DIFFUSION)))
+    assert coarse_floor / coarse_default == pytest.approx(1, rel=0.1), (
+        f"A 1 s floor on 10 m cells changed depth by a factor of "
+        f"{coarse_floor / coarse_default:.3f}"
+    )
+
+
+def test_mintimestep_skipping_cells_inflates_depth_predictably(east_slope_session):
+    """A floor that makes walkers skip cells inflates depth by a known factor.
+
+    With a 1 s floor a walker moves 10 m per step and leaves the 5 m domain
+    at once. The scheme still credits half of that first step to the cell the
+    walker started in, so each cell records half the floor as residence
+    time, far more than the water really spends there, and depth grows by a
+    factor that follows from the residence times of the default run.
+    """
+    sum_default = float(np.sum(run_sim(east_slope_session, **NO_DIFFUSION)))
+
+    # At the 10 m/s that dx=1 and n=0.1 give, a walker crosses a 1 m cell in
+    # 0.1 s. Cell c (0 at the top) collects half a crossing from its own rain
+    # and a full crossing from each of the c cells above it. Depth per cell
+    # is that residence time to the power 0.6.
+    residence_default = [0.05 + 0.1 * cell for cell in range(5)]
+    depth_sum_default = sum(t**0.6 for t in residence_default)
+    for floor in (1.0, 2.0):
+        predicted = 5 * (floor / 2) ** 0.6 / depth_sum_default
+        sum_floor = float(
+            np.sum(run_sim(east_slope_session, mintimestep=floor, **NO_DIFFUSION))
+        )
+        # Across 13 seeds the measured ratio stayed within 5% of the prediction.
+        assert sum_floor / sum_default == pytest.approx(predicted, rel=0.1), (
+            f"A {floor} s floor gave {sum_floor / sum_default:.3f} times the "
+            f"default depth, expected about {predicted:.2f}"
+        )
 
 
 def test_longer_simulation_larger_domain(long_slope_session):
