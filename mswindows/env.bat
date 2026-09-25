@@ -4,6 +4,7 @@ REM
 
 set GRASS_PYTHON=%GISBASE%\extrabin\python3.exe
 set PYTHONHOME=%GISBASE%\Python312
+set GRASS_PYDIR=%GISBASE%\etc\python
 
 set GRASS_PROJSHARE=%GISBASE%\share\proj
 
