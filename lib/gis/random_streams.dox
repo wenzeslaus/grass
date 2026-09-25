@@ -58,12 +58,20 @@ length = G_random_seed_stream(&state, seed, stream, streams);
 value = G_random_double(&state);
 \endcode
 
-A struct G_random_state is one generator object, 8 bytes holding a
-position on the ring. The library does not tie it to a thread; the
-caller decides what it belongs to. A state must be used by one thread at
-a time. Seeding happens once per unit of work, when that unit's drawing
-begins, and the thread number never appears in the arguments; that is
-why the results do not depend on the schedule.
+A struct G_random_state is a plain variable, 8 bytes holding a position
+on the ring and nothing else: no lock, no link to a thread, no link to
+other states. The program declares one for every sequence it draws at a
+time, one per thread when threads take units of work in turn, one per
+unit when units last the whole computation, one per run, and uses each
+from one thread at a time. States are disconnected in memory, so
+drawing from them needs no synchronization and no thread waits for
+another. They are connected mathematically: seeded with the same seed
+and the same number of streams, they take disjoint parts of one layout
+of the ring, so their values do not collide, their streams do not
+overlap, and no stream is another shifted by a constant. The stream
+number is the number of the unit of work, so the values of a unit are
+fixed by the seed and the layout, whichever thread draws them; that is
+why a run gives the same result under any schedule.
 
 \section gislib_random_streams_unit Choosing the unit of work
 
@@ -100,7 +108,13 @@ units.
 
 Seeding costs about one hundred nanoseconds, roughly fifty draws, so
 this is cheap unless a unit draws only a handful of values; then choose
-a larger unit, for example a row rather than a cell.
+a larger unit, for example a row rather than a cell. Seeding a thread's
+state once and drawing all of its units from that one stream would save
+the jumps, but then a unit's values would depend on which thread took
+it and on the units that thread drew before, and the result would
+change with the thread count and the schedule. The saving is small: for
+a row of a thousand cells the jump is a tenth of a percent of the
+drawing.
 
 \section gislib_random_streams_steps Pattern 2: a unit drawn in pieces over time
 
@@ -112,7 +126,12 @@ stream, and drawn from at every step by whichever thread handles the
 unit in that step; a thread may copy it into a private variable for the
 step and copy it back. It is never seeded again, because the stream
 must continue from step to step; seeding it again would return it to
-the start of its part and repeat the same values in every step.
+the start of its part and repeat the same values in every step. This is
+the rule of pattern 1 seen from the unit's side: a row's state is not
+seeded again between its columns, and a group's state is not seeded
+again between its steps. What differs is how long the unit lasts, and
+so where its state lives, in the thread's loop or in an array for the
+whole computation.
 
 \code
 struct G_random_state *states = G_malloc(units * sizeof(*states));
@@ -136,6 +155,9 @@ units each, the stream of unit `unit` in run `run` is
 their units are all disjoint. Do not derive the runs from consecutive
 seeds (seed + 1, seed + 2 and so on): for this generator, the values of
 such runs step by a constant from one run to the next at every draw.
+For a simulation this is the repetition which matters in practice: a
+unit which starts each run in the same place would move each run along
+a shifted copy of its previous path.
 
 \section gislib_random_streams_limits Limits and the returned length
 
@@ -163,7 +185,22 @@ that is where a generator with a longer period becomes necessary.
 Compare the returned length with the number of values a unit will draw,
 for example the columns times the draws per cell for a row, or the time
 steps times the draws per step for a particle, and refuse the layout
-with G_fatal_error() or warn with G_warning() when it does not fit.
+with G_fatal_error() or warn with G_warning() when it does not fit. Use
+the most a unit can draw, not the average. When a unit draws a fixed
+number of values per step, or through a rejection loop with a fixed
+acceptance rate, the most any of millions of units draws is within a
+few percent of the average, so a factor of two above the average is a
+comfortable margin.
+
+How much an overlap matters depends on the use. Where a value's role is
+fixed by its position, as one value per cell, a stretch repeated in
+another stream is a repeated pattern. Where the values feed a process
+which has moved on, as the displacements of a particle over time, a
+stretch shared with the neighbouring stream lands at a different time
+and place, and when the process draws in pairs the odd stride even puts
+the neighbour's pairs between the stream's own pairs. The check is
+still worth making; what to do when it fails, refuse or warn, is the
+tool's decision.
 
 \section gislib_random_streams_seeds Seeds
 

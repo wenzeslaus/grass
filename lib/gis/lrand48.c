@@ -308,17 +308,24 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  * independent of how the work is scheduled, and therefore of the number
  * of threads.
  *
- * A state is one generator object, used by one thread at a time; the
- * caller decides what it belongs to. It is seeded once per unit of work,
- * when that unit's drawing begins, and the thread number never appears
- * in the arguments. Two patterns cover the uses. When a unit is drawn in
- * one go, each thread owns one state and seeds it to the stream of every
- * unit it takes; the state's history does not matter. When a unit draws
- * in many pieces over time, the unit owns one state for the whole
- * computation, seeded once at the start and drawn from at every step by
- * whichever thread handles the unit in that step; seeding it again would
- * return it to the start of its stream and repeat the same values. Both
- * patterns are shown with examples in \ref gislib_random_streams.
+ * A struct G_random_state is a plain variable holding one generator.
+ * The program keeps one for every sequence it draws at a time, one per
+ * thread when threads take rows in turn, one per chunk of work that
+ * lasts the whole computation, one per run, and uses each from one
+ * thread at a time. Such states share no memory, so drawing from them
+ * needs no synchronization, and they still fit together: seeded with the
+ * same seed and number of streams, they take disjoint parts of one
+ * layout of the cycle, so their values do not collide, overlap or shift
+ * each other by a constant. A state is seeded when its unit of work
+ * starts drawing and not again while the unit lasts: a row's stream
+ * continues across the row's columns, and in the same way a chunk's
+ * stream continues across time steps. Where units are short and many,
+ * as rows, each thread reuses one state and seeds it for every unit it
+ * takes, at one jump of about 100 ns per unit; where a unit lasts the
+ * whole computation, as a chunk, it keeps a state of its own. Since the
+ * stream number is the unit's number, the values are fixed by the seed
+ * and the layout, not by which thread draws them. Both patterns are
+ * shown with examples in \ref gislib_random_streams.
  *
  * The streams start evenly spaced along the generator cycle, which is
  * split into \p streams parts, or \p streams + 1 parts when \p streams is
