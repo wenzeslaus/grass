@@ -444,6 +444,16 @@ def seed_state(seed):
     return ((seed & 0xFFFFFFFF) << 16) | 0x330E
 
 
+def stream_stride(count):
+    """The stride the library uses for a count: odd parts and an odd stride.
+
+    A single stream keeps the whole period.
+    """
+    parts = count | 1
+    stride = LCG_MODULUS // parts
+    return stride - 1 if parts > 1 and stride % 2 == 0 else stride
+
+
 def test_lcg_jump_reference_matches_stepping():
     """The closed form agrees with drawing from the generator step by step.
 
@@ -460,14 +470,15 @@ def test_random_streams_are_evenly_spaced(seed, count):
     """A stream starts exactly its index times the stride along the cycle.
 
     The stride is the period divided by the count, or by count + 1 for an
-    even count, rounded down, so all the streams fit into one cycle
-    without wrapping around to stream 0. This is what makes them disjoint,
-    and it is why an index equal to the count must be rejected: that
-    stream would start a full cycle, or just short of one, after stream 0
-    and repeat its values. The first, a middle and the last stream are
-    checked; the last one also shows that the highest index is accepted.
+    even count, rounded down to an odd number, so all the streams fit into
+    one cycle without wrapping around to stream 0. This is what makes them
+    disjoint, and it is why an index equal to the count must be rejected:
+    that stream would start a full cycle, or just short of one, after
+    stream 0 and repeat its values. The first, a middle and the last
+    stream are checked; the last one also shows that the highest index is
+    accepted.
     """
-    stride = LCG_MODULUS // (count | 1)
+    stride = stream_stride(count)
     for index in sorted({1, count // 2, count - 1}):
         expected = lcg_jump_reference(seed_state(seed), index * stride + 1)
         assert random_states(seed, index, count, 1) == [expected], index
@@ -579,7 +590,7 @@ def test_random_seed_stream_returns_stream_length(count):
     """
     state = struct_G_random_state()
     length = G_random_seed_stream(byref(state), 1337, 0, count)
-    assert length == LCG_MODULUS // (count | 1)
+    assert length == stream_stride(count)
 
 
 def test_random_seed_returns_period():
@@ -622,6 +633,22 @@ def test_random_seeds_apart_by_high_powers_of_two_are_shifted(distance, shift):
     assert {(b - a) % LCG_MODULUS for a, b in zip(first, second, strict=True)} == {
         int(shift * LCG_MODULUS)
     }
+
+
+def test_random_streams_with_power_of_two_stride_have_no_twins():
+    """An odd count alone is not enough when the stride is a power of two.
+
+    For 2^25 - 1 streams the period divided by the count rounds down to
+    exactly 2^23, so streams 2^23 apart would be 2^46 steps apart, where
+    this generator repeats itself up to a constant. The library rounds the
+    stride down to an odd number, which this checks for the pair that
+    would otherwise differ by exactly one quarter at every draw.
+    """
+    count = 2**25 - 1
+    assert stream_stride(count) % 2 == 1
+    first = random_states(1337, 0, count, 100)
+    second = random_states(1337, 2**23, count, 100)
+    assert constant_shift(first, second) is None
 
 
 def test_random_seeds_differ():

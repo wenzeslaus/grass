@@ -299,12 +299,16 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  *
  * The streams start evenly spaced along the generator cycle, which is
  * split into \p count parts, or \p count + 1 parts when \p count is even,
- * so they are disjoint as long as each draws fewer than period / (\p count
- * + 1) values. The period of the current generator is 2^48 (about 2.8e14).
- * The split is made odd because the period is a power of two: two streams
- * a power-of-two fraction of the cycle apart would produce values which
- * differ by a constant at every draw, and an even split contains such
- * pairs, for example the streams 0 and \p count / 2.
+ * with an odd stride, so they are disjoint as long as each draws fewer
+ * than the returned number of values, about period / (\p count + 1). The
+ * period of the current generator is 2^48 (about 2.8e14). The split and
+ * the stride are made odd because the period is a power of two: two
+ * streams a power-of-two fraction of the cycle apart produce values which
+ * differ by a constant at every draw. An even split contains such pairs,
+ * for example the streams 0 and \p count / 2, and a stride with a large
+ * power of two as a factor does too, for example 2^25 - 1 streams would
+ * have a stride of exactly 2^23 and streams 2^23 apart would be 2^46
+ * steps apart.
  *
  * Stream 0 is what G_random_seed() gives, so code moving from the shared
  * generator to this one reproduces its single-threaded results with
@@ -361,12 +365,16 @@ long long G_random_seed_stream(struct G_random_state *state, long long seed,
                         "(must be between 0 and %lld)"),
                       index, count - 1);
 
-    /* An odd number of parts keeps every pair of streams away from the
-     * power-of-two fractions of the cycle at which this generator repeats
-     * itself up to a constant; see the description above. The arithmetic
-     * below is modular, so it is done in unsigned integers. */
+    /* An odd number of parts and an odd stride keep every pair of streams
+     * away from the power-of-two fractions of the cycle at which this
+     * generator repeats itself up to a constant; see the description
+     * above. The stride is rounded down to odd so that the parts still fit
+     * into one cycle; a single stream keeps the whole period. The
+     * arithmetic below is modular, so it is done in unsigned integers. */
     parts = (unsigned long long)count | 1;
     stride = LCG_PERIOD / parts;
+    if (parts > 1 && stride % 2 == 0)
+        stride--;
     state->state = lcg_jump(lcg_seed((unsigned long long)seed),
                             (unsigned long long)index * stride);
 
