@@ -81,3 +81,17 @@ def test_all_walkers_move_with_nprocs(session):
     single = total_water(depth(session, nprocs=1, **options))
     multiple = total_water(depth(session, nprocs=4, **options))
     assert multiple == pytest.approx(single, rel=1e-6)
+
+
+@pytest.mark.parametrize("infil_value", [0, 20])
+def test_depth_does_not_depend_on_nprocs_without_diffusion(session, infil_value):
+    """Results do not depend on the order in which walkers are processed.
+
+    Without diffusion, the random numbers do not change where walkers go,
+    so the only thing the number of threads could change is the order in
+    which walkers add water and use infiltration capacity.
+    """
+    options = {"infil_value": infil_value, "diffusion_coeff": 0}
+    single = depth(session, nprocs=1, **options)
+    for nprocs in (2, 4, 8):
+        np.testing.assert_array_equal(depth(session, nprocs=nprocs, **options), single)
