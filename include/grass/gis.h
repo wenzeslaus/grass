@@ -628,6 +628,14 @@ struct Popen {
     int pid;
 };
 
+/* State of a pseudo-random number generator owned by the caller rather
+ * than shared by the program; see G_random_seed(). The contents are
+ * private to the library and may change with the generator; use the
+ * state only through the G_random_*() functions. */
+struct G_random_state {
+    unsigned long long state;
+};
+
 typedef int CELL;
 typedef double DCELL;
 typedef float FCELL;

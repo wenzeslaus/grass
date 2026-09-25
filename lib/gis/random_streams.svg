@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="440" viewBox="0 0 640 440" font-family="sans-serif" font-size="13" fill="#222">
+  <title>Random number streams on the generator cycle</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#222"/>
+    </marker>
+  </defs>
+  <!-- The cycle of 2^48 states, drawn light; the spare part keeps this look. -->
+  <circle cx="220" cy="222" r="130" fill="none" stroke="#bbb" stroke-width="3" stroke-dasharray="6 5"/>
+  <!-- The four streams, one part of the cycle each. -->
+  <path d="M 220.0 92.0 A 130 130 0 0 1 343.6 181.8" fill="none" stroke="#222" stroke-width="3"/>
+  <path d="M 343.6 181.8 A 130 130 0 0 1 296.4 327.2" fill="none" stroke="#222" stroke-width="3"/>
+  <path d="M 296.4 327.2 A 130 130 0 0 1 143.6 327.2" fill="none" stroke="#222" stroke-width="3"/>
+  <path d="M 143.6 327.2 A 130 130 0 0 1 96.4 181.8" fill="none" stroke="#222" stroke-width="3"/>
+  <!-- Part boundaries. -->
+  <line x1="220.0" y1="101.0" x2="220.0" y2="83.0" stroke="#222" stroke-width="2"/>
+  <line x1="335.1" y1="184.6" x2="352.2" y2="179.0" stroke="#222" stroke-width="2"/>
+  <line x1="291.1" y1="319.9" x2="301.7" y2="334.5" stroke="#222" stroke-width="2"/>
+  <line x1="148.9" y1="319.9" x2="138.3" y2="334.5" stroke="#222" stroke-width="2"/>
+  <line x1="104.9" y1="184.6" x2="87.8" y2="179.0" stroke="#222" stroke-width="2"/>
+  <!-- Stream labels inside the ring. -->
+  <text x="277.6" y="146.7" text-anchor="middle">stream 0</text>
+  <text x="313.2" y="256.3" text-anchor="middle">stream 1</text>
+  <text x="220.0" y="324.0" text-anchor="middle">stream 2</text>
+  <text x="126.8" y="256.3" text-anchor="middle">stream 3</text>
+  <text x="162.4" y="146.7" text-anchor="middle">spare part</text>
+  <text x="220" y="218" text-anchor="middle">one cycle of</text>
+  <text x="220" y="236" text-anchor="middle">2^48 states</text>
+  <!-- The seed: where stream 0 and G_srand48() start. -->
+  <circle cx="220.0" cy="92.0" r="5" fill="#c33"/>
+  <text x="220" y="52" text-anchor="middle">seed: stream 0 starts here,</text>
+  <text x="220" y="68" text-anchor="middle">where G_srand48() starts</text>
+  <!-- Drawing direction. -->
+  <path d="M 251.6 73.3 A 152 152 0 0 1 329.3 116.4" fill="none" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="341" y="111">one step per draw</text>
+  <!-- A state object is a position on the ring. -->
+  <circle cx="348.7" cy="240.1" r="5" fill="#222"/>
+  <line x1="412" y1="240.1" x2="357.7" y2="240.1" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="416" y="214.1" width="200" height="52" fill="none" stroke="#222" stroke-width="1.5" rx="4"/>
+  <text x="516" y="234.1" text-anchor="middle" font-weight="bold">struct G_random_state</text>
+  <text x="516" y="254.1" text-anchor="middle">a position on the ring</text>
+  <!-- The stride: the length of a part, returned by the seeding call. -->
+  <path d="M 303.9 351.2 A 154 154 0 0 1 136.1 351.2" fill="none" stroke="#222" stroke-width="1.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="220" y="404" text-anchor="middle">stride = the returned length,</text>
+  <text x="220" y="420" text-anchor="middle">the period divided by the number of parts</text>
+</svg>

@@ -518,6 +518,10 @@ long G_srand48_auto(void);
 long G_lrand48(void);
 long G_mrand48(void);
 double G_drand48(void);
+long long G_random_seed(struct G_random_state *, long long);
+long long G_random_seed_stream(struct G_random_state *, long long, long long,
+                               long long);
+double G_random_double(struct G_random_state *);
 
 /* ls.c */
 void G_set_ls_filter(int (*)(const char *, void *), void *);
