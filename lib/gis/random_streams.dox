@@ -104,11 +104,13 @@ stream 8,388,609 of 33,554,431 starts one step before the quarter
 mark, and its draw t + 1 is stream 0's draw t plus one quarter: for
 seed 42 it gives 0.2500, 0.9945, 0.5927, 0.3611. A twin at a lag
 matters only when a stream is drawn past that lag, because before that
-the two streams have no value in common up to the constant. For counts
-far below 2^24 the lag is about a quarter of the stride for m = 1 and
-3 and about a half for m = 2, so a twin is reached only by a stream
-drawn past a quarter of its length; for counts around 2^24 and above
-the lag can be small, as in the example, where it is one draw.
+the two streams have no value in common up to the constant. For every
+count below about a million the smallest of these lags is a quarter of
+the stride within a hundredth, so a twin is reached only by a stream
+drawn past a quarter of its length; from a few million streams upwards
+the lag can be anything down to a single draw, as in the example. Up
+to 2^30 streams, about one count in a hundred has a lag below a
+thousand draws.
 
 \section gislib_random_streams_usage Usage
 

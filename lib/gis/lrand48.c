@@ -352,10 +352,10 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  * s - d the other way round. With 2^25 - 1 streams, stream 2^23 + 1
  * starts one step before the quarter mark, and its draw t + 1 is stream
  * 0's draw t plus one quarter. A twin at a lag matters only when a
- * stream is drawn past that lag. For counts far below 2^24 the lag is
- * about a quarter of the stride for m = 1 and 3 and a half for m = 2;
- * for counts around 2^24 and above it can be small, as in the example.
- * See \ref gislib_random_streams_odd.
+ * stream is drawn past that lag. For every count below about a million
+ * the smallest lag is a quarter of the stride within a hundredth; from a
+ * few million streams upwards it can be anything down to a single draw,
+ * as in the example. See \ref gislib_random_streams_odd.
  *
  * Stream 0 is what G_random_seed() gives, so code moving from the shared
  * generator to this one reproduces its single-threaded results with
