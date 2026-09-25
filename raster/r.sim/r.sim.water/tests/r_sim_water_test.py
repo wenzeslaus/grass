@@ -42,8 +42,8 @@ def run_sim(session, *, random_seed=SEED, **kwargs):
         "duration": DURATION,
     }
     defaults.update(kwargs)
-    # On the command line, an unwanted parameter is simply omitted, so we
-    # simulate that.
+    # A value of None removes a default, for example rain_value when a rain
+    # raster is given.
     defaults = {k: v for k, v in defaults.items() if v is not None}
     tools = Tools(session=session)
     return tools.r_sim_water(
@@ -120,8 +120,7 @@ def diffusion_low_hmax_depth(diffusion_project):
     across 20 seeds the relative margins held at ~0.52 (hmax) and ~0.46
     (halpha) with zero failures at every walker count from 2000 to 400000.
     nwalkers=40000 keeps an order-of-magnitude safety factor above where
-    the margins are noise-driven while running far faster than the original
-    400000.
+    the margins are noise-driven.
     """
     with TemporaryMapsetSession(env=diffusion_project.env) as session:
         depth = run_sim(
@@ -257,7 +256,7 @@ def test_steeper_slope_gives_less_depth(tmp_path):
     assert sum_gentle / sum_steep == pytest.approx(2 ** (3 / 10), rel=0.3)
 
 
-def test_discharge_positive_with_rain(east_slope_session):
+def test_discharge_within_mass_balance_bracket(east_slope_session):
     """Rainfall on a slope must produce discharge consistent with mass balance.
 
     Discharge is output in m3/s. By steady-state continuity, the total
@@ -411,7 +410,7 @@ def test_mintimestep(east_slope_session):
 
 
 def test_longer_simulation_larger_domain(long_slope_session):
-    """More iterations must increase total water depth on a larger domain.
+    """A longer duration must increase total water depth on a larger domain.
 
     On a larger domain with slower drainage, longer simulations accumulate
     more water. Uses a 200-cell domain at 10 m resolution so that walkers
@@ -435,7 +434,7 @@ def test_longer_simulation_larger_domain(long_slope_session):
 
 
 def test_duration_affects_time_series_progression(long_slope_session):
-    """More iterations must create more time-series output maps.
+    """A longer duration must create more time-series output maps.
 
     With output_step=5, duration=10 produces maps at t=5,10 while
     duration=20 produces maps at t=5,10,15 and, if walkers survive to the
@@ -447,7 +446,6 @@ def test_duration_affects_time_series_progression(long_slope_session):
     """
     tools = Tools(session=long_slope_session)
 
-    # duration=10 with output_step=5 produces maps at t=5,10
     tools.r_sim_water(
         elevation="elevation",
         dx="dx",
@@ -463,7 +461,6 @@ def test_duration_affects_time_series_progression(long_slope_session):
         flags="t",
     )
 
-    # duration=20 with output_step=5 produces maps at t=5,10,15
     tools.r_sim_water(
         elevation="elevation",
         dx="dx",
@@ -835,7 +832,7 @@ def test_walkers_output_time_series(long_slope_session):
     assert int(info_10["points"]) > 0, "Expected walker points at t=10"
 
 
-def test_nprocs_gives_same_result(east_slope_session):
+def test_nprocs_gives_result_within_noise(east_slope_session):
     """Multiple threads produce a result close to a single thread.
 
     Threads share the random number generator state, so multi-threaded

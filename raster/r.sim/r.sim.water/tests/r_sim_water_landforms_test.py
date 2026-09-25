@@ -1,11 +1,12 @@
 """Landform tests for r.sim.water (SIMWE).
 
 Each test simulates a small synthetic elevation surface, given as an array
-so that the shape is visible in the code, and checks two things: what the
-model must do on that landform for any random seed (physical assertions,
-with tolerances from seed sweeps), and the result for SEED (a pinned array
-that fails whenever the simulated result changes, including a change in the
-random number generator).
+so that the shape is visible in the code, and asserts what the model must
+do on that landform for any random seed (physical assertions, with
+tolerances from seed sweeps). The shape tests also pin the result for SEED
+(an array that fails whenever the simulated result changes, including a
+change in the random number generator); the rotation tests compare two
+simulations and pin nothing.
 """
 
 import os
@@ -344,8 +345,10 @@ def test_saddle_bifurcates_flow(tmp_path):
         f"high quadrant depth ({high_sum:.6f})"
     )
 
-    # Flow converges through the saddle point on its way to the low
-    # quadrants, so the saddle point is wetter than the high quadrants.
+    # The saddle point has zero computed gradient, so water reaching it
+    # leaves only by diffusion, and about four fifths of that water is rain
+    # from the center column, which slopes toward it from north and south.
+    # It is therefore wetter than the high quadrants.
     high_mean = high_sum / np.sum(high_mask)
     saddle_point_depth = float(depth[3, 3])
     assert saddle_point_depth > high_mean, (
@@ -401,7 +404,7 @@ def test_hollow_concentrates_more_than_spur(tmp_path):
     max_hollow = float(np.max(depth_hollow))
     max_spur = float(np.max(depth_spur))
     assert max_hollow > 2 * max_spur, (
-        f"Hollow peak depth ({max_hollow:.6f}) should exceed "
+        f"Hollow peak depth ({max_hollow:.6f}) should exceed twice the "
         f"spur peak depth ({max_spur:.6f})"
     )
 
