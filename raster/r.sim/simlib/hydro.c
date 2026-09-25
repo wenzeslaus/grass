@@ -32,6 +32,13 @@
 struct point2D;
 struct point3D;
 
+/* A random number stream of a walker chunk, padded to a cache line so that
+ * threads drawing from neighboring streams do not write the same line. */
+union chunk_stream {
+    struct G_random_state state;
+    char cache_line[64];
+};
+
 /* The walkers of one iteration add their weights to the cells in whatever
  * order the threads process them. Floating-point addition depends on that
  * order, integer addition does not, so the weights are summed as integer
@@ -95,6 +102,24 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     // actually divided), produced biased depth/discharge for users.
     int nblock = 1;
 
+    /* The walkers are split into contiguous chunks, each drawing from a
+     * random number stream of its own, seeded by chunk index. The walker
+     * loop gives each chunk as a whole to one thread, which processes its
+     * walkers in order, and the number of chunks does not depend on nprocs,
+     * so neither do the numbers each walker gets. The count only needs to
+     * be well above the number of threads for the work to be balanced.
+     *
+     * The sequential walker setup draws from the stream of chunk 0, which
+     * chunk 0 then continues. */
+    int nchunks = 256;
+    union chunk_stream *streams = G_calloc(nchunks, sizeof(union chunk_stream));
+    /* All streams derived from one seed have the same length. */
+    long long stream_length = 0;
+
+    for (int c = 0; c < nchunks; c++)
+        stream_length = G_random_seed_stream(&streams[c].state,
+                                             settings->random_seed, c, nchunks);
+
     double stxm = geometry->stepx * (double)(geometry->mx + 1) - geometry->xmin;
     double stym = geometry->stepy * (double)(geometry->my + 1) - geometry->ymin;
     double deldif = sqrt(setup->deltap) * settings->frac; /* diffuse factor */
@@ -156,9 +181,11 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                     for (int iw = 1; iw <= mgen + 1;
                          iw++) { /* assign walkers */
                         sim->w[lw].x =
-                            x + geometry->stepx * (simwe_rand() - 0.5);
+                            x + geometry->stepx *
+                                    (simwe_rand(&streams[0].state) - 0.5);
                         sim->w[lw].y =
-                            y + geometry->stepy * (simwe_rand() - 0.5);
+                            y + geometry->stepy *
+                                    (simwe_rand(&streams[0].state) - 0.5);
                         sim->w[lw].m = wei;
 
                         walkwe += sim->w[lw].m;
@@ -170,6 +197,24 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             }
         }
         sim->nwalk = lw;
+
+        /* Rounding up leaves the last chunks shorter or empty rather than
+         * leaving walkers beyond the last chunk unprocessed. The minimum of
+         * one is a valid chunk size for the walker loop without walkers. */
+        int chunk_size = max(1, (sim->nwalk + nchunks - 1) / nchunks);
+
+        /* A stream drawn past its length continues into the next chunk's
+         * values. Chunk 0 draws the most: two values per walker in the
+         * setup above and then, like every chunk, about three per walker
+         * step (a pair per Box-Muller attempt, a fifth of which are
+         * rejected, plus at most one for a trap), so checking it covers
+         * all chunks. */
+        long long draws = 2LL * sim->nwalk + 3LL * chunk_size * setup->miter;
+        if (draws > stream_length)
+            G_warning(_("Random number streams may overlap: a chunk of "
+                        "walkers is expected to draw about %lld values, but "
+                        "each stream has only %lld"),
+                      draws, stream_length);
         G_debug(2, " nwalk %d", sim->nwalk);
         G_debug(2, " walkwe (walk weight),frac %f %f", walkwe, settings->frac);
 
@@ -283,8 +328,10 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                     }
                 }
 
-#pragma omp for schedule(static)
+#pragma omp for schedule(static, chunk_size)
                 for (lw = 0; lw < sim->nwalk; lw++) {
+                    struct G_random_state *stream =
+                        &streams[lw / chunk_size].state;
                     if (sim->w[lw].m > EPS) { /* check the walker weight */
                         ++(nwalka);
                         l = (int)((sim->w[lw].x + stxm) / geometry->stepx) -
@@ -330,12 +377,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                              * result depend on the order of the walkers. */
                             double d1 = (grids->gama[k][l] + weight) * conn;
                             double gaux, gauy;
-#if defined(_OPENMP)
-                            gasdev_for_paralel(&gaux, &gauy);
-#else
-                            gaux = gasdev();
-                            gauy = gasdev();
-#endif
+                            gasdev(stream, &gaux, &gauy);
                             double hhc = pow(d1, 3. / 5.);
                             double velx, vely;
                             /* Diffusion coefficient of this walker's move,
@@ -358,7 +400,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                             if (inputs->traps != NULL &&
                                 grids->trap[k][l] != 0.) { /* traps */
 
-                                float eff = simwe_rand(); /* random generator */
+                                float eff = simwe_rand(stream);
 
                                 if (eff <= grids->trap[k][l]) {
                                     velx = -0.1 *
@@ -540,6 +582,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     }
     /*                       ........ end of iblock loop */
     free_fixed_point_grid(added);
+    G_free(streams);
     if (infiltration) {
         free_fixed_point_grid(demand);
         G_free_matrix(kept);

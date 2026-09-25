@@ -29,7 +29,7 @@ def session(tmp_path_factory):
         yield session
 
 
-def depth(session, nprocs, rain=RAIN, **kwargs):
+def depth(session, nprocs, rain=RAIN, random_seed=1, **kwargs):
     return Tools(session=session).r_sim_water(
         elevation=BOWL,
         depth=np.array,
@@ -37,7 +37,7 @@ def depth(session, nprocs, rain=RAIN, **kwargs):
         man_value=0.05,
         nwalkers=2000,
         duration=2,
-        random_seed=1,
+        random_seed=random_seed,
         nprocs=nprocs,
         **kwargs,
     )
@@ -84,14 +84,22 @@ def test_all_walkers_move_with_nprocs(session):
 
 
 @pytest.mark.parametrize("infil_value", [0, 20])
-def test_depth_does_not_depend_on_nprocs_without_diffusion(session, infil_value):
-    """Results do not depend on the order in which walkers are processed.
+@pytest.mark.parametrize("diffusion_coeff", [0, 0.8])
+def test_depth_does_not_depend_on_nprocs(session, infil_value, diffusion_coeff):
+    """The same seed gives the same results for any number of threads.
 
-    Without diffusion, the random numbers do not change where walkers go,
-    so the only thing the number of threads could change is the order in
-    which walkers add water and use infiltration capacity.
+    Each group of walkers draws from its own random number stream, whichever
+    thread processes it, and the order in which walkers add water and use
+    infiltration capacity does not matter.
     """
-    options = {"infil_value": infil_value, "diffusion_coeff": 0}
+    options = {"infil_value": infil_value, "diffusion_coeff": diffusion_coeff}
     single = depth(session, nprocs=1, **options)
     for nprocs in (2, 4, 8):
         np.testing.assert_array_equal(depth(session, nprocs=nprocs, **options), single)
+
+
+def test_depth_depends_on_seed(session):
+    """Different seeds give different results."""
+    first = depth(session, nprocs=4, random_seed=1)
+    second = depth(session, nprocs=4, random_seed=2)
+    assert not np.array_equal(first, second)
