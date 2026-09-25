@@ -30,6 +30,45 @@
 struct point2D;
 struct point3D;
 
+/* Infiltrate a walker of mass *m into a cell with infiltration rate *inf.
+ * Returns true when the walker is eliminated.
+ *
+ * Walkers on other threads can reach the same cell, so the caller runs
+ * this in a critical section. Only this function writes the rate while the
+ * walkers move, so reads here need no synchronization, but the updates are
+ * atomic because the caller reads the rate outside the critical section. */
+static bool infiltrate_walker(double *inf, double *m, double factor,
+                              const Setup *setup, const Simulation *sim)
+{
+    // Another walker may have exhausted the cell since the caller's check.
+    if (!(*inf > 0))
+        return false;
+    // Walker's contribution to water depth in this cell for this timestep [m]
+    double decr = factor * *m;
+    // Compare with the depth the cell can absorb this timestep [m]
+    if (*inf * setup->deltap > decr) {
+        // The cell can absorb the full walker. Reduce infiltration rate [m/s].
+#pragma omp atomic update
+        *inf -= decr / setup->deltap;
+        // Eliminate the walker
+        *m = 0.;
+        return true;
+    }
+    // The cell can't absorb the full walker. Reduce the walker mass by the
+    // equivalent of what an infiltration-rate source would generate as
+    // walker weight.
+    *m -= sim->rwalk * *inf / setup->sisum;
+    // Cell's infiltration capacity is fully exhausted
+#pragma omp atomic write
+    *inf = 0.;
+    // Eliminate walker if needed
+    if (*m < 0.) {
+        *m = 0.;
+        return true;
+    }
+    return false;
+}
+
 /* **************************************************** */
 /*       create walker representation of si */
 /* ******************************************************** */
@@ -148,22 +187,10 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             nwalka = 0;
             sim->nstack = 0;
 
-#pragma omp parallel firstprivate(l, lw, k) reduction(+ : nwalka)
+#pragma omp parallel private(l, k) reduction(+ : nwalka)
             {
-#if defined(_OPENMP)
-                int steps = (int)((((double)sim->nwalk) /
-                                   ((double)omp_get_num_threads())) +
-                                  0.5);
-                int tid = omp_get_thread_num();
-                int min_loop = tid * steps;
-                int max_loop = ((tid + 1) * steps) > sim->nwalk
-                                   ? sim->nwalk
-                                   : (tid + 1) * steps;
-
-                for (lw = min_loop; lw < max_loop; lw++) {
-#else
+#pragma omp for schedule(static)
                 for (lw = 0; lw < sim->nwalk; lw++) {
-#endif
                     if (sim->w[lw].m > EPS) { /* check the walker weight */
                         ++(nwalka);
                         l = (int)((sim->w[lw].x + stxm) / geometry->stepx) -
@@ -188,45 +215,32 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                         }
 
                         if (grids->zz[k][l] != UNDEF) {
-                            if (grids->inf[k][l] != UNDEF &&
-                                grids->inf[k][l] > 0) {
-                                // Walker's contribution to water depth in this
-                                // cell for this timestep [m]
-                                double decr = factor * sim->w[lw].m;
-                                // Compare with the depth the cell can absorb
-                                // this timestep [m]
-                                if (grids->inf[k][l] * setup->deltap > decr) {
-                                    // The cell can absorb the full walker.
-                                    // Reduce infiltration rate [m/s].
-                                    grids->inf[k][l] -= decr / setup->deltap;
-                                    // Eliminate the walker
-                                    sim->w[lw].m = 0.;
+                            double inf;
+#pragma omp atomic read
+                            inf = grids->inf[k][l];
+                            // UNDEF is negative, so this also skips cells
+                            // without infiltration.
+                            if (inf > 0) {
+                                bool eliminated;
+#pragma omp critical(simwe_infiltration)
+                                eliminated = infiltrate_walker(
+                                    &grids->inf[k][l], &sim->w[lw].m, factor,
+                                    setup, sim);
+                                if (eliminated)
                                     continue;
-                                }
-                                else {
-                                    // The cell can't absorb the full walker.
-                                    // Reduce the walker mass by the equivalent
-                                    // of what an infiltration-rate source would
-                                    // generate as walker weight.
-                                    sim->w[lw].m -= sim->rwalk *
-                                                    grids->inf[k][l] /
-                                                    setup->sisum;
-                                    // Cell's infiltration capacity is fully
-                                    // exhausted
-                                    grids->inf[k][l] = 0.;
-                                    // Eliminate walker if needed
-                                    if (sim->w[lw].m < 0.) {
-                                        sim->w[lw].m = 0.;
-                                        continue;
-                                    }
-                                }
                             }
 
-                            grids->gama[k][l] +=
-                                (addac * sim->w[lw].m); /* add walker weigh to
-                                                      water depth or conc. */
+                            /* Add walker weight to water depth or
+                             * concentration. The captured sum includes the
+                             * weights added before on any thread. */
+                            double gama;
+#pragma omp atomic capture
+                            {
+                                grids->gama[k][l] += addac * sim->w[lw].m;
+                                gama = grids->gama[k][l];
+                            }
 
-                            double d1 = grids->gama[k][l] * conn;
+                            double d1 = gama * conn;
                             double gaux, gauy;
 #if defined(_OPENMP)
                             gasdev_for_paralel(&gaux, &gauy);
@@ -236,16 +250,19 @@ void main_loop(const Setup *setup, const Geometry *geometry,
 #endif
                             double hhc = pow(d1, 3. / 5.);
                             double velx, vely;
+                            /* Diffusion coefficient of this walker's move,
+                             * kept as float, the type of the grid which used
+                             * to hold it, so that results do not change. */
+                            float dif;
                             if (hhc > settings->hhmax &&
                                 inputs->wdepth == NULL) { /* increased diffusion
                                                      if w.depth > hhmax */
-                                grids->dif[k][l] =
-                                    (settings->halpha + 1) * deldif;
+                                dif = (settings->halpha + 1) * deldif;
                                 velx = sim->vavg[lw].x;
                                 vely = sim->vavg[lw].y;
                             }
                             else {
-                                grids->dif[k][l] = deldif;
+                                dif = deldif;
                                 velx = grids->v1[k][l];
                                 vely = grids->v2[k][l];
                             }
@@ -263,10 +280,9 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                                 }
                             }
 
-                            sim->w[lw].x +=
-                                (velx +
-                                 grids->dif[k][l] * gaux); /* move the walker */
-                            sim->w[lw].y += (vely + grids->dif[k][l] * gauy);
+                            /* Move the walker. */
+                            sim->w[lw].x += (velx + dif * gaux);
+                            sim->w[lw].y += (vely + dif * gauy);
 
                             if (hhc > settings->hhmax &&
                                 inputs->wdepth == NULL) {

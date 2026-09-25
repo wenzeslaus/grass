@@ -151,6 +151,12 @@ independence of sampling points. Therefore, the methods are useful both
 for everyday exploratory work using a desktop computer and for large,
 cutting-edge applications using high performance computing.
 
+The **random_seed** option makes the results of a single-threaded run
+(**nprocs=1**) reproducible. With more threads, the walkers draw from one
+shared random number generator in the order in which the threads reach it,
+so repeated runs with the same seed give slightly different, but
+statistically equivalent, results.
+
 ### Manning's n for surface roughness
 
 The **man** raster map can be derived from a land cover raster with the
