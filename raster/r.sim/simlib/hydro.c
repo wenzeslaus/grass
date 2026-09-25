@@ -16,6 +16,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <grass/gis.h>
+#include <grass/gmath.h>
 #include <grass/bitmap.h>
 #include <grass/linkm.h>
 #include <grass/glocale.h>
@@ -108,6 +109,31 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     /* Weights added to gama in the current iteration, in fixed point */
     int64_t **added = alloc_fixed_point_grid(geometry->my, geometry->mx);
 
+    /* Cells never gain infiltration capacity, so without any at the start
+     * the infiltration passes below are skipped. */
+    bool infiltration = false;
+    for (k = 0; k < geometry->my && !infiltration; k++) {
+        for (l = 0; l < geometry->mx; l++) {
+            if (grids->inf[k][l] > 0) {
+                infiltration = true;
+                break;
+            }
+        }
+    }
+    /* Weight of the walkers in a cell with infiltration capacity, in fixed
+     * point, and the fraction of it the walkers keep after infiltration.
+     * A fraction of 1 leaves the walkers unchanged. */
+    int64_t **demand = NULL;
+    double **kept = NULL;
+    if (infiltration) {
+        demand = alloc_fixed_point_grid(geometry->my, geometry->mx);
+        kept = G_alloc_matrix(geometry->my, geometry->mx);
+        for (k = 0; k < geometry->my; k++) {
+            for (l = 0; l < geometry->mx; l++)
+                kept[k][l] = 1.;
+        }
+    }
+
     for (iblock = 1; iblock <= nblock; iblock++) {
         int lw = 0;
         double walkwe = 0.;
@@ -194,9 +220,69 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                     max_weight = sim->w[iw].m;
             }
             double unit = fixed_point_unit(addac * max_weight, sim->nwalk);
+            double weight_unit = fixed_point_unit(max_weight, sim->nwalk);
 
 #pragma omp parallel private(l, k) reduction(+ : nwalka)
             {
+                /* Infiltration capacity is shared among all walkers in a
+                 * cell in proportion to their weights, so that the result
+                 * does not depend on which walker comes first. The first
+                 * pass sums the weights per cell, the second one decides
+                 * what the cells absorb, and the walker loop then reduces
+                 * the weights. */
+                if (infiltration) {
+#pragma omp for schedule(static)
+                    for (lw = 0; lw < sim->nwalk; lw++) {
+                        if (sim->w[lw].m > EPS) {
+                            l = (int)((sim->w[lw].x + stxm) / geometry->stepx) -
+                                geometry->mx - 1;
+                            k = (int)((sim->w[lw].y + stym) / geometry->stepy) -
+                                geometry->my - 1;
+                            if (grids->zz[k][l] != UNDEF &&
+                                grids->inf[k][l] > 0) {
+#pragma omp atomic update
+                                demand[k][l] +=
+                                    llrint(sim->w[lw].m / weight_unit);
+                            }
+                        }
+                    }
+#pragma omp for schedule(static)
+                    for (k = 0; k < geometry->my; k++) {
+                        for (l = 0; l < geometry->mx; l++) {
+                            if (demand[k][l] == 0)
+                                continue;
+                            double weight = demand[k][l] * weight_unit;
+                            demand[k][l] = 0;
+                            // Walkers' contribution to water depth in this
+                            // cell for this timestep [m]
+                            double decr = factor * weight;
+                            // Compare with the depth the cell can absorb
+                            // this timestep [m]
+                            if (grids->inf[k][l] * setup->deltap > decr) {
+                                // The cell can absorb all walkers. Reduce
+                                // infiltration rate [m/s].
+                                grids->inf[k][l] -= decr / setup->deltap;
+                                kept[k][l] = 0.;
+                            }
+                            else {
+                                // The cell can't absorb all walkers. Reduce
+                                // their weight by the equivalent of what an
+                                // infiltration-rate source would generate
+                                // as walker weight.
+                                double absorbed = sim->rwalk *
+                                                  grids->inf[k][l] /
+                                                  setup->sisum;
+                                kept[k][l] = absorbed < weight
+                                                 ? 1. - absorbed / weight
+                                                 : 0.;
+                                // Cell's infiltration capacity is fully
+                                // exhausted
+                                grids->inf[k][l] = 0.;
+                            }
+                        }
+                    }
+                }
+
 #pragma omp for schedule(static)
                 for (lw = 0; lw < sim->nwalk; lw++) {
                     if (sim->w[lw].m > EPS) { /* check the walker weight */
@@ -223,38 +309,13 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                         }
 
                         if (grids->zz[k][l] != UNDEF) {
-                            if (grids->inf[k][l] != UNDEF &&
-                                grids->inf[k][l] > 0) {
-                                // Walker's contribution to water depth in this
-                                // cell for this timestep [m]
-                                double decr = factor * sim->w[lw].m;
-                                // Compare with the depth the cell can absorb
-                                // this timestep [m]
-                                if (grids->inf[k][l] * setup->deltap > decr) {
-                                    // The cell can absorb the full walker.
-                                    // Reduce infiltration rate [m/s].
-                                    grids->inf[k][l] -= decr / setup->deltap;
+                            if (infiltration) {
+                                if (kept[k][l] == 0.) {
                                     // Eliminate the walker
                                     sim->w[lw].m = 0.;
                                     continue;
                                 }
-                                else {
-                                    // The cell can't absorb the full walker.
-                                    // Reduce the walker mass by the equivalent
-                                    // of what an infiltration-rate source would
-                                    // generate as walker weight.
-                                    sim->w[lw].m -= sim->rwalk *
-                                                    grids->inf[k][l] /
-                                                    setup->sisum;
-                                    // Cell's infiltration capacity is fully
-                                    // exhausted
-                                    grids->inf[k][l] = 0.;
-                                    // Eliminate walker if needed
-                                    if (sim->w[lw].m < 0.) {
-                                        sim->w[lw].m = 0.;
-                                        continue;
-                                    }
-                                }
+                                sim->w[lw].m *= kept[k][l];
                             }
 
                             /* Add walker weight to water depth or
@@ -353,6 +414,8 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                     for (l = 0; l < geometry->mx; l++) {
                         grids->gama[k][l] += added[k][l] * unit;
                         added[k][l] = 0;
+                        if (infiltration)
+                            kept[k][l] = 1.;
                     }
                 }
             }
@@ -477,6 +540,10 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     }
     /*                       ........ end of iblock loop */
     free_fixed_point_grid(added);
+    if (infiltration) {
+        free_fixed_point_grid(demand);
+        G_free_matrix(kept);
+    }
 
     // Finalize the err map as the sample standard deviation of the per-block
     // estimators of the final field: sqrt(|E[X^2] - E[X]^2|), where each X

@@ -45,6 +45,14 @@ given by <i>nwalkers</i> should be used.
 Increasing the number of threads with <b>nprocs</b> does not really
 speed up the simulation.
 
+<p>
+The <b>random_seed</b> option makes the results of a single-threaded run
+(<b>nprocs=1</b>) reproducible. With more threads, the walkers draw from one
+shared random number generator in the order in which the threads reach it,
+so repeated runs with the same seed give slightly different, but
+statistically equivalent, results. Otherwise, the results do not depend on
+the order in which the walkers are processed.
+
 <!--
 <h2>NOTES</h2>
 
