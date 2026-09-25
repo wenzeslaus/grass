@@ -1,0 +1,194 @@
+/*!
+\page gislib_random_streams Caller-Owned Random Number Streams
+
+\tableofcontents
+
+\section gislib_random_streams_purpose Purpose
+
+The G_random_*() functions give parallel code random numbers which do
+not depend on the number of threads or on the order in which the threads
+run. The shared generator behind G_drand48() hands each value to
+whichever thread asks first, so a parallel run does not reproduce a
+serial one, nor another parallel run. With G_random_seed_stream(), each
+unit of work draws from a stream of its own, determined only by the
+seed, the unit's number and the number of units, and a run gives the
+same result with one thread as with many.
+
+\section gislib_random_streams_ring The ring, streams, parts and stride
+
+All 2^48 states of the generator lie on one cycle: a ring along which
+each draw moves the generator by one state, and which closes after 2^48
+draws. A stream is a stretch of that ring. G_random_seed_stream(state,
+seed, stream, streams) cuts the ring into \c streams equal parts, or one
+part more when that number is even, and places the state object at the
+start of part number \c stream. The length of a part, which is also the
+stride from the start of one stream to the start of the next, is what
+the function returns.
+
+\image html random_streams.svg "Four streams cut the ring into five parts, since four is even"
+
+Two state objects seeded with the same seed and the same number of
+streams but different stream numbers sit on different parts and never
+produce the same values, as long as each draws fewer values than the
+returned length. This is how independent objects, which share nothing
+while they run, avoid each other: they are connected only through the
+layout, that is the seed and the number of streams, and separated by
+the stream number. Stream 0 starts where G_srand48() starts, so a single
+stream reproduces the shared generator.
+
+The extra part for an even number of streams, and the odd stride, keep
+every pair of streams away from the power-of-two fractions of the ring,
+where this generator repeats its values up to a constant. The
+documentation of G_random_seed_stream() has the details.
+
+\section gislib_random_streams_functions The three functions
+
+G_random_seed_stream() seeds a state object to one stream of a layout,
+G_random_seed() does the same for a layout with a single stream, and
+G_random_double() draws the next value in [0, 1) from a state object:
+
+\code
+#include <grass/gis.h>
+
+struct G_random_state state;
+long long length;
+double value;
+
+length = G_random_seed_stream(&state, seed, stream, streams);
+value = G_random_double(&state);
+\endcode
+
+A struct G_random_state is one generator object, 8 bytes holding a
+position on the ring. The library does not tie it to a thread; the
+caller decides what it belongs to. A state must be used by one thread at
+a time. Seeding happens once per unit of work, when that unit's drawing
+begins, and the thread number never appears in the arguments; that is
+why the results do not depend on the schedule.
+
+\section gislib_random_streams_unit Choosing the unit of work
+
+The unit of work is what the computation is naturally divided into and
+numbered by: a raster row, a point, an object, a group of particles, a
+run of a model. The stream number is the unit's number and the number
+of streams is the number of units. Which of the two patterns below
+applies depends on whether a unit draws all of its values in one go or
+in many pieces over time.
+
+\section gislib_random_streams_once Pattern 1: a unit drawn in one go
+
+When a unit of work is drawn in one go, for example one row of a raster,
+one point or one object, each thread owns one state object. When the
+thread takes a unit, it seeds its object to that unit's stream, draws
+the unit's values, and when it takes the next unit seeds the same object
+again to that unit's stream. The object's history does not matter: the
+values depend only on the seed, the unit's number and the number of
+units.
+
+\code
+#pragma omp parallel
+{
+    struct G_random_state state; /* One state per thread. */
+
+#pragma omp for schedule(dynamic)
+    for (long long unit = 0; unit < units; unit++) {
+        G_random_seed_stream(&state, seed, unit, units);
+        for (long long i = 0; i < values_per_unit; i++)
+            result[unit][i] = G_random_double(&state);
+    }
+}
+\endcode
+
+Seeding costs about one hundred nanoseconds, roughly fifty draws, so
+this is cheap unless a unit draws only a handful of values; then choose
+a larger unit, for example a row rather than a cell.
+
+\section gislib_random_streams_steps Pattern 2: a unit drawn in pieces over time
+
+When a unit of work draws in many pieces over time, for example a group
+of particles advanced through many time steps, or a component of a model
+which draws at every step, the unit owns one state object for the whole
+computation. The object is seeded once at the start to the unit's
+stream, and drawn from at every step by whichever thread handles the
+unit in that step; a thread may copy it into a private variable for the
+step and copy it back. It is never seeded again, because the stream
+must continue from step to step; seeding it again would return it to
+the start of its part and repeat the same values in every step.
+
+\code
+struct G_random_state *states = G_malloc(units * sizeof(*states));
+
+for (long long unit = 0; unit < units; unit++)
+    G_random_seed_stream(&states[unit], seed, unit, units);
+
+for (int step = 0; step < steps; step++) {
+#pragma omp parallel for schedule(dynamic)
+    for (long long unit = 0; unit < units; unit++)
+        advance(unit, &states[unit]); /* Draws with G_random_double(). */
+}
+\endcode
+
+\section gislib_random_streams_ensembles Ensembles
+
+Several runs of the same computation under one seed, for example the
+members of an ensemble, are laid out flat. With `runs` runs of `units`
+units each, the stream of unit `unit` in run `run` is
+`run * units + unit` out of `runs * units` streams, so the runs and
+their units are all disjoint. Do not derive the runs from consecutive
+seeds (seed + 1, seed + 2 and so on): for this generator, the values of
+such runs step by a constant from one run to the next at every draw.
+
+\section gislib_random_streams_limits Limits and the returned length
+
+The streams together cannot exceed the period: the number of streams
+times the number of values each draws must stay below 2^48, about
+2.8e14. The returned length is the check; a stream drawn past its
+length continues into the next stream and repeats that stream's values.
+For a feel of the room:
+
+- a million units drawing a million values each fit: each stream is
+  281,474,695 values long, about 280 times what it draws;
+- ten million units drawing ten thousand values each fit: 28,147,493
+  values per stream, about 2,800 times;
+- a billion units drawing ten thousand values each fit: 281,473 values
+  per stream, about 28 times;
+- a hundred billion units do not fit ten thousand values each: a stream
+  is only 2,813 values long.
+
+So one stream per row of a large raster, and one stream per particle of
+a simulation with millions of particles, both fit. One stream per
+particle for every run of a thousand-run ensemble with ten million
+particles, ten billion streams of 28,147 values each, is at the edge;
+that is where a generator with a longer period becomes necessary.
+
+Compare the returned length with the number of values a unit will draw,
+for example the columns times the draws per cell for a row, or the time
+steps times the draws per step for a particle, and refuse the layout
+with G_fatal_error() or warn with G_warning() when it does not fit.
+
+\section gislib_random_streams_seeds Seeds
+
+A seed lies between -2^31 and 2^32 - 1. The generator uses its low 32
+bits, so a negative seed gives the same values as the seed 2^32 higher.
+Seeds 2^31 apart give values shifted by exactly one half at every draw,
+and seeds 2^30 apart by one quarter, so seeds which differ only in
+their top bits are not independent; keep seeds below 2^30. Derive
+several independent sequences from one seed with streams, never from
+several seeds.
+
+\section gislib_random_streams_migrating Migrating from the shared generator
+
+Code which seeds with G_srand48(seed) and draws with G_drand48() gets
+exactly the same values from a state seeded with G_random_seed(&state,
+seed), which is stream 0 of a single stream, and drawn from with
+G_random_double(&state). Existing results are therefore reproduced by a
+single stream, and only by it: a layout with several streams changes
+the values, since only stream 0 continues the shared sequence. Parallel
+code whose values came from the shared generator changes them in any
+case, because they depended on the schedule.
+
+There are no caller-owned counterparts of G_lrand48() and G_mrand48().
+The value of G_lrand48() is `(long)(G_random_double(&state) *
+2147483648.0)`, exactly, since the state has 48 bits and a double holds
+the product without rounding.
+
+*/

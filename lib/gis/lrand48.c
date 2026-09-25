@@ -27,7 +27,8 @@
  * the row, the chunk of walkers or the run. The streams are disjoint
  * stretches of the same cycle the shared generator walks, split into as
  * many streams as the caller asks for, and stream 0 starts where
- * G_srand48() does.
+ * G_srand48() does. See \ref gislib_random_streams for the model and the
+ * usage patterns.
  *
  * SPDX-FileCopyrightText: 2014-2026 GRASS Development Team
  * SPDX-License-Identifier: GPL-2.0-or-later
@@ -307,14 +308,17 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  * independent of how the work is scheduled, and therefore of the number
  * of threads.
  *
- * A state is one generator and belongs to one thread at a time; the
- * arguments are the same for every thread, the state is not. Two patterns
- * cover the tools. When each unit of work is drawn once, as a raster row
- * in r.mapcalc, every thread keeps one state and seeds it to the row's
- * stream at the start of each row it processes. When a unit of work draws
- * repeatedly over time, as a chunk of walkers over the time steps of
- * r.sim.water, keep one state per unit for the whole run, since seeding
- * it again would repeat the same values.
+ * A state is one generator object, used by one thread at a time; the
+ * caller decides what it belongs to. It is seeded once per unit of work,
+ * when that unit's drawing begins, and the thread number never appears
+ * in the arguments. Two patterns cover the uses. When a unit is drawn in
+ * one go, each thread owns one state and seeds it to the stream of every
+ * unit it takes; the state's history does not matter. When a unit draws
+ * in many pieces over time, the unit owns one state for the whole
+ * computation, seeded once at the start and drawn from at every step by
+ * whichever thread handles the unit in that step; seeding it again would
+ * return it to the start of its stream and repeat the same values. Both
+ * patterns are shown with examples in \ref gislib_random_streams.
  *
  * The streams start evenly spaced along the generator cycle, which is
  * split into \p streams parts, or \p streams + 1 parts when \p streams is
@@ -344,7 +348,13 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  * values it is going to draw from the stream, for example rows times
  * columns times draws per cell, and refuse or warn when the stream is
  * too short for its layout. Checking is optional; a stream drawn past
- * its length continues into the next stream and repeats its values.
+ * its length continues into the next stream and repeats its values. The
+ * streams together cannot exceed the period, so the number of streams
+ * times the values each draws must stay below 2^48. A million streams
+ * are 281 million values long each, ten million streams 28 million, a
+ * billion streams 281 thousand, and a hundred billion streams 2,813, so
+ * a billion streams drawing ten thousand values each still fit and a
+ * hundred billion do not.
  *
  * \param[out] state generator state to seed
  * \param[in] seed value to seed the generator with, see G_random_seed()
