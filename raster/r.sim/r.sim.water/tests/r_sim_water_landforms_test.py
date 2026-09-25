@@ -25,7 +25,7 @@ DURATION = 2  # minutes; enough for near-steady state on small domains
 RAIN = 100  # mm/hr
 
 # With the default walker count (two per cell) the depth of a single cell or
-# column varies too much between seeds to compare two simulations. In a
+# column varies too much between seeds to compare cells or columns. In a
 # sweep from 2000 to 20000 walkers the spread of per-column sums leveled off
 # at 10000.
 HIGH_NWALKERS = 10000
@@ -137,7 +137,8 @@ def test_pit_collects_water(tmp_path):
         f"({np.max(depth):.4f})"
     )
 
-    # The 30% threshold holds across resolutions from 0.1 m to 30 m.
+    # At unit resolution, across 13 seeds the center held at least 53% of
+    # the total depth.
     assert center_depth > 0.3 * total_depth, (
         f"Center should hold >30% of total water: "
         f"center={center_depth:.4f}, total={total_depth:.4f}"
@@ -279,8 +280,9 @@ def test_valley_concentrates_flow_downstream(tmp_path):
     The floor holds far more per cell than the hillslopes, depth on the floor
     increases downstream, and the two sides mirror each other.
     """
-    depth = landform_depth(tmp_path / "valley", VALLEY)
+    depth = landform_depth(tmp_path / "valley", VALLEY, nwalkers=HIGH_NWALKERS)
 
+    # Across 13 seeds the ratio was never below 5.6.
     floor_mean = float(np.mean(depth[:, 3]))
     hillslope_cols = np.concatenate([depth[:, :3], depth[:, 4:]], axis=1)
     hillslope_mean = float(np.mean(hillslope_cols))
@@ -297,26 +299,23 @@ def test_valley_concentrates_flow_downstream(tmp_path):
         f"upper valley floor ({upper_floor:.6f})"
     )
 
-    for offset in range(1, 4):
-        left = float(np.sum(depth[:, 3 - offset]))
-        right = float(np.sum(depth[:, 3 + offset]))
-        assert left == pytest.approx(right, rel=0.4), (
-            f"Offset {offset}: left ({left:.6f}) vs right ({right:.6f})"
-        )
+    # The per-column profile mirrors across the floor.
+    profile = np.sum(depth, axis=0)
+    np.testing.assert_allclose(profile[:3], profile[::-1][:3], rtol=COLUMN_PROFILE_RTOL)
 
     assert_depth_pinned(
         depth,
         [
-            [0.28, 0.40, 0.58, 1.99, 0.68, 0.70, 0.28],
-            [0.56, 0.83, 0.95, 1.53, 0.72, 0.19, 0.46],
-            [0.28, 0.53, 0.92, 2.31, 0.89, 0.60, 0.64],
-            [0.53, 0.43, 1.12, 3.02, 1.01, 0.68, 0.48],
-            [0.40, 0.64, 0.80, 3.76, 1.27, 0.72, 0.43],
-            [0.28, 0.62, 1.06, 4.49, 1.32, 0.66, 0.40],
-            [0.51, 0.60, 1.19, 4.85, 1.32, 0.56, 0.48],
-            [0.43, 0.64, 1.24, 5.43, 1.55, 0.51, 0.31],
-            [0.37, 0.72, 1.20, 5.94, 1.36, 0.64, 0.66],
-            [0.62, 0.85, 1.32, 6.59, 1.63, 0.68, 0.43],
+            [0.34, 0.49, 0.77, 2.17, 0.74, 0.47, 0.36],
+            [0.44, 0.60, 0.77, 1.55, 0.80, 0.59, 0.39],
+            [0.43, 0.63, 0.96, 2.42, 0.97, 0.59, 0.43],
+            [0.41, 0.63, 1.03, 3.19, 1.03, 0.64, 0.41],
+            [0.41, 0.65, 1.11, 3.88, 1.08, 0.62, 0.42],
+            [0.43, 0.61, 1.16, 4.46, 1.16, 0.64, 0.41],
+            [0.45, 0.63, 1.21, 5.02, 1.23, 0.64, 0.41],
+            [0.45, 0.65, 1.32, 5.50, 1.27, 0.61, 0.42],
+            [0.44, 0.64, 1.37, 6.04, 1.32, 0.63, 0.47],
+            [0.44, 0.73, 1.54, 6.61, 1.55, 0.77, 0.50],
         ],
     )
 
