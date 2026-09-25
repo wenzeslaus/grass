@@ -333,8 +333,18 @@ def test_random_seed_flag(east_slope_session):
 
     Two runs with -s should both produce positive depth but differ from each
     other because each run gets a different auto-generated seed.
+
+    The auto-generated seed is taken from GRASS_RANDOM_SEED or
+    SOURCE_DATE_EPOCH when either is set (e.g., in reproducible builds), which
+    would make the two runs identical. They are removed from the environment
+    so that the test exercises the time- and PID-based seeding.
     """
-    tools = Tools(session=east_slope_session)
+    env = {
+        key: value
+        for key, value in east_slope_session.env.items()
+        if key not in {"GRASS_RANDOM_SEED", "SOURCE_DATE_EPOCH"}
+    }
+    tools = Tools(env=env)
     common = {
         "elevation": "elevation",
         "dx": "dx",
