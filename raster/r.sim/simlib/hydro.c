@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
 #include <grass/gis.h>
 #include <grass/bitmap.h>
 #include <grass/linkm.h>
@@ -29,6 +30,41 @@
 
 struct point2D;
 struct point3D;
+
+/* The walkers of one iteration add their weights to the cells in whatever
+ * order the threads process them. Floating-point addition depends on that
+ * order, integer addition does not, so the weights are summed as integer
+ * multiples of a unit and converted back once per iteration. The sums are
+ * then the same for any number of threads. */
+
+/* Returns a power of two to use as the unit for sums of up to count values
+ * between 0 and max_value, as small as the int64_t range allows, so that
+ * the rounding of each value to the unit is negligible. */
+static double fixed_point_unit(double max_value, int count)
+{
+    int exponent;
+
+    /* max_value * count < 2^exponent, so a sum stays below 2^62 units, which
+     * leaves room for each value being rounded up by half a unit. */
+    frexp(max_value * count, &exponent);
+    return ldexp(1., exponent - 62);
+}
+
+static int64_t **alloc_fixed_point_grid(int rows, int cols)
+{
+    int64_t **grid = G_malloc(rows * sizeof(int64_t *));
+
+    grid[0] = G_calloc((size_t)rows * cols, sizeof(int64_t));
+    for (int row = 1; row < rows; row++)
+        grid[row] = grid[row - 1] + cols;
+    return grid;
+}
+
+static void free_fixed_point_grid(int64_t **grid)
+{
+    G_free(grid[0]);
+    G_free(grid);
+}
 
 /* **************************************************** */
 /*       create walker representation of si */
@@ -68,6 +104,9 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     G_debug(2, " deldif, factor %f %e", deldif, factor);
     G_debug(2, " maxwa, nblock %d %d", sim->maxwa, nblock);
     G_debug(2, "rwalk, sisum: %f %f", sim->rwalk, setup->sisum);
+
+    /* Weights added to gama in the current iteration, in fixed point */
+    int64_t **added = alloc_fixed_point_grid(geometry->my, geometry->mx);
 
     for (iblock = 1; iblock <= nblock; iblock++) {
         int lw = 0;
@@ -148,6 +187,14 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             nwalka = 0;
             sim->nstack = 0;
 
+            double max_weight = 0.;
+#pragma omp parallel for schedule(static) reduction(max : max_weight)
+            for (int iw = 0; iw < sim->nwalk; iw++) {
+                if (sim->w[iw].m > max_weight)
+                    max_weight = sim->w[iw].m;
+            }
+            double unit = fixed_point_unit(addac * max_weight, sim->nwalk);
+
 #pragma omp parallel private(l, k) reduction(+ : nwalka)
             {
 #pragma omp for schedule(static)
@@ -210,11 +257,17 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                                 }
                             }
 
-                            grids->gama[k][l] +=
-                                (addac * sim->w[lw].m); /* add walker weigh to
-                                                      water depth or conc. */
+                            /* Add walker weight to water depth or
+                             * concentration. */
+                            double weight = addac * sim->w[lw].m;
+#pragma omp atomic update
+                            added[k][l] += llrint(weight / unit);
 
-                            double d1 = grids->gama[k][l] * conn;
+                            /* The walker sees gama of the previous iterations
+                             * and its own weight, but not the weights of other
+                             * walkers in this iteration, which would make the
+                             * result depend on the order of the walkers. */
+                            double d1 = (grids->gama[k][l] + weight) * conn;
                             double gaux, gauy;
 #if defined(_OPENMP)
                             gasdev_for_paralel(&gaux, &gauy);
@@ -294,6 +347,14 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                         }
                     }
                 } /* lw loop */
+
+#pragma omp for schedule(static)
+                for (k = 0; k < geometry->my; k++) {
+                    for (l = 0; l < geometry->mx; l++) {
+                        grids->gama[k][l] += added[k][l] * unit;
+                        added[k][l] = 0;
+                    }
+                }
             }
             /* Total remaining walkers for this iteration */
             sim->nwalka = nwalka;
@@ -415,6 +476,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             erod(grids->gama, setup, geometry, grids);
     }
     /*                       ........ end of iblock loop */
+    free_fixed_point_grid(added);
 
     // Finalize the err map as the sample standard deviation of the per-block
     // estimators of the final field: sqrt(|E[X^2] - E[X]^2|), where each X
