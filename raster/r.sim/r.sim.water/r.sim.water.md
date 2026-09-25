@@ -151,6 +151,13 @@ independence of sampling points. Therefore, the methods are useful both
 for everyday exploratory work using a desktop computer and for large,
 cutting-edge applications using high performance computing.
 
+The **random_seed** option makes the results reproducible for any
+**nprocs**. The walkers are split into a fixed number of groups, each
+drawing from its own random number stream derived from the seed, and the
+results do not depend on the order in which the walkers are processed:
+within a time step, no walker sees the water added by the others, and
+the infiltration capacity of a cell goes to its walkers in a fixed order.
+
 ### Manning's n for surface roughness
 
 The **man** raster map can be derived from a land cover raster with the

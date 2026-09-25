@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
 #include <grass/gis.h>
 #include <grass/bitmap.h>
 #include <grass/linkm.h>
@@ -29,6 +30,87 @@
 
 struct point2D;
 struct point3D;
+
+/* A random number stream of a walker chunk, padded to a cache line so that
+ * threads drawing from neighboring streams do not write the same line. */
+union chunk_stream {
+    struct G_random_state state;
+    char cache_line[64];
+};
+
+/* The walkers of one iteration add their weights to the cells in whatever
+ * order the threads process them. Floating-point addition depends on that
+ * order, integer addition does not, so the weights are summed as integer
+ * multiples of a unit and converted back once per iteration. The sums are
+ * then the same for any number of threads. */
+
+/* Returns a power of two to use as the unit for sums of up to count values
+ * between 0 and max_value, as small as the int64_t range allows, so that
+ * the rounding of each value to the unit is negligible. */
+static double fixed_point_unit(double max_value, int count)
+{
+    int exponent;
+
+    /* max_value * count < 2^exponent, so a sum stays below 2^62 units, which
+     * leaves room for each value being rounded up by half a unit. */
+    frexp(max_value * count, &exponent);
+    return ldexp(1., exponent - 62);
+}
+
+static int64_t **alloc_fixed_point_grid(int rows, int cols)
+{
+    int64_t **grid = G_malloc(rows * sizeof(int64_t *));
+
+    grid[0] = G_calloc((size_t)rows * cols, sizeof(int64_t));
+    for (int row = 1; row < rows; row++)
+        grid[row] = grid[row - 1] + cols;
+    return grid;
+}
+
+static void free_fixed_point_grid(int64_t **grid)
+{
+    G_free(grid[0]);
+    G_free(grid);
+}
+
+/* State of a walker in the current step, decided before the walkers move */
+enum {
+    WALKER_ACTIVE = 1,      // Weight above EPS at the start of the step
+    WALKER_INFILTRATES = 2, // In a cell with infiltration capacity
+    WALKER_ABSORBED = 4,    // Eliminated by infiltration
+};
+
+/* Infiltrate a walker of mass *m into a cell with infiltration rate *inf.
+ * Returns true when the walker is eliminated. */
+static bool infiltrate_walker(double *inf, double *m, double factor,
+                              const Setup *setup, const Simulation *sim)
+{
+    // An earlier walker may have exhausted the cell in this step.
+    if (!(*inf > 0))
+        return false;
+    // Walker's contribution to water depth in this cell for this timestep [m]
+    double decr = factor * *m;
+    // Compare with the depth the cell can absorb this timestep [m]
+    if (*inf * setup->deltap > decr) {
+        // The cell can absorb the full walker. Reduce infiltration rate [m/s].
+        *inf -= decr / setup->deltap;
+        // Eliminate the walker
+        *m = 0.;
+        return true;
+    }
+    // The cell can't absorb the full walker. Reduce the walker mass by the
+    // equivalent of what an infiltration-rate source would generate as
+    // walker weight.
+    *m -= sim->rwalk * *inf / setup->sisum;
+    // Cell's infiltration capacity is fully exhausted
+    *inf = 0.;
+    // Eliminate walker if needed
+    if (*m < 0.) {
+        *m = 0.;
+        return true;
+    }
+    return false;
+}
 
 /* **************************************************** */
 /*       create walker representation of si */
@@ -58,6 +140,24 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     // actually divided), produced biased depth/discharge for users.
     int nblock = 1;
 
+    /* The walkers are split into contiguous chunks, each drawing from a
+     * random number stream of its own, seeded by chunk index. The walker
+     * loop gives each chunk as a whole to one thread, which processes its
+     * walkers in order, and the number of chunks does not depend on nprocs,
+     * so neither do the numbers each walker gets. The count only needs to
+     * be well above the number of threads for the work to be balanced.
+     *
+     * The sequential walker setup draws from the stream of chunk 0, which
+     * chunk 0 then continues. */
+    int nchunks = 256;
+    union chunk_stream *streams = G_calloc(nchunks, sizeof(union chunk_stream));
+    /* All streams derived from one seed have the same length. */
+    long long stream_length = 0;
+
+    for (int c = 0; c < nchunks; c++)
+        stream_length = G_random_seed_stream(&streams[c].state,
+                                             settings->random_seed, c, nchunks);
+
     double stxm = geometry->stepx * (double)(geometry->mx + 1) - geometry->xmin;
     double stym = geometry->stepy * (double)(geometry->my + 1) - geometry->ymin;
     double deldif = sqrt(setup->deltap) * settings->frac; /* diffuse factor */
@@ -68,6 +168,21 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     G_debug(2, " deldif, factor %f %e", deldif, factor);
     G_debug(2, " maxwa, nblock %d %d", sim->maxwa, nblock);
     G_debug(2, "rwalk, sisum: %f %f", sim->rwalk, setup->sisum);
+
+    /* Weights added to gama in the current iteration, in fixed point */
+    int64_t **added = alloc_fixed_point_grid(geometry->my, geometry->mx);
+
+    /* Cells never gain infiltration capacity, so without any at the start
+     * the infiltration passes below are skipped. */
+    bool infiltration = false;
+    for (k = 0; k < geometry->my && !infiltration; k++) {
+        for (l = 0; l < geometry->mx; l++) {
+            if (grids->inf[k][l] > 0) {
+                infiltration = true;
+                break;
+            }
+        }
+    }
 
     for (iblock = 1; iblock <= nblock; iblock++) {
         int lw = 0;
@@ -91,9 +206,11 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                     for (int iw = 1; iw <= mgen + 1;
                          iw++) { /* assign walkers */
                         sim->w[lw].x =
-                            x + geometry->stepx * (simwe_rand() - 0.5);
+                            x + geometry->stepx *
+                                    (simwe_rand(&streams[0].state) - 0.5);
                         sim->w[lw].y =
-                            y + geometry->stepy * (simwe_rand() - 0.5);
+                            y + geometry->stepy *
+                                    (simwe_rand(&streams[0].state) - 0.5);
                         sim->w[lw].m = wei;
 
                         walkwe += sim->w[lw].m;
@@ -105,11 +222,32 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             }
         }
         sim->nwalk = lw;
+
+        /* Rounding up leaves the last chunks shorter or empty rather than
+         * leaving walkers beyond the last chunk unprocessed. The minimum of
+         * one is a valid chunk size for the walker loop without walkers. */
+        int chunk_size = max(1, (sim->nwalk + nchunks - 1) / nchunks);
+
+        /* A stream drawn past its length continues into the next chunk's
+         * values. Chunk 0 draws the most: two values per walker in the
+         * setup above and then, like every chunk, about three per walker
+         * step (a pair per Box-Muller attempt, a fifth of which are
+         * rejected, plus at most one for a trap), so checking it covers
+         * all chunks. */
+        long long draws = 2LL * sim->nwalk + 3LL * chunk_size * setup->miter;
+        if (draws > stream_length)
+            G_warning(_("Random number streams may overlap: a chunk of "
+                        "walkers is expected to draw about %lld values, but "
+                        "each stream has only %lld"),
+                      draws, stream_length);
         G_debug(2, " nwalk %d", sim->nwalk);
         G_debug(2, " walkwe (walk weight),frac %f %f", walkwe, settings->frac);
 
         sim->nwalka = 0;
         int nwalka = 0;
+
+        unsigned char *walker_state =
+            infiltration ? G_malloc(sim->nwalk) : NULL;
 
         // conn scales the cumulative partial sum in gama into an estimator
         // of the eventual total when blocks run sequentially.
@@ -148,23 +286,58 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             nwalka = 0;
             sim->nstack = 0;
 
-#pragma omp parallel firstprivate(l, lw, k) reduction(+ : nwalka)
-            {
-#if defined(_OPENMP)
-                int steps = (int)((((double)sim->nwalk) /
-                                   ((double)omp_get_num_threads())) +
-                                  0.5);
-                int tid = omp_get_thread_num();
-                int min_loop = tid * steps;
-                int max_loop = ((tid + 1) * steps) > sim->nwalk
-                                   ? sim->nwalk
-                                   : (tid + 1) * steps;
-
-                for (lw = min_loop; lw < max_loop; lw++) {
-#else
+            if (infiltration) {
+                /* Infiltration capacity goes to walkers in the order of their
+                 * index, as in a single-threaded run, so it is decided in one
+                 * sequential pass before the walkers move. The walkers in
+                 * cells with capacity are found in parallel first. */
+#pragma omp parallel for schedule(static) private(l, k)
                 for (lw = 0; lw < sim->nwalk; lw++) {
-#endif
-                    if (sim->w[lw].m > EPS) { /* check the walker weight */
+                    unsigned char state = 0;
+
+                    if (sim->w[lw].m > EPS) {
+                        state = WALKER_ACTIVE;
+                        l = (int)((sim->w[lw].x + stxm) / geometry->stepx) -
+                            geometry->mx - 1;
+                        k = (int)((sim->w[lw].y + stym) / geometry->stepy) -
+                            geometry->my - 1;
+                        if (grids->zz[k][l] != UNDEF && grids->inf[k][l] > 0)
+                            state |= WALKER_INFILTRATES;
+                    }
+                    walker_state[lw] = state;
+                }
+                for (lw = 0; lw < sim->nwalk; lw++) {
+                    if (walker_state[lw] & WALKER_INFILTRATES) {
+                        l = (int)((sim->w[lw].x + stxm) / geometry->stepx) -
+                            geometry->mx - 1;
+                        k = (int)((sim->w[lw].y + stym) / geometry->stepy) -
+                            geometry->my - 1;
+                        if (infiltrate_walker(&grids->inf[k][l], &sim->w[lw].m,
+                                              factor, setup, sim))
+                            walker_state[lw] |= WALKER_ABSORBED;
+                    }
+                }
+            }
+
+            double max_weight = 0.;
+#pragma omp parallel for schedule(static) reduction(max : max_weight)
+            for (int iw = 0; iw < sim->nwalk; iw++) {
+                if (sim->w[iw].m > max_weight)
+                    max_weight = sim->w[iw].m;
+            }
+            double unit = fixed_point_unit(addac * max_weight, sim->nwalk);
+
+#pragma omp parallel private(l, k) reduction(+ : nwalka)
+            {
+#pragma omp for schedule(static, chunk_size)
+                for (lw = 0; lw < sim->nwalk; lw++) {
+                    struct G_random_state *stream =
+                        &streams[lw / chunk_size].state;
+                    /* Check the walker weight before infiltration. */
+                    bool active = infiltration
+                                      ? walker_state[lw] & WALKER_ACTIVE
+                                      : sim->w[lw].m > EPS;
+                    if (active) {
                         ++(nwalka);
                         l = (int)((sim->w[lw].x + stxm) / geometry->stepx) -
                             geometry->mx - 1;
@@ -188,64 +361,38 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                         }
 
                         if (grids->zz[k][l] != UNDEF) {
-                            if (grids->inf[k][l] != UNDEF &&
-                                grids->inf[k][l] > 0) {
-                                // Walker's contribution to water depth in this
-                                // cell for this timestep [m]
-                                double decr = factor * sim->w[lw].m;
-                                // Compare with the depth the cell can absorb
-                                // this timestep [m]
-                                if (grids->inf[k][l] * setup->deltap > decr) {
-                                    // The cell can absorb the full walker.
-                                    // Reduce infiltration rate [m/s].
-                                    grids->inf[k][l] -= decr / setup->deltap;
-                                    // Eliminate the walker
-                                    sim->w[lw].m = 0.;
-                                    continue;
-                                }
-                                else {
-                                    // The cell can't absorb the full walker.
-                                    // Reduce the walker mass by the equivalent
-                                    // of what an infiltration-rate source would
-                                    // generate as walker weight.
-                                    sim->w[lw].m -= sim->rwalk *
-                                                    grids->inf[k][l] /
-                                                    setup->sisum;
-                                    // Cell's infiltration capacity is fully
-                                    // exhausted
-                                    grids->inf[k][l] = 0.;
-                                    // Eliminate walker if needed
-                                    if (sim->w[lw].m < 0.) {
-                                        sim->w[lw].m = 0.;
-                                        continue;
-                                    }
-                                }
-                            }
+                            if (infiltration &&
+                                walker_state[lw] & WALKER_ABSORBED)
+                                continue;
 
-                            grids->gama[k][l] +=
-                                (addac * sim->w[lw].m); /* add walker weigh to
-                                                      water depth or conc. */
+                            /* Add walker weight to water depth or
+                             * concentration. */
+                            double weight = addac * sim->w[lw].m;
+#pragma omp atomic update
+                            added[k][l] += llrint(weight / unit);
 
-                            double d1 = grids->gama[k][l] * conn;
+                            /* The walker sees gama of the previous iterations
+                             * and its own weight, but not the weights of other
+                             * walkers in this iteration, which would make the
+                             * result depend on the order of the walkers. */
+                            double d1 = (grids->gama[k][l] + weight) * conn;
                             double gaux, gauy;
-#if defined(_OPENMP)
-                            gasdev_for_paralel(&gaux, &gauy);
-#else
-                            gaux = gasdev();
-                            gauy = gasdev();
-#endif
+                            gasdev(stream, &gaux, &gauy);
                             double hhc = pow(d1, 3. / 5.);
                             double velx, vely;
+                            /* Diffusion coefficient of this walker's move,
+                             * kept as float, the type of the grid which used
+                             * to hold it, so that results do not change. */
+                            float dif;
                             if (hhc > settings->hhmax &&
                                 inputs->wdepth == NULL) { /* increased diffusion
                                                      if w.depth > hhmax */
-                                grids->dif[k][l] =
-                                    (settings->halpha + 1) * deldif;
+                                dif = (settings->halpha + 1) * deldif;
                                 velx = sim->vavg[lw].x;
                                 vely = sim->vavg[lw].y;
                             }
                             else {
-                                grids->dif[k][l] = deldif;
+                                dif = deldif;
                                 velx = grids->v1[k][l];
                                 vely = grids->v2[k][l];
                             }
@@ -253,7 +400,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                             if (inputs->traps != NULL &&
                                 grids->trap[k][l] != 0.) { /* traps */
 
-                                float eff = simwe_rand(); /* random generator */
+                                float eff = simwe_rand(stream);
 
                                 if (eff <= grids->trap[k][l]) {
                                     velx = -0.1 *
@@ -263,10 +410,9 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                                 }
                             }
 
-                            sim->w[lw].x +=
-                                (velx +
-                                 grids->dif[k][l] * gaux); /* move the walker */
-                            sim->w[lw].y += (vely + grids->dif[k][l] * gauy);
+                            /* Move the walker. */
+                            sim->w[lw].x += (velx + dif * gaux);
+                            sim->w[lw].y += (vely + dif * gauy);
 
                             if (hhc > settings->hhmax &&
                                 inputs->wdepth == NULL) {
@@ -304,6 +450,14 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                         }
                     }
                 } /* lw loop */
+
+#pragma omp for schedule(static)
+                for (k = 0; k < geometry->my; k++) {
+                    for (l = 0; l < geometry->mx; l++) {
+                        grids->gama[k][l] += added[k][l] * unit;
+                        added[k][l] = 0;
+                    }
+                }
             }
             /* Total remaining walkers for this iteration */
             sim->nwalka = nwalka;
@@ -423,8 +577,11 @@ void main_loop(const Setup *setup, const Geometry *geometry,
         }
         if (outputs->erdep != NULL)
             erod(grids->gama, setup, geometry, grids);
+        G_free(walker_state);
     }
     /*                       ........ end of iblock loop */
+    free_fixed_point_grid(added);
+    G_free(streams);
 
     // Finalize the err map as the sample standard deviation of the per-block
     // estimators of the final field: sqrt(|E[X^2] - E[X]^2|), where each X
