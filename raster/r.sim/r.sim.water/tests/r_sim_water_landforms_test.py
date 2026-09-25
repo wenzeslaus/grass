@@ -1,8 +1,11 @@
-"""Landscape-configuration tests for r.sim.water (SIMWE).
+"""Landform tests for r.sim.water (SIMWE).
 
-Tests use 2D synthetic landscapes with small spatial extent and
-hand-crafted elevation surfaces where expected output can be reasoned
-about from the landscape geometry.
+Each test simulates a small synthetic elevation surface, given as an array
+so that the shape is visible in the code, and checks two things: what the
+model must do on that landform for any random seed (physical assertions,
+with tolerances from seed sweeps), and the result for SEED (a pinned array
+that fails whenever the simulated result changes, including a change in the
+random number generator).
 """
 
 import os
@@ -20,372 +23,263 @@ NPROCS = 1
 DURATION = 2  # minutes; enough for near-steady state on small domains
 RAIN = 100  # mm/hr
 
-# Walker count for the rotation-invariance tests. r.sim.water defaults to
-# about twice the cell count, which is only ~70-240 walkers on these small
-# grids; at that count a single column total is dominated by Monte Carlo
-# noise. The rotation tests therefore run their own higher-walker
-# simulations for both orientations (the default-walker shape tests and
-# their pinned regression arrays are left unchanged). An empirical sweep
-# (10 seeds per landform at 2000, 5000, 10000, 20000 walkers) showed the
-# per-column profile spread leveling off around 10000: worst-case spread
-# fell from ~9-11% at 2000 to ~5% at 10000, with little further gain at
-# 20000 (~4%) for roughly double the runtime. 10000 is the chosen knee.
-ROTATION_NWALKERS = 10000
+# With the default walker count (two per cell) the depth of a single cell or
+# column varies too much between seeds to compare two simulations. In a
+# sweep from 2000 to 20000 walkers the spread of per-column sums leveled off
+# at 10000.
+HIGH_NWALKERS = 10000
 
-# Shared tolerances for the rotation-invariance tests, derived from the
-# sweep at ROTATION_NWALKERS. r.sim.water is a stochastic Monte Carlo
-# walker simulation, so a landform and its 90-degree rotation produce
-# equivalent but not identical depth. One value is used per distinct
-# quantity because each comparison measures the same physical property
-# (rotational equivalence under walker noise).
-#
-# Worst-case orientation-to-orientation spread across 10 seeds at 10000
-# walkers: total depth <=1.3% (ridge, terrace), per-column profile <=5.0%
-# (valley), saddle edge-sum <=0.3%. TOTAL_REL and PROFILE_RTOL cover those
-# maxima with roughly 4x and 2x margin for variation across platforms and
-# compilers. The saddle's edge-sum aggregates whole row/column blocks (not
-# single columns), so it is far smoother than the per-column profiles and
-# uses its own tighter SADDLE_EDGE_REL (about 7x margin) rather than the
-# noisier PROFILE_RTOL.
-TOTAL_REL = 0.05
-PROFILE_RTOL = 0.1
-SADDLE_EDGE_REL = 0.02
+# Relative tolerances for comparing two simulations at HIGH_NWALKERS (rtol
+# in numpy.testing.assert_allclose, rel in pytest.approx). Each is at least
+# twice the largest difference seen across seeds.
+TOTAL_DEPTH_RTOL = 0.05  # Depth summed over the whole grid.
+COLUMN_PROFILE_RTOL = 0.1  # Depth summed per column, compared column by column.
+
+# The pinned arrays are the float32 result for SEED in millimeters with two
+# decimals, so rounding alone moves a value by up to 0.005 mm and the
+# tolerance allows twice that. A change in the random number generator moved
+# at least one cell by 0.04 mm in every landform at every walker count
+# tested, so it still fails the pin.
+PIN_ATOL_MM = 0.01
+
+# Elevation surfaces, one cell per element at unit resolution. Rows run north
+# to south and columns west to east, matching the depth arrays.
+PIT = np.array(
+    [
+        [3, 3, 3, 3, 3],
+        [3, 2, 2, 2, 3],
+        [3, 2, 1, 2, 3],
+        [3, 2, 2, 2, 3],
+        [3, 3, 3, 3, 3],
+    ]
+)
+PEAK = np.array(
+    [
+        [3, 3, 3, 3, 3, 3, 3],
+        [3, 4, 4, 4, 4, 4, 3],
+        [3, 4, 5, 5, 5, 4, 3],
+        [3, 4, 5, 6, 5, 4, 3],
+        [3, 4, 5, 5, 5, 4, 3],
+        [3, 4, 4, 4, 4, 4, 3],
+        [3, 3, 3, 3, 3, 3, 3],
+    ]
+)
+RIDGE = np.array([[0, 1, 2, 3, 2, 1, 0]] * 5)
+SADDLE = np.array(
+    [
+        [10, 15, 18, 19, 18, 15, 10],
+        [5, 10, 13, 14, 13, 10, 5],
+        [2, 7, 10, 11, 10, 7, 2],
+        [1, 6, 9, 10, 9, 6, 1],
+        [2, 7, 10, 11, 10, 7, 2],
+        [5, 10, 13, 14, 13, 10, 5],
+        [10, 15, 18, 19, 18, 15, 10],
+    ]
+)
+TERRACE = np.array([[9, 9, 9, 9, 7, 6, 6, 6, 4, 3, 3, 3]] * 10)
 
 
-def run_sim(session, *, random_seed=SEED, **kwargs):
-    """Run r.sim.water on a 2D domain; return depth as 2D ndarray.
+def surface(row_values, column_values):
+    """Elevation grid in which each cell is its row value plus its column value."""
+    return np.array(row_values)[:, np.newaxis] + np.array(column_values)
 
-    Omits dx/dy so partial derivatives are computed internally.
+
+# Ten rows falling southward by 0.5 per row.
+DOWNSLOPE = [4.5, 4.0, 3.5, 3.0, 2.5, 2.0, 1.5, 1.0, 0.5, 0.0]
+# A V-shaped, a concave parabolic, and a convex parabolic cross-section on
+# that slope.
+VALLEY = surface(DOWNSLOPE, [3, 2, 1, 0, 1, 2, 3])
+HOLLOW = surface(DOWNSLOPE, [1.8, 0.8, 0.2, 0.0, 0.2, 0.8, 1.8])
+SPUR = surface(DOWNSLOPE, [-1.8, -0.8, -0.2, 0.0, -0.2, -0.8, -1.8])
+
+
+def landform_depth(project, elevation, *, random_seed=SEED, **kwargs):
+    """Simulate r.sim.water on an elevation array in a new project; return depth.
+
+    The region is one cell per array element at unit resolution. Only the
+    elevation is given, so the tool computes the slope components itself.
     """
-    defaults = {
-        "rain_value": RAIN,
-        "infil_value": 0,
-        "man_value": 0.1,
-        "nprocs": NPROCS,
-        "duration": DURATION,
-    }
-    defaults.update(kwargs)
-    defaults = {k: v for k, v in defaults.items() if v is not None}
-    tools = Tools(session=session)
-    return tools.r_sim_water(
-        elevation="elevation",
-        depth=np.array,
-        random_seed=random_seed,
-        **defaults,
-    )
-
-
-def _landform_depth(tmp_path_factory, name, region, elevation):
-    """Build a one-off landform project and return its depth.
-
-    Backs the module-scoped landform fixtures so each base landform is
-    simulated once and shared between its shape test and its rotation test
-    (which would otherwise recompute the identical surface). The returned
-    array is read-only so neither consumer can mutate the shared result.
-    """
-    project = tmp_path_factory.mktemp(name) / "simwe"
+    nrows, ncols = elevation.shape
     gs.create_project(project)
     with gs.setup.init(project, env=os.environ.copy()) as session:
         tools = Tools(session=session)
-        tools.g_region(**region)
-        tools.r_mapcalc(expression=f"elevation = {elevation}")
-        depth = run_sim(session)
-    depth.flags.writeable = False
-    return depth
+        tools.g_region(w=0, e=ncols, s=0, n=nrows, res=1)
+        return tools.r_sim_water(
+            elevation=elevation,
+            depth=np.array,
+            random_seed=random_seed,
+            rain_value=RAIN,
+            infil_value=0,
+            man_value=0.1,
+            nprocs=NPROCS,
+            duration=DURATION,
+            **kwargs,
+        )
 
 
-@pytest.fixture(scope="module")
-def ridge_ns_depth(tmp_path_factory):
-    """N-S ridge depth (5 rows x 7 cols); ridge along the center column."""
-    return _landform_depth(
-        tmp_path_factory,
-        "ridge_ns",
-        {"w": 0, "e": 7, "s": 0, "n": 5, "res": 1},
-        "3 - abs(col() - 4)",
-    )
-
-
-@pytest.fixture(scope="module")
-def valley_ns_depth(tmp_path_factory):
-    """N-S valley depth (10 rows x 7 cols); V-section draining southward."""
-    return _landform_depth(
-        tmp_path_factory,
-        "valley_ns",
-        {"w": 0, "e": 7, "s": 0, "n": 10, "res": 1},
-        "abs(col() - 4) + (nrows() - row()) * 0.5",
-    )
-
-
-@pytest.fixture(scope="module")
-def saddle_depth(tmp_path_factory):
-    """Saddle depth (7x7); hyperbolic paraboloid with E-W low axes."""
-    return _landform_depth(
-        tmp_path_factory,
-        "saddle",
-        {"w": 0, "e": 7, "s": 0, "n": 7, "res": 1},
-        "(row() - 4)*(row() - 4) - (col() - 4)*(col() - 4) + 10",
-    )
-
-
-@pytest.fixture(scope="module")
-def terrace_ew_depth(tmp_path_factory):
-    """E-W terrace depth (10 rows x 12 cols); three flat steps and drops."""
-    return _landform_depth(
-        tmp_path_factory,
-        "terrace_ew",
-        {"w": 0, "e": 12, "s": 0, "n": 10, "res": 1},
-        "if(col() <= 4, 9, if(col() == 5, 7, if(col() <= 8, 6, if(col() == 9, 4, 3))))",
+def assert_depth_pinned(depth, expected_mm):
+    """Compare simulated depth in meters with the pinned values in millimeters."""
+    np.testing.assert_allclose(
+        depth.astype(np.float64) * 1000, expected_mm, rtol=0, atol=PIN_ATOL_MM
     )
 
 
 def test_pit_collects_water(tmp_path):
-    """A bowl-shaped pit must collect most water in its center.
+    """A square bowl must collect most water in its center cell, symmetrically."""
+    depth = landform_depth(tmp_path / "pit", PIT)
 
-    A 5x5 grid with elevation equal to the Chebyshev distance from the
-    center creates a closed depression. Water flows inward from all
-    directions and accumulates at the lowest point.
+    center_depth = float(depth[2, 2])
+    total_depth = float(np.sum(depth))
 
-    Elevation:
-        3 3 3 3 3
-        3 2 2 2 3
-        3 2 1 2 3
-        3 2 2 2 3
-        3 3 3 3 3
-    """
-    project = tmp_path / "simwe"
-    gs.create_project(project)
-    with gs.setup.init(project, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=5, s=0, n=5, res=1)
-        # row() and col() are 1-indexed, so center of 5x5 is at (3, 3).
-        tools.r_mapcalc(
-            expression="elevation = max(abs(row() - 3), abs(col() - 3)) + 1"
-        )
+    assert center_depth == np.max(depth), (
+        f"Pit center depth ({center_depth:.4f}) should be the domain maximum "
+        f"({np.max(depth):.4f})"
+    )
 
-        depth = run_sim(session)
+    # The 30% threshold holds across resolutions from 0.1 m to 30 m.
+    assert center_depth > 0.3 * total_depth, (
+        f"Center should hold >30% of total water: "
+        f"center={center_depth:.4f}, total={total_depth:.4f}"
+    )
 
-        # The center cell is at NumPy index [2, 2].
-        center_depth = float(depth[2, 2])
-        total_depth = float(np.sum(depth))
+    # Radial symmetry: the 4 cardinal neighbors should have similar depth.
+    neighbors = [depth[1, 2], depth[3, 2], depth[2, 1], depth[2, 3]]
+    mean_neighbor = float(np.mean(neighbors))
+    np.testing.assert_allclose(neighbors, mean_neighbor, rtol=0.3)
 
-        # The pit center must have the maximum depth.
-        assert center_depth == np.max(depth), (
-            f"Pit center depth ({center_depth:.4f}) should be the domain maximum "
-            f"({np.max(depth):.4f})"
-        )
+    assert all(n < center_depth for n in neighbors), (
+        f"All neighbors should have less depth than center: "
+        f"neighbors={[f'{n:.4f}' for n in neighbors]}, "
+        f"center={center_depth:.4f}"
+    )
 
-        # Most water should be trapped in the center. The 30% threshold
-        # holds across resolutions from 0.1 m to 30 m.
-        assert center_depth > 0.3 * total_depth, (
-            f"Center should hold >30% of total water: "
-            f"center={center_depth:.4f}, total={total_depth:.4f}"
-        )
+    # Radial symmetry for the 4 diagonal neighbors.
+    diagonals = [depth[1, 1], depth[1, 3], depth[3, 1], depth[3, 3]]
+    mean_diagonal = float(np.mean(diagonals))
+    np.testing.assert_allclose(diagonals, mean_diagonal, rtol=0.3)
 
-        # Radial symmetry: the 4 cardinal neighbors should have similar depth.
-        neighbors = [depth[1, 2], depth[3, 2], depth[2, 1], depth[2, 3]]
-        mean_neighbor = float(np.mean(neighbors))
-        np.testing.assert_allclose(neighbors, mean_neighbor, rtol=0.3)
+    # Depth decreases from the center outward: center, then the cardinal
+    # ring, then the edge midpoints.
+    edge_midpoints = [depth[0, 2], depth[4, 2], depth[2, 0], depth[2, 4]]
+    assert mean_neighbor > float(np.mean(edge_midpoints)), (
+        f"Ring 1 mean depth ({mean_neighbor:.4f}) should exceed "
+        f"ring 2 mean depth ({float(np.mean(edge_midpoints)):.4f})"
+    )
 
-        # Cardinal neighbors must have less depth than center.
-        assert all(n < center_depth for n in neighbors), (
-            f"All neighbors should have less depth than center: "
-            f"neighbors={[f'{n:.4f}' for n in neighbors]}, "
-            f"center={center_depth:.4f}"
-        )
-
-        # Radial symmetry for the 4 diagonal neighbors.
-        diagonals = [depth[1, 1], depth[1, 3], depth[3, 1], depth[3, 3]]
-        mean_diagonal = float(np.mean(diagonals))
-        np.testing.assert_allclose(diagonals, mean_diagonal, rtol=0.3)
-
-        # Depth must decrease monotonically from center outward:
-        # center > cardinal ring > edge midpoints.
-        edge_midpoints = [depth[0, 2], depth[4, 2], depth[2, 0], depth[2, 4]]
-        assert mean_neighbor > float(np.mean(edge_midpoints)), (
-            f"Ring 1 mean depth ({mean_neighbor:.4f}) should exceed "
-            f"ring 2 mean depth ({float(np.mean(edge_midpoints)):.4f})"
-        )
-
-        # Full grid regression check for this seed and parameters.
-        expected = np.array(
-            [
-                [0.000503, 0.000395, 0.000451, 0.000642, 0.000395],
-                [0.000451, 0.002898, 0.014304, 0.002434, 0.000800],
-                [0.000451, 0.014336, 0.087167, 0.014282, 0.000451],
-                [0.000503, 0.002556, 0.014759, 0.002851, 0.000684],
-                [0.000642, 0.000503, 0.000260, 0.000800, 0.000503],
-            ]
-        )
-        np.testing.assert_allclose(depth, expected, atol=0.002)
+    assert_depth_pinned(
+        depth,
+        [
+            [0.50, 0.39, 0.45, 0.64, 0.39],
+            [0.45, 2.90, 14.30, 2.43, 0.80],
+            [0.45, 14.34, 87.17, 14.28, 0.45],
+            [0.50, 2.56, 14.76, 2.85, 0.68],
+            [0.64, 0.50, 0.26, 0.80, 0.50],
+        ],
+    )
 
 
 def test_peak_sheds_water(tmp_path):
-    """A conical peak must have minimum depth at the summit.
+    """A conical peak must shed water outward, symmetrically in all directions.
 
-    A 5x5 grid with elevation decreasing outward from the center creates
-    a peak. Water flows away from the summit in all directions, so the
-    center should have the least water and edges should accumulate more.
-
-    Elevation:
-        2 2 2 2 2
-        2 3 3 3 2
-        2 3 4 3 2
-        2 3 3 3 2
-        2 2 2 2 2
+    Water shed from the summit accumulates outward, so the second square ring
+    around the summit holds more per cell than the first, and cells at the
+    same distance from the summit hold similar depth. The summit itself holds
+    more than the ring around it: the slope computed from its equal-height
+    neighbors is zero, so its water leaves only by diffusion. The outer ring
+    is the domain edge and is left out to avoid edge effects.
     """
-    project = tmp_path / "simwe"
-    gs.create_project(project)
-    with gs.setup.init(project, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=5, s=0, n=5, res=1)
-        tools.r_mapcalc(
-            expression="elevation = 4 - max(abs(row() - 3), abs(col() - 3))"
-        )
+    depth = landform_depth(tmp_path / "peak", PEAK, nwalkers=HIGH_NWALKERS)
 
-        depth = run_sim(session)
+    # The summit is at NumPy index [3, 3].
+    summit = float(depth[3, 3])
+    neighbors = [depth[2, 3], depth[4, 3], depth[3, 2], depth[3, 4]]
+    diagonals = [depth[2, 2], depth[2, 4], depth[4, 2], depth[4, 4]]
+    ring2 = [
+        depth[i, j]
+        for i in range(1, 6)
+        for j in range(1, 6)
+        if max(abs(i - 3), abs(j - 3)) == 2
+    ]
 
-        # Cardinal neighbors should have similar depth (radial symmetry).
-        neighbors = [depth[1, 2], depth[3, 2], depth[2, 1], depth[2, 3]]
-        mean_neighbor = float(np.mean(neighbors))
-        np.testing.assert_allclose(neighbors, mean_neighbor, rtol=0.4)
+    # Relative tolerance for single cells; the largest deviation from the
+    # ring mean seen across seeds was about 7%.
+    cell_rtol = 0.15
+    np.testing.assert_allclose(neighbors, np.mean(neighbors), rtol=cell_rtol)
+    np.testing.assert_allclose(diagonals, np.mean(diagonals), rtol=cell_rtol)
 
-        # Diagonal neighbors should have similar depth.
-        diagonals = [depth[1, 1], depth[1, 3], depth[3, 1], depth[3, 3]]
-        mean_diagonal = float(np.mean(diagonals))
-        np.testing.assert_allclose(diagonals, mean_diagonal, rtol=0.4)
-
-        # Outer ring (edges) should have more depth than inner ring.
-        edge_midpoints = [depth[0, 2], depth[4, 2], depth[2, 0], depth[2, 4]]
-        mean_edge = float(np.mean(edge_midpoints))
-        assert mean_edge > mean_neighbor, (
-            f"Edge depth ({mean_edge:.6f}) should exceed "
-            f"neighbor depth ({mean_neighbor:.6f})"
-        )
-
-        # Full grid regression check.
-        expected = np.array(
-            [
-                [0.000973, 0.000872, 0.000800, 0.000451, 0.000800],
-                [0.000684, 0.000598, 0.000552, 0.000503, 0.000260],
-                [0.000552, 0.000332, 0.000598, 0.000503, 0.000724],
-                [0.000503, 0.000503, 0.000332, 0.000395, 0.000260],
-                [0.000907, 0.000642, 0.000642, 0.000763, 0.000642],
-            ]
-        )
-        np.testing.assert_allclose(depth, expected, atol=0.0002)
-
-
-def test_ridge_sheds_water_to_flanks(ridge_ns_depth):
-    """A ridge must shed water to both flanks, leaving the crest drier.
-
-    A 5x7 grid with a N-S ridge along the center column. The crest
-    is the highest point and water flows away toward the edges.
-
-    Elevation (each row):
-        0 1 2 3 2 1 0
-    """
-    depth = ridge_ns_depth
-
-    # Edge columns (0 and 6) should accumulate more water than
-    # the crest column (3) because water flows downhill.
-    crest_sum = float(np.sum(depth[:, 3]))
-    left_edge_sum = float(np.sum(depth[:, 0]))
-    right_edge_sum = float(np.sum(depth[:, 6]))
-    assert left_edge_sum > crest_sum, (
-        f"Left edge ({left_edge_sum:.6f}) should exceed crest ({crest_sum:.6f})"
+    mean_ring1 = float(np.mean(neighbors + diagonals))
+    mean_ring2 = float(np.mean(ring2))
+    assert mean_ring2 > mean_ring1, (
+        f"Ring 2 mean depth ({mean_ring2:.6f}) should exceed "
+        f"ring 1 mean depth ({mean_ring1:.6f})"
     )
-    assert right_edge_sum > crest_sum, (
-        f"Right edge ({right_edge_sum:.6f}) should exceed crest ({crest_sum:.6f})"
+    assert summit > mean_ring1, (
+        f"Summit depth ({summit:.6f}) should exceed "
+        f"ring 1 mean depth ({mean_ring1:.6f})"
     )
 
-    # Left-right symmetry: columns equidistant from crest should
-    # have similar total depth.
-    for offset in range(1, 4):
-        left_sum = float(np.sum(depth[:, 3 - offset]))
-        right_sum = float(np.sum(depth[:, 3 + offset]))
-        assert left_sum == pytest.approx(right_sum, rel=0.4), (
-            f"Offset {offset}: left sum ({left_sum:.6f}) vs right sum ({right_sum:.6f})"
-        )
-
-    # Full grid regression check.
-    expected = np.array(
+    assert_depth_pinned(
+        depth,
         [
-            [0.000946, 0.000586, 0.000303, 0.000303, 0.000360, 0.000459, 0.000546],
-            [0.001390, 0.000796, 0.000661, 0.001455, 0.000412, 0.000827, 0.001182],
-            [0.001206, 0.001055, 0.000796, 0.001081, 0.000586, 0.000624, 0.001497],
-            [0.001254, 0.000730, 0.000586, 0.001158, 0.000412, 0.000827, 0.001055],
-            [0.000888, 0.000546, 0.000459, 0.000730, 0.000238, 0.000546, 0.000661],
-        ]
-    )
-    np.testing.assert_allclose(depth, expected, atol=0.0005)
-
-
-def test_ridge_rotation_invariance(tmp_path):
-    """A N-S ridge and E-W ridge must produce rotationally equivalent depth.
-
-    The E-W ridge is a 90-degree rotation of the N-S ridge. After rotating
-    the E-W result back, total depth and cross-ridge profiles should match.
-
-    Both orientations are simulated here at ROTATION_NWALKERS rather than
-    reusing the default-walker shape fixture, so the per-column profile
-    comparison is meaningful (see ROTATION_NWALKERS for the rationale).
-    """
-    # N-S ridge: 5 rows x 7 cols, ridge along center column.
-    project_ns = tmp_path / "ns"
-    gs.create_project(project_ns)
-    with gs.setup.init(project_ns, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=7, s=0, n=5, res=1)
-        tools.r_mapcalc(expression="elevation = 3 - abs(col() - 4)")
-        depth_ns = run_sim(session, nwalkers=ROTATION_NWALKERS)
-
-    # E-W ridge: 7 rows x 5 cols, ridge along center row.
-    project_ew = tmp_path / "ew"
-    gs.create_project(project_ew)
-    with gs.setup.init(project_ew, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=5, s=0, n=7, res=1)
-        tools.r_mapcalc(expression="elevation = 3 - abs(row() - 4)")
-        depth_ew = run_sim(session, nwalkers=ROTATION_NWALKERS)
-
-    # Total depth should be comparable between the two orientations.
-    # TOTAL_REL is shared by all four rotation tests; see its definition
-    # for the empirical basis (ridge total spread <=1.3% at 10000 walkers).
-    total_ns = float(np.sum(depth_ns))
-    total_ew = float(np.sum(depth_ew))
-    assert total_ns == pytest.approx(total_ew, rel=TOTAL_REL), (
-        f"Total depth N-S ({total_ns:.6f}) vs E-W ({total_ew:.6f})"
+            [0.89, 0.68, 0.81, 0.89, 0.82, 0.70, 0.90],
+            [0.69, 0.52, 0.48, 0.57, 0.49, 0.52, 0.74],
+            [0.79, 0.49, 0.38, 0.42, 0.39, 0.52, 0.79],
+            [0.92, 0.58, 0.40, 0.69, 0.42, 0.58, 0.90],
+            [0.81, 0.50, 0.41, 0.42, 0.37, 0.49, 0.80],
+            [0.71, 0.50, 0.48, 0.60, 0.51, 0.51, 0.69],
+            [0.86, 0.67, 0.80, 0.92, 0.80, 0.74, 0.87],
+        ],
     )
 
-    # Rotating the E-W result 90 degrees counter-clockwise should
-    # approximate the N-S result.
-    depth_ew_rotated = np.rot90(depth_ew)
-    assert depth_ew_rotated.shape == depth_ns.shape
 
-    # Cross-ridge profiles (per-column sums) should match within
-    # PROFILE_RTOL; at 10000 walkers the worst-case per-column spread was
-    # ~2.8% for the ridge across 10 seeds (see PROFILE_RTOL definition).
-    profile_ns = np.sum(depth_ns, axis=0)
-    profile_ew = np.sum(depth_ew_rotated, axis=0)
-    np.testing.assert_allclose(profile_ns, profile_ew, rtol=PROFILE_RTOL)
+def test_ridge_sheds_water_to_flanks(tmp_path):
+    """A ridge must shed water down both flanks, symmetrically.
 
-
-def test_valley_concentrates_flow_downstream(valley_ns_depth):
-    """A V-shaped valley must concentrate water along its floor.
-
-    A 10x7 grid with a V-shaped cross-section draining southward.
-    The valley floor (center column) should have much more water than
-    the hillslopes, and discharge should increase downstream.
-
-    Cross-section (each row, west to east):
-        3 2 1 0 1 2 3
-    Downstream gradient adds 0.5 per row, so the top row is 4.5 m
-    higher than the bottom row.
+    Water shed from the crest accumulates down each flank, so the lower flank
+    column holds more than the shoulder column next to the crest, and the two
+    sides mirror each other. The crest itself holds about twice the depth of
+    its shoulders: the slope computed from its equal-height neighbors is
+    zero, so its water leaves only by diffusion. The edge columns are left
+    out to avoid edge effects.
     """
-    depth = valley_ns_depth
+    depth = landform_depth(tmp_path / "ridge", RIDGE, nwalkers=HIGH_NWALKERS)
+    profile = np.sum(depth, axis=0)
 
-    # Valley floor (col index 3) should have much higher per-cell
-    # depth than the hillslope average.
+    # Columns 2 and 4 are the shoulders next to the crest (3); columns 1 and
+    # 5 are the lower flanks.
+    for shoulder, flank in ((2, 1), (4, 5)):
+        assert profile[flank] > profile[shoulder], (
+            f"Lower flank column {flank} ({profile[flank]:.6f}) should "
+            f"exceed shoulder column {shoulder} ({profile[shoulder]:.6f})"
+        )
+        assert profile[3] > profile[shoulder], (
+            f"Crest ({profile[3]:.6f}) should exceed shoulder column "
+            f"{shoulder} ({profile[shoulder]:.6f})"
+        )
+
+    # The per-column profile mirrors across the crest.
+    np.testing.assert_allclose(profile[:3], profile[::-1][:3], rtol=COLUMN_PROFILE_RTOL)
+
+    assert_depth_pinned(
+        depth,
+        [
+            [1.00, 0.66, 0.40, 0.57, 0.42, 0.68, 1.02],
+            [1.09, 0.76, 0.58, 1.37, 0.56, 0.77, 1.11],
+            [1.11, 0.73, 0.52, 1.12, 0.50, 0.72, 1.09],
+            [1.13, 0.78, 0.58, 1.45, 0.58, 0.75, 1.11],
+            [1.00, 0.64, 0.40, 0.59, 0.40, 0.66, 1.00],
+        ],
+    )
+
+
+def test_valley_concentrates_flow_downstream(tmp_path):
+    """A V-shaped valley draining southward must concentrate water on its floor.
+
+    The floor holds far more per cell than the hillslopes, depth on the floor
+    increases downstream, and the two sides mirror each other.
+    """
+    depth = landform_depth(tmp_path / "valley", VALLEY)
+
     floor_mean = float(np.mean(depth[:, 3]))
     hillslope_cols = np.concatenate([depth[:, :3], depth[:, 4:]], axis=1)
     hillslope_mean = float(np.mean(hillslope_cols))
@@ -394,8 +288,7 @@ def test_valley_concentrates_flow_downstream(valley_ns_depth):
         f"hillslope mean ({hillslope_mean:.6f})"
     )
 
-    # Discharge (depth) should increase downstream (toward higher row
-    # indices in the array). Compare upper and lower halves.
+    # Downstream is toward higher row indices; compare the two halves.
     upper_floor = float(np.sum(depth[:5, 3]))
     lower_floor = float(np.sum(depth[5:, 3]))
     assert lower_floor > upper_floor, (
@@ -403,8 +296,6 @@ def test_valley_concentrates_flow_downstream(valley_ns_depth):
         f"upper valley floor ({upper_floor:.6f})"
     )
 
-    # Cross-valley symmetry: columns equidistant from floor should
-    # have similar total depth.
     for offset in range(1, 4):
         left = float(np.sum(depth[:, 3 - offset]))
         right = float(np.sum(depth[:, 3 + offset]))
@@ -412,94 +303,39 @@ def test_valley_concentrates_flow_downstream(valley_ns_depth):
             f"Offset {offset}: left ({left:.6f}) vs right ({right:.6f})"
         )
 
-    # Full grid regression check.
-    expected = np.array(
+    assert_depth_pinned(
+        depth,
         [
-            [0.000276, 0.000404, 0.000579, 0.001990, 0.000684, 0.000704, 0.000276],
-            [0.000556, 0.000834, 0.000951, 0.001532, 0.000724, 0.000194, 0.000458],
-            [0.000276, 0.000533, 0.000919, 0.002308, 0.000886, 0.000601, 0.000643],
-            [0.000533, 0.000431, 0.001119, 0.003021, 0.001014, 0.000684, 0.000484],
-            [0.000404, 0.000643, 0.000798, 0.003759, 0.001271, 0.000724, 0.000431],
-            [0.000276, 0.000622, 0.001060, 0.004491, 0.001323, 0.000664, 0.000404],
-            [0.000509, 0.000601, 0.001189, 0.004852, 0.001323, 0.000556, 0.000484],
-            [0.000431, 0.000643, 0.001244, 0.005432, 0.001555, 0.000509, 0.000311],
-            [0.000374, 0.000724, 0.001203, 0.005944, 0.001361, 0.000643, 0.000664],
-            [0.000622, 0.000851, 0.001323, 0.006594, 0.001635, 0.000684, 0.000431],
-        ]
-    )
-    np.testing.assert_allclose(depth, expected, atol=0.002)
-
-
-def test_valley_rotation_invariance(tmp_path):
-    """A N-S valley and E-W valley must produce rotationally equivalent depth.
-
-    Both orientations are simulated here at ROTATION_NWALKERS so the
-    per-column profile comparison is meaningful (see ROTATION_NWALKERS).
-    """
-    # N-S valley: 10 rows x 7 cols, V-section draining southward.
-    project_ns = tmp_path / "ns"
-    gs.create_project(project_ns)
-    with gs.setup.init(project_ns, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=7, s=0, n=10, res=1)
-        tools.r_mapcalc(
-            expression="elevation = abs(col() - 4) + (nrows() - row()) * 0.5"
-        )
-        depth_ns = run_sim(session, nwalkers=ROTATION_NWALKERS)
-
-    # E-W valley: 7 rows x 10 cols.
-    project_ew = tmp_path / "ew"
-    gs.create_project(project_ew)
-    with gs.setup.init(project_ew, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=10, s=0, n=7, res=1)
-        tools.r_mapcalc(
-            expression="elevation = abs(row() - 4) + (ncols() - col()) * 0.5"
-        )
-        depth_ew = run_sim(session, nwalkers=ROTATION_NWALKERS)
-
-    # Total depth should be comparable between orientations; TOTAL_REL is
-    # shared across the rotation tests (see its definition). The valley
-    # total spread was <=0.5% at 10000 walkers across 10 seeds.
-    total_ns = float(np.sum(depth_ns))
-    total_ew = float(np.sum(depth_ew))
-    assert total_ns == pytest.approx(total_ew, rel=TOTAL_REL), (
-        f"Total depth N-S ({total_ns:.6f}) vs E-W ({total_ew:.6f})"
+            [0.28, 0.40, 0.58, 1.99, 0.68, 0.70, 0.28],
+            [0.56, 0.83, 0.95, 1.53, 0.72, 0.19, 0.46],
+            [0.28, 0.53, 0.92, 2.31, 0.89, 0.60, 0.64],
+            [0.53, 0.43, 1.12, 3.02, 1.01, 0.68, 0.48],
+            [0.40, 0.64, 0.80, 3.76, 1.27, 0.72, 0.43],
+            [0.28, 0.62, 1.06, 4.49, 1.32, 0.66, 0.40],
+            [0.51, 0.60, 1.19, 4.85, 1.32, 0.56, 0.48],
+            [0.43, 0.64, 1.24, 5.43, 1.55, 0.51, 0.31],
+            [0.37, 0.72, 1.20, 5.94, 1.36, 0.64, 0.66],
+            [0.62, 0.85, 1.32, 6.59, 1.63, 0.68, 0.43],
+        ],
     )
 
-    # Per-column cross-valley profiles should match within PROFILE_RTOL;
-    # the valley had the largest per-column spread of the three profile
-    # landforms (~5.0% at 10000 walkers), which PROFILE_RTOL covers ~2x.
-    profile_ns = np.sum(depth_ns, axis=0)
-    depth_ew_rotated = np.rot90(depth_ew)
-    profile_ew = np.sum(depth_ew_rotated, axis=0)
-    np.testing.assert_allclose(profile_ns, profile_ew, rtol=PROFILE_RTOL)
 
+def test_saddle_bifurcates_flow(tmp_path):
+    """A saddle must send more water into its two low quadrants than its high ones.
 
-def test_saddle_bifurcates_flow(saddle_depth):
-    """A saddle must split flow into two low quadrants.
-
-    A 7x7 grid shaped as a hyperbolic paraboloid (saddle surface).
-    The surface rises along the N-S axis and drops along the E-W
-    axis, creating two high zones (top and bottom) and two low zones
-    (left and right). Water should flow preferentially into the low
-    zones.
+    The surface rises away from the center along the north-south axis and
+    falls along the east-west axis, so the east and west quadrants are low
+    and the north and south quadrants are high.
     """
-    depth = saddle_depth
+    depth = landform_depth(tmp_path / "saddle", SADDLE)
 
-    # Low quadrants: where (col-4)^2 > (row-4)^2, i.e., columns
-    # far from center. These are the left and right sides.
-    # High quadrants: rows far from center (top and bottom).
-    low_mask = np.zeros_like(depth, dtype=bool)
-    high_mask = np.zeros_like(depth, dtype=bool)
-    for r in range(7):
-        for c in range(7):
-            row_dist = abs(r - 3)
-            col_dist = abs(c - 3)
-            if col_dist > row_dist:
-                low_mask[r, c] = True
-            elif row_dist > col_dist:
-                high_mask[r, c] = True
+    # A cell is in a low quadrant when it is farther from the center column
+    # than from the center row, and in a high quadrant in the opposite case.
+    rows, cols = np.indices(depth.shape)
+    row_dist = np.abs(rows - 3)
+    col_dist = np.abs(cols - 3)
+    low_mask = col_dist > row_dist
+    high_mask = row_dist > col_dist
 
     low_sum = float(np.sum(depth[low_mask]))
     high_sum = float(np.sum(depth[high_mask]))
@@ -508,8 +344,8 @@ def test_saddle_bifurcates_flow(saddle_depth):
         f"high quadrant depth ({high_sum:.6f})"
     )
 
-    # Saddle point (center) should have more depth than the high
-    # quadrant mean because flow converges through the saddle.
+    # Flow converges through the saddle point on its way to the low
+    # quadrants, so the saddle point is wetter than the high quadrants.
     high_mean = high_sum / np.sum(high_mask)
     saddle_point_depth = float(depth[3, 3])
     assert saddle_point_depth > high_mean, (
@@ -517,169 +353,101 @@ def test_saddle_bifurcates_flow(saddle_depth):
         f"high quadrant mean ({high_mean:.6f})"
     )
 
-    # Full grid regression check.
-    expected = np.array(
+    assert_depth_pinned(
+        depth,
         [
-            [0.000264, 0.000282, 0.000155, 0.000203, 0.000244, 0.000155, 0.000264],
-            [0.000406, 0.000299, 0.000282, 0.000392, 0.000224, 0.000509, 0.000485],
-            [0.000721, 0.000509, 0.000460, 0.000812, 0.000332, 0.000556, 0.000847],
-            [0.001300, 0.000830, 0.000662, 0.003083, 0.001075, 0.000946, 0.001388],
-            [0.000777, 0.000545, 0.000299, 0.000777, 0.000473, 0.000611, 0.000839],
-            [0.000434, 0.000348, 0.000299, 0.000406, 0.000282, 0.000434, 0.000447],
-            [0.000299, 0.000203, 0.000264, 0.000203, 0.000244, 0.000282, 0.000244],
-        ]
-    )
-    np.testing.assert_allclose(depth, expected, atol=0.001)
-
-
-def test_saddle_rotation_invariance(tmp_path):
-    """Rotating the saddle 90 degrees must swap peak/valley axes.
-
-    The original saddle has valleys along columns (left-right).
-    A 90-degree rotation swaps row and column terms, putting valleys
-    along rows (top-bottom). Both orientations are simulated here at
-    ROTATION_NWALKERS (see ROTATION_NWALKERS for the rationale).
-    """
-    # Original saddle (7x7); hyperbolic paraboloid with E-W low axes.
-    project_a = tmp_path / "a"
-    gs.create_project(project_a)
-    with gs.setup.init(project_a, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=7, s=0, n=7, res=1)
-        tools.r_mapcalc(
-            expression=(
-                "elevation = (row() - 4)*(row() - 4) - (col() - 4)*(col() - 4) + 10"
-            )
-        )
-        depth_a = run_sim(session, nwalkers=ROTATION_NWALKERS)
-
-    project_b = tmp_path / "b"
-    gs.create_project(project_b)
-    with gs.setup.init(project_b, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=7, s=0, n=7, res=1)
-        tools.r_mapcalc(
-            expression=(
-                "elevation = (col() - 4)*(col() - 4) - (row() - 4)*(row() - 4) + 10"
-            )
-        )
-        depth_b = run_sim(session, nwalkers=ROTATION_NWALKERS)
-
-    # Both are square so total depth should be comparable; TOTAL_REL is
-    # shared across the rotation tests (see its definition). The saddle
-    # total spread was <=0.4% at 10000 walkers across 10 seeds.
-    total_a = float(np.sum(depth_a))
-    total_b = float(np.sum(depth_b))
-    assert total_a == pytest.approx(total_b, rel=TOTAL_REL), (
-        f"Total depth original ({total_a:.6f}) vs rotated ({total_b:.6f})"
-    )
-
-    # After rotation, the outer ring (excluding the noisy center row/col)
-    # should have comparable depth distribution. Compare edge sums
-    # excluding the center row/col (index 3) where the saddle singularity
-    # amplifies Monte Carlo noise. This aggregates whole row/column blocks,
-    # so it is far smoother than the per-column profiles of the other
-    # rotation tests (worst-case spread <=0.3% at 10000 walkers across 10
-    # seeds); it therefore uses the tighter SADDLE_EDGE_REL.
-    edge_cols_a = float(np.sum(depth_a[:, :3]) + np.sum(depth_a[:, 4:]))
-    edge_rows_b = float(np.sum(depth_b[:3, :]) + np.sum(depth_b[4:, :]))
-    assert edge_cols_a == pytest.approx(edge_rows_b, rel=SADDLE_EDGE_REL), (
-        f"Edge depth original ({edge_cols_a:.6f}) vs rotated ({edge_rows_b:.6f})"
+            [0.26, 0.28, 0.15, 0.20, 0.24, 0.15, 0.26],
+            [0.41, 0.30, 0.28, 0.39, 0.22, 0.51, 0.49],
+            [0.72, 0.51, 0.46, 0.81, 0.33, 0.56, 0.85],
+            [1.30, 0.83, 0.66, 3.08, 1.07, 0.95, 1.39],
+            [0.78, 0.54, 0.30, 0.78, 0.47, 0.61, 0.84],
+            [0.43, 0.35, 0.30, 0.41, 0.28, 0.43, 0.45],
+            [0.30, 0.20, 0.26, 0.20, 0.24, 0.28, 0.24],
+        ],
     )
 
 
 def test_hollow_concentrates_more_than_spur(tmp_path):
-    """A hollow (convergent) must concentrate more water than a spur (divergent).
+    """A hollow must concentrate more water on its axis than a spur.
 
-    Both have the same grid size and total rainfall. The hollow's concave
-    shape funnels water together while the spur's convex shape spreads
-    it apart.
+    Both surfaces fall southward by 0.5 per row and have the same parabolic
+    cross-section, concave for the hollow and convex for the spur. On the
+    center column the slope is the same for both, so the depth difference
+    there comes from convergence alone. The spur's crest is not its driest
+    column (the columns beside it are), so the test compares the two
+    landforms rather than columns within the spur.
     """
-    # Hollow: convergent flow, cross-section narrows downstream.
-    project_hollow = tmp_path / "hollow"
-    gs.create_project(project_hollow)
-    with gs.setup.init(project_hollow, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=7, s=0, n=10, res=1)
-        tools.r_mapcalc(
-            expression=(
-                "elevation = (nrows() - row()) * 0.5"
-                " + (col() - 4)*(col() - 4) * (1.0 - 0.08 * row())"
-            )
-        )
-        depth_hollow = run_sim(session)
+    depth_hollow = landform_depth(tmp_path / "hollow", HOLLOW)
+    depth_spur = landform_depth(tmp_path / "spur", SPUR)
 
-    # Spur: divergent flow, cross-section widens downstream.
-    project_spur = tmp_path / "spur"
-    gs.create_project(project_spur)
-    with gs.setup.init(project_spur, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=7, s=0, n=10, res=1)
-        tools.r_mapcalc(
-            expression=(
-                "elevation = (nrows() - row()) * 0.5"
-                " + (col() - 4)*(col() - 4) * (0.2 + 0.08 * row())"
-            )
-        )
-        depth_spur = run_sim(session)
+    # The factor 2 is a regression threshold: across 13 seeds at the default
+    # walker count the measured ratio was never below 3.6.
+    axis_hollow = float(np.sum(depth_hollow[:, 3]))
+    axis_spur = float(np.sum(depth_spur[:, 3]))
+    assert axis_hollow > 2 * axis_spur, (
+        f"Hollow axis depth ({axis_hollow:.6f}) should exceed twice the "
+        f"spur axis depth ({axis_spur:.6f})"
+    )
 
-    # Peak depth in the hollow should exceed peak depth in the spur
-    # because convergent flow concentrates water.
+    # The hollow's axis is its wettest column.
+    column_sums = np.sum(depth_hollow, axis=0)
+    assert int(np.argmax(column_sums)) == 3, (
+        f"Hollow axis should be the wettest column, column sums: "
+        f"{[f'{c:.6f}' for c in column_sums]}"
+    )
+
+    # The maximum depth, at the outlet end of the axis, follows the same
+    # order with the same threshold (measured ratio never below 3.7).
     max_hollow = float(np.max(depth_hollow))
     max_spur = float(np.max(depth_spur))
-    assert max_hollow > max_spur, (
+    assert max_hollow > 2 * max_spur, (
         f"Hollow peak depth ({max_hollow:.6f}) should exceed "
         f"spur peak depth ({max_spur:.6f})"
     )
 
-    # Full grid regression check for hollow.
-    expected_hollow = np.array(
+    assert_depth_pinned(
+        depth_hollow,
         [
-            [0.000201, 0.000365, 0.000545, 0.001885, 0.000645, 0.000365, 0.000201],
-            [0.000291, 0.000527, 0.000871, 0.001734, 0.000612, 0.000317, 0.000291],
-            [0.000201, 0.000342, 0.000660, 0.002747, 0.000791, 0.000508, 0.000342],
-            [0.000388, 0.000365, 0.000983, 0.003093, 0.001007, 0.000409, 0.000291],
-            [0.000291, 0.000490, 0.000845, 0.003805, 0.001041, 0.000527, 0.000317],
-            [0.000164, 0.000490, 0.001064, 0.004477, 0.001109, 0.000490, 0.000317],
-            [0.000365, 0.000451, 0.001226, 0.004669, 0.001266, 0.000430, 0.000342],
-            [0.000342, 0.000562, 0.001184, 0.004930, 0.001626, 0.000365, 0.000263],
-            [0.000291, 0.000645, 0.001467, 0.005532, 0.001402, 0.000579, 0.000579],
-            [0.000612, 0.000764, 0.001651, 0.006953, 0.002035, 0.000858, 0.000342],
-        ]
+            [0.29, 0.57, 0.64, 1.02, 0.85, 0.57, 0.29],
+            [0.43, 0.71, 0.96, 1.46, 0.91, 0.37, 0.37],
+            [0.29, 0.54, 1.21, 2.06, 1.08, 0.77, 0.49],
+            [0.52, 0.62, 1.30, 2.79, 1.52, 0.69, 0.57],
+            [0.46, 0.71, 1.36, 3.21, 1.65, 0.81, 0.37],
+            [0.25, 0.69, 1.78, 3.92, 1.69, 0.64, 0.40],
+            [0.54, 0.62, 1.51, 4.50, 1.70, 0.54, 0.57],
+            [0.25, 0.87, 1.60, 4.90, 1.74, 0.59, 0.37],
+            [0.37, 0.69, 1.97, 5.54, 1.99, 0.83, 0.62],
+            [0.57, 0.87, 2.14, 6.92, 2.76, 0.69, 0.33],
+        ],
     )
-    np.testing.assert_allclose(depth_hollow, expected_hollow, atol=0.002)
 
-    # Full grid regression check for spur.
-    expected_spur = np.array(
+    assert_depth_pinned(
+        depth_spur,
         [
-            [0.000314, 0.000670, 0.000927, 0.001595, 0.000700, 0.000504, 0.000261],
-            [0.000384, 0.000447, 0.001089, 0.001892, 0.000825, 0.000574, 0.000427],
-            [0.000339, 0.000362, 0.000812, 0.002922, 0.001174, 0.000574, 0.000427],
-            [0.000314, 0.000591, 0.001100, 0.003638, 0.000998, 0.000522, 0.000314],
-            [0.000288, 0.000406, 0.000963, 0.004235, 0.001195, 0.000447, 0.000231],
-            [0.000163, 0.000467, 0.001021, 0.004930, 0.001185, 0.000486, 0.000314],
-            [0.000339, 0.000447, 0.001010, 0.005427, 0.000914, 0.000362, 0.000261],
-            [0.000199, 0.000339, 0.000998, 0.005920, 0.001089, 0.000362, 0.000231],
-            [0.000288, 0.000540, 0.001121, 0.006517, 0.001185, 0.000540, 0.000427],
-            [0.000288, 0.000384, 0.001215, 0.006864, 0.001143, 0.000261, 0.000231],
-        ]
+            [0.75, 0.43, 0.59, 0.43, 0.43, 0.46, 0.71],
+            [0.73, 0.69, 0.52, 0.77, 0.49, 0.52, 0.54],
+            [1.10, 0.71, 0.49, 0.83, 0.83, 0.62, 0.81],
+            [0.96, 0.77, 0.46, 0.69, 0.73, 0.96, 0.98],
+            [1.02, 0.49, 0.59, 0.75, 0.54, 0.91, 1.26],
+            [1.03, 1.08, 0.57, 0.98, 0.62, 0.83, 1.32],
+            [1.20, 0.85, 0.67, 1.10, 0.40, 0.77, 1.13],
+            [1.20, 0.59, 0.57, 0.83, 0.79, 0.83, 0.96],
+            [1.30, 0.75, 0.57, 0.81, 0.93, 0.81, 1.15],
+            [1.24, 0.79, 0.59, 1.15, 0.69, 1.30, 1.61],
+        ],
     )
-    np.testing.assert_allclose(depth_spur, expected_spur, atol=0.002)
 
 
-def test_terrace_accumulates_on_steps(terrace_ew_depth):
-    """Terraced slopes must accumulate water on flat steps, not steep drops.
+def test_terrace_accumulates_on_steps(tmp_path):
+    """Terraced slopes must hold water on the flat steps, not on the steep drops.
 
-    A 10x12 grid with three flat steps separated by steep drops.
-    Downstream steps should accumulate more water.
-
-    Elevation (west to east):
-        9 9 9 9 7 6 6 6 4 3 3 3
-    Pattern: step - drop - step - drop - step
+    Three flat steps, separated by one-column drops, descend from west to
+    east. Each step holds more than the drop above it, and each step holds
+    more than the step above it.
     """
-    depth = terrace_ew_depth
+    depth = landform_depth(tmp_path / "terrace", TERRACE)
 
-    # Column indices (0-based) for each feature.
+    # Column indices of each feature in TERRACE.
     step1_cols = slice(0, 4)
     drop1_col = 4
     step2_cols = slice(5, 8)
@@ -692,15 +460,12 @@ def test_terrace_accumulates_on_steps(terrace_ew_depth):
     drop2_mean = float(np.mean(depth[:, drop2_col]))
     step3_mean = float(np.mean(depth[:, step3_cols]))
 
-    # Flat steps should have more depth than steep drops.
     assert step2_mean > drop1_mean, (
         f"Step 2 mean ({step2_mean:.6f}) should exceed drop 1 mean ({drop1_mean:.6f})"
     )
     assert step3_mean > drop2_mean, (
         f"Step 3 mean ({step3_mean:.6f}) should exceed drop 2 mean ({drop2_mean:.6f})"
     )
-
-    # Downstream steps should accumulate more water.
     assert step2_mean > step1_mean, (
         f"Step 2 ({step2_mean:.6f}) should exceed step 1 ({step1_mean:.6f})"
     )
@@ -708,205 +473,73 @@ def test_terrace_accumulates_on_steps(terrace_ew_depth):
         f"Step 3 ({step3_mean:.6f}) should exceed step 2 ({step2_mean:.6f})"
     )
 
-    # Full grid regression check.
-    expected = np.array(
+    assert_depth_pinned(
+        depth,
         [
-            [
-                0.000827,
-                0.000923,
-                0.002275,
-                0.000315,
-                0.000477,
-                0.001096,
-                0.004063,
-                0.000776,
-                0.001012,
-                0.001928,
-                0.008246,
-                0.004348,
-            ],
-            [
-                0.001783,
-                0.002471,
-                0.002726,
-                0.000968,
-                0.001055,
-                0.001956,
-                0.006184,
-                0.001566,
-                0.001327,
-                0.003007,
-                0.012262,
-                0.007194,
-            ],
-            [
-                0.001984,
-                0.002965,
-                0.003505,
-                0.000776,
-                0.000668,
-                0.001433,
-                0.004731,
-                0.001433,
-                0.001327,
-                0.003371,
-                0.013642,
-                0.008678,
-            ],
-            [
-                0.003561,
-                0.005511,
-                0.003312,
-                0.000827,
-                0.000876,
-                0.001783,
-                0.006326,
-                0.001363,
-                0.001433,
-                0.003959,
-                0.015099,
-                0.009384,
-            ],
-            [
-                0.003818,
-                0.005705,
-                0.003636,
-                0.000968,
-                0.000968,
-                0.002447,
-                0.007334,
-                0.001928,
-                0.001433,
-                0.003959,
-                0.017127,
-                0.010672,
-            ],
-            [
-                0.004348,
-                0.006223,
-                0.003580,
-                0.000723,
-                0.000827,
-                0.002172,
-                0.005732,
-                0.001215,
-                0.001398,
-                0.004029,
-                0.018605,
-                0.011421,
-            ],
-            [
-                0.003764,
-                0.005412,
-                0.003580,
-                0.000827,
-                0.000668,
-                0.001723,
-                0.005005,
-                0.001327,
-                0.001215,
-                0.003505,
-                0.016332,
-                0.010490,
-            ],
-            [
-                0.003524,
-                0.003636,
-                0.003172,
-                0.000668,
-                0.000723,
-                0.001783,
-                0.005988,
-                0.001096,
-                0.001055,
-                0.002965,
-                0.012781,
-                0.009848,
-            ],
-            [
-                0.003351,
-                0.003371,
-                0.002770,
-                0.000546,
-                0.000668,
-                0.001984,
-                0.005483,
-                0.001467,
-                0.001501,
-                0.002814,
-                0.010435,
-                0.008395,
-            ],
-            [
-                0.002495,
-                0.001501,
-                0.002275,
-                0.000546,
-                0.000477,
-                0.001215,
-                0.003543,
-                0.001177,
-                0.001137,
-                0.002172,
-                0.007910,
-                0.004131,
-            ],
-        ]
+            [0.83, 0.92, 2.27, 0.31, 0.48, 1.10, 4.06, 0.78, 1.01, 1.93, 8.25, 4.35],
+            [1.78, 2.47, 2.73, 0.97, 1.05, 1.96, 6.18, 1.57, 1.33, 3.01, 12.26, 7.19],
+            [1.98, 2.97, 3.50, 0.78, 0.67, 1.43, 4.73, 1.43, 1.33, 3.37, 13.64, 8.68],
+            [3.56, 5.51, 3.31, 0.83, 0.88, 1.78, 6.33, 1.36, 1.43, 3.96, 15.10, 9.38],
+            [3.82, 5.70, 3.64, 0.97, 0.97, 2.45, 7.33, 1.93, 1.43, 3.96, 17.13, 10.67],
+            [4.35, 6.22, 3.58, 0.72, 0.83, 2.17, 5.73, 1.22, 1.40, 4.03, 18.60, 11.42],
+            [3.76, 5.41, 3.58, 0.83, 0.67, 1.72, 5.00, 1.33, 1.22, 3.50, 16.33, 10.49],
+            [3.52, 3.64, 3.17, 0.67, 0.72, 1.78, 5.99, 1.10, 1.05, 2.97, 12.78, 9.85],
+            [3.35, 3.37, 2.77, 0.55, 0.67, 1.98, 5.48, 1.47, 1.50, 2.81, 10.44, 8.40],
+            [2.50, 1.50, 2.27, 0.55, 0.48, 1.22, 3.54, 1.18, 1.14, 2.17, 7.91, 4.13],
+        ],
     )
-    np.testing.assert_allclose(depth, expected, atol=0.003)
 
 
-def test_terrace_rotation_invariance(tmp_path):
-    """E-W terraces and N-S terraces must produce rotationally equivalent depth.
+@pytest.mark.parametrize(
+    "elevation", [RIDGE, VALLEY, TERRACE], ids=["ridge", "valley", "terrace"]
+)
+def test_rotation_invariance(tmp_path, elevation):
+    """A landform and its 90-degree rotation must produce equivalent depth.
 
-    Both orientations are simulated here at ROTATION_NWALKERS so the
-    per-column profile comparison is meaningful (see ROTATION_NWALKERS).
+    The rotated surface is simulated on its own grid and its result rotated
+    back, so the two depth grids share one orientation. Total depth and the
+    per-column sums must then agree within walker noise.
     """
-    # E-W terraces: 10 rows x 12 cols, three flat steps and drops.
-    project_ew = tmp_path / "ew"
-    gs.create_project(project_ew)
-    with gs.setup.init(project_ew, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=12, s=0, n=10, res=1)
-        tools.r_mapcalc(
-            expression=(
-                "elevation = if(col() <= 4, 9,"
-                " if(col() == 5, 7,"
-                " if(col() <= 8, 6,"
-                " if(col() == 9, 4, 3))))"
-            )
-        )
-        depth_ew = run_sim(session, nwalkers=ROTATION_NWALKERS)
+    depth = landform_depth(tmp_path / "a", elevation, nwalkers=HIGH_NWALKERS)
+    depth_rotated = landform_depth(
+        tmp_path / "b", np.rot90(elevation, k=-1), nwalkers=HIGH_NWALKERS
+    )
+    depth_back = np.rot90(depth_rotated)
 
-    # N-S terraces: 12 rows x 10 cols.
-    project_ns = tmp_path / "ns"
-    gs.create_project(project_ns)
-    with gs.setup.init(project_ns, env=os.environ.copy()) as session:
-        tools = Tools(session=session)
-        tools.g_region(w=0, e=10, s=0, n=12, res=1)
-        tools.r_mapcalc(
-            expression=(
-                "elevation = if(row() <= 4, 9,"
-                " if(row() == 5, 7,"
-                " if(row() <= 8, 6,"
-                " if(row() == 9, 4, 3))))"
-            )
-        )
-        depth_ns = run_sim(session, nwalkers=ROTATION_NWALKERS)
-
-    # Total depth should be comparable; TOTAL_REL is shared across the
-    # rotation tests (see its definition). The terrace total spread was
-    # <=1.3% at 10000 walkers across 10 seeds.
-    total_ew = float(np.sum(depth_ew))
-    total_ns = float(np.sum(depth_ns))
-    assert total_ew == pytest.approx(total_ns, rel=TOTAL_REL), (
-        f"Total depth E-W ({total_ew:.6f}) vs N-S ({total_ns:.6f})"
+    total = float(np.sum(depth))
+    total_back = float(np.sum(depth_back))
+    assert total == pytest.approx(total_back, rel=TOTAL_DEPTH_RTOL), (
+        f"Total depth ({total:.6f}) vs rotated ({total_back:.6f})"
+    )
+    np.testing.assert_allclose(
+        np.sum(depth, axis=0), np.sum(depth_back, axis=0), rtol=COLUMN_PROFILE_RTOL
     )
 
-    # Per-column cross-terrace profiles should match within PROFILE_RTOL;
-    # the terrace per-column spread was ~4.7% at 10000 walkers across 10
-    # seeds, which PROFILE_RTOL covers ~2x.
-    profile_ew = np.sum(depth_ew, axis=0)
-    depth_ns_rotated = np.rot90(depth_ns)
-    profile_ns = np.sum(depth_ns_rotated, axis=0)
-    np.testing.assert_allclose(profile_ew, profile_ns, rtol=PROFILE_RTOL)
+
+def test_saddle_rotation_invariance(tmp_path):
+    """A saddle and its 90-degree rotation must produce equivalent depth.
+
+    The saddle point amplifies walker noise in the center row and column, so
+    instead of per-column sums the test compares the blocks on either side
+    of the center column, which are far smoother.
+    """
+    depth = landform_depth(tmp_path / "a", SADDLE, nwalkers=HIGH_NWALKERS)
+    depth_rotated = landform_depth(
+        tmp_path / "b", np.rot90(SADDLE, k=-1), nwalkers=HIGH_NWALKERS
+    )
+    depth_back = np.rot90(depth_rotated)
+
+    total = float(np.sum(depth))
+    total_back = float(np.sum(depth_back))
+    assert total == pytest.approx(total_back, rel=TOTAL_DEPTH_RTOL), (
+        f"Total depth ({total:.6f}) vs rotated ({total_back:.6f})"
+    )
+
+    # Relative tolerance for the side blocks; the largest difference seen
+    # across seeds was 0.3%.
+    side_rtol = 0.02
+    sides = float(np.sum(depth[:, :3]) + np.sum(depth[:, 4:]))
+    sides_back = float(np.sum(depth_back[:, :3]) + np.sum(depth_back[:, 4:]))
+    assert sides == pytest.approx(sides_back, rel=side_rtol), (
+        f"Side block depth ({sides:.6f}) vs rotated ({sides_back:.6f})"
+    )
