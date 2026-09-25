@@ -201,7 +201,8 @@ RUN grass --tmp-project EPSG:4326 --exec g.version -rge && \
 # Reduce the image size
 RUN apt-get autoremove -y
 RUN apt-get clean -y
-RUN rm -r /src/grass_build/.git
+# The build context may not contain .git (e.g., in CI).
+RUN rm -rf /src/grass_build/.git
 
 WORKDIR /scripts
 
