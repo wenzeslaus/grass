@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
     struct Cell_head cellhd;
     struct options parm;
     struct flags flag;
-    long seed_value;
+    long long seed_value;
 
     G_gisinit(argv[0]);
 
@@ -344,18 +344,24 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
 
     if (flag.generateSeed->answer) {
-        seed_value = G_srand48_auto();
-        G_verbose_message(_("Generated random seed (-s): %ld"), seed_value);
+        seed_value = G_random_generate_seed();
+        G_verbose_message(_("Generated random seed (-s): %lld"), seed_value);
     }
     else if (parm.seed->answer) {
-        seed_value = atol(parm.seed->answer);
-        G_srand48(seed_value);
-        G_verbose_message(_("Read random seed from %s option: %ld"),
+        seed_value = strtoll(parm.seed->answer, NULL, 10);
+        G_verbose_message(_("Read random seed from %s option: %lld"),
                           parm.seed->key, seed_value);
     }
     else {
         /* default as it used to be */
-        G_srand48(12345);
+        seed_value = 12345;
+    }
+    /* Seeding a state rejects a seed out of range with a fatal error, here
+     * before any input is read rather than when the walkers are placed. */
+    {
+        struct G_random_state check;
+
+        G_random_seed(&check, seed_value);
     }
 
     G_get_set_window(&cellhd);
@@ -368,6 +374,8 @@ int main(int argc, char *argv[])
     Inputs inputs = {0};
     Outputs outputs = {0};
     Grids grids = {0};
+
+    settings.seed = seed_value;
 
     geometry.conv = G_database_units_to_meters_factor();
 

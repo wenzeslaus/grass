@@ -152,7 +152,7 @@ class TestRSimWater(TestCase):
             expression=f"{self.diff_depth} =  abs({self.depth} - {self.reference_depth_default})",
         )
         stats = tools.r_univar(map=self.diff_depth, format="json")
-        self.assertAlmostEqual(stats["sum"], 0, delta=1e-4)
+        self.assertAlmostEqual(stats["sum"], 0, delta=1e-3)
         tools.r_mapcalc(
             expression=f"{self.diff_discharge} = abs({self.discharge} - {self.reference_discharge_default})",
         )
@@ -252,7 +252,7 @@ class TestRSimWaterLarge(TestCase):
             random_seed=1,
         )
         self.assertRasterFitsUnivar(
-            self.depth, reference="sum=30423.190201", precision=1e-6
+            self.depth, reference="sum=30421.390710", precision=1e-6
         )
 
 

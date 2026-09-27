@@ -167,6 +167,35 @@ For the shallow overland flow simulated here, Manning's n is generally
 higher than for deeper channel or floodplain flow, especially over
 vegetated surfaces, see the *r.manning* documentation.
 
+### Random numbers and parallel processing
+
+The walkers are placed and moved using pseudo-random numbers. The seed
+of the random number generator is given by **random_seed**, generated
+when the **-s** flag is used (the generated seed is reported with
+**--verbose**), and 12345 when neither is given. Each walker draws from
+a random number stream of its own derived from the seed, so with the
+same seed, inputs, computational region and **nwalkers**, every walker
+receives the same random numbers whatever the number of threads given
+by **nprocs**.
+
+With **nprocs=1**, runs with the same seed give identical results. With
+more threads, walkers in the same cell update the water depth and the
+infiltration at the same time without synchronization, so the results
+differ slightly from run to run and from the single-threaded result,
+and some of the water is lost. The differences are largest where
+walkers accumulate, for example in depressions. The walkers move the
+same way for any **nprocs** as long as the water depth stays below
+**hmax**, since above it the diffusion depends on the depth. With
+infiltration, which walkers a cell absorbs may also depend on the
+threads. Use **nprocs=1** when results must be reproducible.
+
+Use seeds from 0 to 1073741823 (2^30 - 1). Seeds which differ by 2^30
+or 2^31 give related sequences of random numbers, and seeds outside the
+range from -2147483648 to 4294967295 are an error.
+
+Results for a given seed differ from those of GRASS versions before 8.6,
+in which all walkers drew from a single sequence of random numbers.
+
 ## EXAMPLE
 
 Using the North Carolina full sample dataset:

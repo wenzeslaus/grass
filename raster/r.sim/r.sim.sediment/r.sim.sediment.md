@@ -38,6 +38,17 @@ erosion/deposition map is noisy, higher number of walkers, given by
 Increasing the number of threads with **nprocs** does not really speed
 up the simulation.
 
+Each walker draws from a random number stream of its own derived from
+the seed given by **random_seed** or generated with the **-s** flag, so
+with the same seed and inputs, every walker receives the same random
+numbers whatever the value of **nprocs**. With **nprocs=1**, runs with
+the same seed give identical results. With more threads, walkers in the
+same cell update the results at the same time without synchronization,
+so the results differ slightly from run to run and from the
+single-threaded result. See [r.sim.water](r.sim.water.md) for the range
+of seeds to use. Results for a given seed differ from those of GRASS
+versions before 8.6.
+
 ## REFERENCES
 
 [Mitasova, H., Thaxton, C., Hofierka, J., McLaughlin, R., Moore, A.,

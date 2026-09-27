@@ -69,6 +69,39 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     G_debug(2, " maxwa, nblock %d %d", sim->maxwa, nblock);
     G_debug(2, "rwalk, sisum: %f %f", sim->rwalk, setup->sisum);
 
+    // Each walker draws from a stream of its own for the whole simulation,
+    // so its path does not depend on which thread moves it. The layout has
+    // a stream for every allocated walker, a number fixed by the region and
+    // the nwalkers option. With more than one block, each block would need
+    // streams of its own, numbered over all blocks.
+    struct G_random_state stream_check;
+    long long stream_length = G_random_seed_stream(
+        &stream_check, settings->seed, 0, sim->max_walkers);
+
+    // A walker draws two values when placed and in each time step a normal
+    // pair by rejection, 8 / pi values on average, and one more in a trap.
+    // Eight values per step is over twice the average, a total a walker is
+    // practically certain not to reach over many steps; over few steps the
+    // streams are far longer than needed.
+    long long max_draws = 2 + 8LL * setup->miter;
+
+    // A stream drawn past the length meets a lagged twin: a stream a
+    // quarter, a half or three quarters of the walkers further, whose
+    // values are this stream's plus a constant after a lag. Walkers are
+    // numbered row by row, so the walkers of a twin pair start at least
+    // about a quarter of the walkers apart, in different parts of the
+    // region. The shifted values give other normal deviates, and the
+    // polar method's rejection moves them into other pairs and steps, so
+    // the paths are not copies of each other. That is why the check only
+    // warns.
+    if (stream_length < max_draws)
+        G_warning(_("The random number streams of %d walkers hold %lld "
+                    "values each, fewer than the %lld a walker may draw "
+                    "in %d time steps, so the random numbers of "
+                    "different walkers may overlap. Use fewer walkers "
+                    "or a shorter simulation."),
+                  sim->max_walkers, stream_length, max_draws, setup->miter);
+
     for (iblock = 1; iblock <= nblock; iblock++) {
         int lw = 0;
         double walkwe = 0.;
@@ -90,10 +123,14 @@ void main_loop(const Setup *setup, const Geometry *geometry,
 
                     for (int iw = 1; iw <= mgen + 1;
                          iw++) { /* assign walkers */
-                        sim->w[lw].x =
-                            x + geometry->stepx * (simwe_rand() - 0.5);
-                        sim->w[lw].y =
-                            y + geometry->stepy * (simwe_rand() - 0.5);
+                        struct G_random_state *stream = &sim->streams[lw];
+
+                        G_random_seed_stream(stream, settings->seed, lw,
+                                             sim->max_walkers);
+                        sim->w[lw].x = x + geometry->stepx *
+                                               (G_random_double(stream) - 0.5);
+                        sim->w[lw].y = y + geometry->stepy *
+                                               (G_random_double(stream) - 0.5);
                         sim->w[lw].m = wei;
 
                         walkwe += sim->w[lw].m;
@@ -148,22 +185,10 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             nwalka = 0;
             sim->nstack = 0;
 
-#pragma omp parallel firstprivate(l, lw, k) reduction(+ : nwalka)
+#pragma omp parallel private(l, k) reduction(+ : nwalka)
             {
-#if defined(_OPENMP)
-                int steps = (int)((((double)sim->nwalk) /
-                                   ((double)omp_get_num_threads())) +
-                                  0.5);
-                int tid = omp_get_thread_num();
-                int min_loop = tid * steps;
-                int max_loop = ((tid + 1) * steps) > sim->nwalk
-                                   ? sim->nwalk
-                                   : (tid + 1) * steps;
-
-                for (lw = min_loop; lw < max_loop; lw++) {
-#else
+#pragma omp for
                 for (lw = 0; lw < sim->nwalk; lw++) {
-#endif
                     if (sim->w[lw].m > EPS) { /* check the walker weight */
                         ++(nwalka);
                         l = (int)((sim->w[lw].x + stxm) / geometry->stepx) -
@@ -228,12 +253,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
 
                             double d1 = grids->gama[k][l] * conn;
                             double gaux, gauy;
-#if defined(_OPENMP)
-                            gasdev_for_paralel(&gaux, &gauy);
-#else
-                            gaux = gasdev();
-                            gauy = gasdev();
-#endif
+                            gasdev(&sim->streams[lw], &gaux, &gauy);
                             double hhc = pow(d1, 3. / 5.);
                             double velx, vely;
                             if (hhc > settings->hhmax &&
@@ -253,7 +273,8 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                             if (inputs->traps != NULL &&
                                 grids->trap[k][l] != 0.) { /* traps */
 
-                                float eff = simwe_rand(); /* random generator */
+                                float eff = G_random_double(
+                                    &sim->streams[lw]); /* random generator */
 
                                 if (eff <= grids->trap[k][l]) {
                                     velx = -0.1 *

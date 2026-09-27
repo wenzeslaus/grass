@@ -45,6 +45,18 @@ given by <i>nwalkers</i> should be used.
 Increasing the number of threads with <b>nprocs</b> does not really
 speed up the simulation.
 
+<p>
+Each walker draws from a random number stream of its own derived from
+the seed given by <b>random_seed</b> or generated with the <b>-s</b> flag, so
+with the same seed and inputs, every walker receives the same random
+numbers whatever the value of <b>nprocs</b>. With <b>nprocs=1</b>, runs with
+the same seed give identical results. With more threads, walkers in the
+same cell update the results at the same time without synchronization,
+so the results differ slightly from run to run and from the
+single-threaded result. See <a href="r.sim.water.html">r.sim.water</a> for the range
+of seeds to use. Results for a given seed differ from those of GRASS
+versions before 8.6.
+
 <!--
 <h2>NOTES</h2>
 
