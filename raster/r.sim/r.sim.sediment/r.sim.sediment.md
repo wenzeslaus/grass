@@ -35,15 +35,10 @@ controlled by *duration* \[minutes\] parameter. If the resulting
 erosion/deposition map is noisy, higher number of walkers, given by
 *nwalkers* should be used.  
 
-Increasing the number of threads with **nprocs** does not really speed
-up the simulation.
-
-The **random_seed** option makes the results of a single-threaded run
-(**nprocs=1**) reproducible. With more threads, the walkers draw from one
-shared random number generator in the order in which the threads reach it,
-so repeated runs with the same seed give slightly different, but
-statistically equivalent, results. Otherwise, the results do not depend on
-the order in which the walkers are processed.
+The **random_seed** option makes the results reproducible for any
+**nprocs**. The walkers are split into a fixed number of groups, each
+drawing from its own random number stream derived from the seed, and the
+results do not depend on the order in which the walkers are processed.
 
 ## REFERENCES
 
