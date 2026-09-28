@@ -105,10 +105,26 @@ as q times s plus d, with d from 0 to s - 1, for m = 1, 2 and 3.
 Stream j + q is then stream j plus m/4 at lag d: its draw t + d is
 stream j's draw t plus m/4. Stream j + q + 1 is the same the other way
 round, at lag s - d: its draw t is stream j's draw t + s - d plus m/4.
-In the layout above, 2^46 is 8,388,609 times 8,388,607 plus 1, so
-stream 8,388,609 of 33,554,431 starts one step before the quarter
-mark, and its draw t + 1 is stream 0's draw t plus one quarter: for
-seed 42 it gives 0.2500, 0.9945, 0.5927, 0.3611. A twin at a lag
+
+\image html random_streams_twins.svg
+
+The figure shows the twins at a lag for five streams. The seed, the red
+dot, is where stream 0 starts, and the hollow dots are its images: the
+states a quarter, a half and three quarters of the turn later, from
+which the generator draws stream 0's values plus 1/4, 1/2 or 3/4. Each
+image falls inside some stream's part; the quarter image lies d steps
+after the start of stream 1 and stride - d steps before the start of
+stream 2. Stream 1 drawn past d
+draws stream 0's values plus one quarter, and stream 0 drawn past
+stride - d draws stream 2's values minus one quarter. The smallest of
+the six distances between an image and a stream start is the returned
+length, here a quarter of the stride.
+
+In the layout with 33,554,431 streams, 2^46 is 8,388,609 times
+8,388,607 plus 1, so stream 8,388,609 of 33,554,431 starts one step
+before the quarter mark, and its draw t + 1 is stream 0's draw t plus
+one quarter: for seed 42 it gives 0.2500, 0.9945, 0.5927, 0.3611. A
+twin at a lag
 matters only when a stream is drawn past that lag, because before that
 the two streams have no value in common up to the constant. For every
 count below about a million the smallest of these lags is a quarter of
@@ -334,6 +350,144 @@ process draws in pairs the odd stride even puts the neighbour's pairs
 between the stream's own pairs. The check is still worth making; what
 to do when it fails, refuse or warn, is the tool's decision.
 
+\section gislib_random_streams_quality Quality of the values and how to check it
+
+\subsection gislib_random_streams_generator The generator
+
+All the values here come from the generator behind `G_drand48()`, the
+48-bit linear congruential generator of `drand48()`:
+the state is a 48-bit integer, a draw replaces it by 0x5DEECE66D times
+the state plus 11, keeping the low 48 bits, and the value is the new
+state divided by 2^48. The values are multiples of 2^-48, uniform in
+[0, 1), and a stream is a stretch of the one sequence the generator has,
+so within a stream the values are exactly those `G_drand48()` has always
+given GRASS tools, and as good: fine for simulations, sampling and Monte
+Carlo estimates, and not for cryptography or for anything where an
+observer must be unable to predict the next value from the earlier
+ones. As in every linear congruential generator with a power-of-two
+modulus, the low bits of a value are weaker than the high bits (the
+lowest bit alternates), which is why an integer in [0, n) is taken from
+the high bits, by multiplying the value by n as shown at the end of
+\ref gislib_random_streams_migrating, and not from the low bits.
+
+A layout does not change the generator; it places the streams along
+the one sequence. Where quality can be lost is therefore not within a
+stream but between two sequences: two sequences which are one sequence
+shifted in value, in time, or both. The relations of that kind the
+library knows about follow, each with an example and with the rule
+which avoids it. The examples use seed 42, and the table gives the
+first four values of the sequences involved.
+
+|                | draw 1 | draw 2 | draw 3 | draw 4 |
+|----------------|--------|--------|--------|--------|
+| seed 42        | 0.7445 | 0.3427 | 0.1111 | 0.4223 |
+| seed 42 + 2^30 | 0.9945 | 0.5927 | 0.3611 | 0.6723 |
+| seed 42 + 2^31 | 0.2445 | 0.8427 | 0.6111 | 0.9223 |
+| seed 43        | 0.6153 | 0.0473 | 0.8495 | 0.8879 |
+| seed 44        | 0.4861 | 0.7519 | 0.5880 | 0.3534 |
+
+\subsection gislib_random_streams_relations Relations between sequences
+
+<b>Seeds 2^31 or 2^30 apart.</b> Two seeds 2^31 apart give sequences which
+differ by exactly one half at every draw, and 2^30 apart by one
+quarter: seed 42 + 2^31 is seed 42 plus one half and seed 42 + 2^30 is
+seed 42 plus one quarter, wrapping past 1. The seed occupies bits 16 to
+47 of the state, so such seeds start 2^47 or 2^46 apart in state, and a
+draw keeps that difference, since the multiplier is 1 modulo 4. Each
+sequence on its own is as good as any other; the two together are one
+sequence shifted in value. The rule: seeds used together stay below
+2^30, where no two seeds are that far apart (\ref
+gislib_random_streams_seeds).
+
+<b>Consecutive seeds.</b> Seeds 42, 43 and 44 give sequences with nothing
+in common at first sight, yet the differences 43 minus 42 and 44 minus
+43, modulo 1, are the same at every draw: 0.8708, 0.7046, 0.7384,
+0.4655 for the first four. Consecutive seeds start 2^16 apart in state,
+and after t draws that difference has become the multiplier to the
+power t times 2^16, modulo 2^48, whatever the seed. Runs seeded seed,
+seed + 1, seed + 2 and so on are therefore not independent runs but a
+lattice: at every draw, run k has run 0's value plus k times the step
+of that draw, modulo 1. The rule: runs meant to be independent are
+streams of one seed (\ref gislib_random_streams_unit).
+
+<b>Two streams of one layout.</b> Two streams of one layout are disjoint
+stretches of one sequence: neither contains a value of the other while
+each draws fewer values than the returned length, and neither is the
+other plus a constant at the same draw, since the number of parts and
+the stride are odd. What remains is a twin at a lag, explained in \ref
+gislib_random_streams_odd and shown in its figure: past the returned
+length a stream's values are another stream's values plus a constant.
+With 6,878,864 streams the returned length is 549, and stream 0's
+550th value is stream 5,159,149's first value plus one quarter, its
+551st that stream's second plus one quarter, and so on, while no such
+relation holds at any shorter lag. The rule: draw no more values from a
+stream than the returned length (\ref gislib_random_streams_limits).
+
+<b>A stream drawn past its length.</b> Past the returned length a stream
+meets a twin, as above, and past the stride it enters the next part and
+from there draws exactly the next stream's values: with four streams,
+stream 0's value number stride + 1 is stream 1's first value. This is
+the previous relation seen from the stream drawn too far, and the rule
+is the same.
+
+The first two are relations between seeds, and streams of one seed
+avoid them, since a layout has one seed. The last two are relations
+within a layout, between the streams of one seed, and the returned
+length guards them. A tool which derives its sequences as streams of
+one seed and draws each within the returned length is clear of every
+relation listed here.
+
+\subsection gislib_random_streams_checking How to check it yourself
+
+All the relations above are of one kind, two sequences which are one
+sequence shifted in value and possibly in time, and one comparison
+finds them. Draw a hundred or so values from each of two sequences, and
+then:
+
+1. Compare at the same draw: subtract the values draw by draw and take
+   the differences modulo 1. A constant difference means a twin at the
+   same draw: the two sequences are one sequence shifted in value, as
+   for seeds 2^31 apart. A difference which changes from draw to draw
+   but is the same for another pair of seeds the same distance apart
+   means a lattice, as for consecutive seeds.
+2. Compare at lags: shift one sequence by d draws against the other and
+   subtract again. A constant difference at lag d means a twin at that
+   lag: one sequence's draw t + d is the other's draw t plus a
+   constant.
+3. Compare against the returned length: for two streams of one layout,
+   no lag below the returned length gives a constant difference,
+   whichever two streams are compared, and the returned length is the
+   smallest lag at which one can appear.
+
+The differences are exact: every value is a multiple of 2^-48 and a
+double holds the difference of two such values without rounding, so the
+comparison needs no tolerance, and comparing the states, the values
+times 2^48, is the same comparison in integers. The tests in
+`lib/gis/tests/lib_gis_lrand48_test.py` are worked examples of the
+three steps. `constant_shift()` is the comparison at the same draw and
+at small lags, which `test_random_streams_have_no_lockstep_twins` runs
+on every pair of streams of small layouts and
+`test_random_streams_with_power_of_two_stride_have_no_twins` on the
+pair an even stride would make twins;
+`test_random_seeds_apart_by_high_powers_of_two_are_shifted` finds the
+constants one half and one quarter; `stream_length()` computes the
+returned length from the stride alone,
+`test_random_seed_stream_returns_stream_length` compares it with what
+the library returns, and
+`test_random_stream_meets_a_twin_right_after_its_length` draws past the
+returned length and finds the twin at that lag and at no shorter one.
+`lcg_jump_reference()` there gives the state after any number of draws
+in closed form, so a sequence can be placed anywhere on the ring
+without drawing its way there.
+
+Standard statistical test batteries, such as TestU01 or PractRand,
+assess a single sequence, and they apply to a stream as they apply to
+`drand48()`, since a stream is a stretch of the same sequence; they are
+not repeated per layout. A layout changes where the streams lie on the
+ring, not the values along it, and what it can add is the relations
+above, which the comparison finds and which a battery run on one stream
+cannot see.
+
 \section gislib_random_streams_seeds Seeds
 
 A seed outside -2^31 to 2^32 - 1 is a fatal error. Within that range,
@@ -456,6 +610,20 @@ below 2^46 draws, a quarter of the period, because all its values then
 lie within one quarter of the ring. Where the number of draws of a unit
 is not known in advance, as for a particle whose steps draw a varying
 number of values, use streams instead.
+
+\image html random_streams_packed.svg
+
+The figure shows the ring unrolled into a bar from the seed to 2^48 for
+four units drawing L values each, in the spread layout of
+`G_random_seed_stream()` above and in the packed layout of
+`G_random_seed()` with `G_random_skip()` below. Above, the units start
+a stride apart, one at the start of each of five parts, and each draws
+a short stretch of its part; the rest of the part is spacing. Below,
+unit r skips r times L values and draws the next L, so the four
+stretches follow each other without a gap, and the run must end before
+2^46, the hollow dot, which is the first image of the seed (\ref
+gislib_random_streams_odd): from there on the sequence repeats itself
+plus one quarter.
 
 The caller-owned API has no integer-returning functions at all. To get
 an integer in [0, n), use `(long)(G_random_double(&state) * n)`. With

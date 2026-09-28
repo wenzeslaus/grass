@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="280" viewBox="0 0 640 280" font-family="sans-serif" font-size="13" fill="#222">
+  <title>Spread and packed layouts of four units on the unrolled cycle</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#222"/>
+    </marker>
+  </defs>
+  <!-- Spread layout: the cycle unrolled from the seed to 2^48 and cut
+       into five parts; each of the four units draws L values at the
+       start of its part. -->
+  <text x="80" y="30">spread: G_random_seed_stream(), four streams in five parts</text>
+  <text x="132" y="52" text-anchor="middle">stream 0</text>
+  <text x="236" y="52" text-anchor="middle">stream 1</text>
+  <text x="340" y="52" text-anchor="middle">stream 2</text>
+  <text x="444" y="52" text-anchor="middle">stream 3</text>
+  <text x="548" y="52" text-anchor="middle">spare part</text>
+  <rect x="80" y="62" width="416" height="24" fill="none" stroke="#222" stroke-width="1.5"/>
+  <rect x="496" y="62" width="104" height="24" fill="none" stroke="#bbb" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <line x1="184" y1="62" x2="184" y2="86" stroke="#222" stroke-width="1.5"/>
+  <line x1="288" y1="62" x2="288" y2="86" stroke="#222" stroke-width="1.5"/>
+  <line x1="392" y1="62" x2="392" y2="86" stroke="#222" stroke-width="1.5"/>
+  <rect x="80" y="62" width="26" height="24" fill="#222"/>
+  <rect x="184" y="62" width="26" height="24" fill="#222"/>
+  <rect x="288" y="62" width="26" height="24" fill="#222"/>
+  <rect x="392" y="62" width="26" height="24" fill="#222"/>
+  <text x="93" y="78.5" text-anchor="middle" fill="#fff">0</text>
+  <text x="197" y="78.5" text-anchor="middle" fill="#fff">1</text>
+  <text x="301" y="78.5" text-anchor="middle" fill="#fff">2</text>
+  <text x="405" y="78.5" text-anchor="middle" fill="#fff">3</text>
+  <circle cx="80" cy="74" r="5" fill="#c33"/>
+  <text x="70" y="78.5" text-anchor="end">seed</text>
+  <line x1="80" y1="100" x2="106" y2="100" stroke="#222" stroke-width="1.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="93" y="118" text-anchor="middle">L draws</text>
+  <line x1="184" y1="100" x2="288" y2="100" stroke="#222" stroke-width="1.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="236" y="118" text-anchor="middle">stride</text>
+  <text x="600" y="118" text-anchor="end">2^48, back at the seed</text>
+  <!-- Packed layout: the same four units draw consecutive stretches of
+       one sequence, unit r skipping r times L values first; the whole
+       run stays below 2^46, the first image of the seed. -->
+  <text x="80" y="170">packed: G_random_seed() and G_random_skip(), the same four units</text>
+  <text x="80" y="192">units 0 to 3</text>
+  <rect x="80" y="202" width="520" height="24" fill="none" stroke="#222" stroke-width="1.5"/>
+  <rect x="80" y="202" width="26" height="24" fill="#222"/>
+  <rect x="106" y="202" width="26" height="24" fill="#222"/>
+  <rect x="132" y="202" width="26" height="24" fill="#222"/>
+  <rect x="158" y="202" width="26" height="24" fill="#222"/>
+  <line x1="106" y1="202" x2="106" y2="226" stroke="#fff" stroke-width="1.5"/>
+  <line x1="132" y1="202" x2="132" y2="226" stroke="#fff" stroke-width="1.5"/>
+  <line x1="158" y1="202" x2="158" y2="226" stroke="#fff" stroke-width="1.5"/>
+  <text x="93" y="218.5" text-anchor="middle" fill="#fff">0</text>
+  <text x="119" y="218.5" text-anchor="middle" fill="#fff">1</text>
+  <text x="145" y="218.5" text-anchor="middle" fill="#fff">2</text>
+  <text x="171" y="218.5" text-anchor="middle" fill="#fff">3</text>
+  <circle cx="80" cy="214" r="5" fill="#c33"/>
+  <text x="70" y="218.5" text-anchor="end">seed</text>
+  <line x1="210" y1="196" x2="210" y2="232" stroke="#222" stroke-width="1.5"/>
+  <circle cx="210" cy="214" r="5" fill="#fff" stroke="#c33" stroke-width="2"/>
+  <text x="216" y="192">2^46, the first image of the seed: the values repeat plus 1/4</text>
+  <line x1="80" y1="240" x2="158" y2="240" stroke="#222" stroke-width="1.5" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text x="119" y="258" text-anchor="middle">unit 3 skips 3 L values</text>
+  <text x="600" y="258" text-anchor="end">2^48, back at the seed</text>
+</svg>
