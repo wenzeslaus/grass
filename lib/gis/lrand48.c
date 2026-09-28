@@ -83,7 +83,8 @@ static inline unsigned long long lcg_seed(unsigned long long seed)
 }
 
 /* The period of the generator: every state lies on one cycle of this
- * length, and caller-owned streams are stretches of it. */
+ * length, and the streams of the G_random_*() functions are stretches
+ * of it. */
 #define LCG_PERIOD (MASK48 + 1)
 
 /* The multiplier has order 2^46 modulo 2^48, so two states 2^46, 2^47 or
@@ -330,11 +331,11 @@ double G_drand48(void)
 }
 
 /*!
- * \brief Seed a caller-owned pseudo-random number generator
+ * \brief Seed a pseudo-random number generator of the program's own
  *
  * With the same seed, the generator produces the sequence the shared
  * generator produces after G_srand48(), so code moving from the shared
- * generator to a caller-owned one reproduces its existing results.
+ * generator to one of its own reproduces its existing results.
  *
  * The caller owns the state, so this function is thread-safe as long as
  * no two threads seed the same state.
@@ -361,7 +362,7 @@ long long G_random_seed(struct G_random_state *state, long long seed)
 }
 
 /*!
- * \brief Seed one of several caller-owned generators derived from one seed
+ * \brief Seed one of several generators derived from one seed
  *
  * Gives a unit of work its own stream: with one stream per raster row,
  * pass the row number and the number of rows; with one stream per chunk
@@ -502,7 +503,7 @@ long long G_random_seed_stream(struct G_random_state *state, long long seed,
 }
 
 /*!
- * \brief Advance a caller-owned generator as if values had been drawn
+ * \brief Advance a generator of the program's own as if values had been drawn
  *
  * Moves the state along the cycle by \p draws steps in about the time of
  * a seeding call, whatever the number, so that the next G_random_double()
@@ -531,7 +532,7 @@ void G_random_skip(struct G_random_state *state, long long draws)
 
 /*!
  * \brief Generate a floating-point value in the range [0,1) from a
- *        caller-owned generator
+ *        generator of the program's own
  *
  * Thread-safe as long as no two threads share a state. Unlike
  * G_drand48(), this needs no atomics and so behaves identically on every

@@ -11,7 +11,7 @@ The thread-safety test checks that the shared generator, drawn from by
 several threads at once, still hands out exactly the single-threaded
 sequence.
 
-The tests at the end instead cover the caller-owned generator. Its
+The tests at the end instead cover the generators a program owns. Their
 sequences need no reference values of their own: stream 0 is compared with
 the shared generator, and the start of every other stream with an
 independent computation of where the stream should begin. The remaining
@@ -397,8 +397,8 @@ def test_random_streams_differ():
 def test_random_stream_zero_matches_shared_generator(seed):
     """Stream 0 continues to produce what the shared generator produces.
 
-    This is what lets code switch from G_drand48() to a caller-owned
-    generator without changing its single-threaded results.
+    This is what lets code switch from G_drand48() to a generator of
+    its own without changing its single-threaded results.
     """
     G_srand48(seed)
     shared = [G_drand48() for _ in range(100)]
@@ -760,7 +760,7 @@ def test_random_generate_seed_reads_environment(monkeypatch):
 def test_srand48_auto_uses_the_generated_seed(monkeypatch):
     """The shared generator's automatic seed is the generated seed.
 
-    The returned value seeds a caller-owned generator to the same
+    The returned value seeds a generator of the program's own to the same
     sequence, so a tool can record it and streams derived from it agree
     with the shared generator's stream 0.
     """
@@ -897,7 +897,7 @@ def test_random_seeds_differ():
 
 
 def test_random_independent_of_shared_generator():
-    """Drawing from the shared generator does not disturb a caller-owned one."""
+    """Drawing from the shared generator does not disturb one a program owns."""
     expected = random_stream(1337, 5, NSTREAMS, 10)
 
     state = struct_G_random_state()

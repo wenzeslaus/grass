@@ -1,5 +1,5 @@
 /*!
-\page gislib_random_streams Caller-Owned Random Number Streams
+\page gislib_random_streams Random Number Streams
 
 \tableofcontents
 
@@ -13,7 +13,7 @@ runs of an ensemble, the components of a model which must each be
 reproducible on their own, and library or tool code which must not
 disturb the shared generator.
 
-`G_random_seed()` alone gives a caller-owned generator with a single
+`G_random_seed()` alone gives the program a generator of its own with a single
 sequence, the one the shared generator produces for the same seed, and
 is useful without any threads: code drawing from it neither moves the
 shared generator nor is moved by it. `G_random_seed_stream()` is the
@@ -537,7 +537,7 @@ G_srand48(seed);
 for (int i = 0; i < n; i++)
     values[i] = G_drand48();
 
-/* After: a caller-owned generator, with the same values. */
+/* After: a generator of the program's own, with the same values. */
 struct G_random_state state;
 
 G_random_seed(&state, seed);
@@ -550,7 +550,7 @@ none calls `G_random_generate_seed()` instead; it returns the same value
 without seeding the shared generator.
 
 `G_srand48()` silently reduced any seed to its low 32 bits, while the
-caller-owned functions refuse a seed outside their range with a fatal
+`G_random_*()` functions refuse a seed outside their range with a fatal
 error. A tool which passes a user's seed through therefore now refuses
 seeds it once accepted silently, such as 5000000000. Validate the seed
 right after parsing, before any work is done, with `G_random_seed()`
@@ -637,7 +637,7 @@ stretches follow each other without a gap, and the run must end before
 gislib_random_streams_odd): from there on the sequence repeats itself
 plus one quarter.
 
-The caller-owned API has no integer-returning functions at all. To get
+The `G_random_*()` functions include no integer-returning one at all. To get
 an integer in [0, n), use `(long)(G_random_double(&state) * n)`. With
 n = 2^31 this is exactly the value `G_lrand48()` gives at the same draw
 of the shared sequence, since the state has 48 bits and a double holds
