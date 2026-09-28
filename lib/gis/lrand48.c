@@ -159,8 +159,11 @@ static int seeded;
  * two's complement low 32 bits. Seeds which differ only in their top bits
  * are not independent either: seeds 2^31 apart give values which differ
  * by exactly one half at every draw, and seeds 2^30 apart by one quarter.
- * Keep seeds below 2^30, and derive several independent sequences from
- * one seed with G_random_seed_stream() rather than from several seeds.
+ * This matters only when several seeds are used together, as one per
+ * run of an ensemble; a process using one seed needs to know nothing
+ * about it. Keep seeds used together below 2^30 and not in an
+ * arithmetic series, or better derive the sequences from one seed with
+ * G_random_seed_stream() rather than from several seeds.
  *
  * \param[in] seedval seed, used modulo 2^32
  */

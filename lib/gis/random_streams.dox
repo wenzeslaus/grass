@@ -490,20 +490,27 @@ cannot see.
 
 \section gislib_random_streams_seeds Seeds
 
-A seed outside -2^31 to 2^32 - 1 is a fatal error. Within that range,
-use seeds from 0 to 2^30 - 1, about a billion; any value a tool's
-integer seed option holds below that is fine. Other seeds work, with
-two things to know. The generator uses the low 32 bits of the seed, so
--1 and 4294967295 are the same seed. Two seeds exactly 2^31 apart give
+A seed outside -2^31 to 2^32 - 1 is a fatal error; that is the only
+requirement. The generator uses the low 32 bits of the seed, so -1 and
+4294967295 are the same seed.
+
+A process which uses one seed, which is every ordinary run of a tool,
+needs to know nothing more: any seed in the range is as good as any
+other, and every sequence the process needs is a stream of that seed.
+The rest of this section matters only when several seeds are used
+together: an ensemble run as separate invocations with one seed each,
+runs compared after choosing their seeds by hand, or a script deriving
+seeds from one another. Then two seeds exactly 2^31 apart give
 sequences shifted by one half at every draw, and 2^30 apart by one
-quarter; that is why the recommended range ends at 2^30, below which no
-two seeds are that far apart. The range is the requirement, and the
-recommendation concerns pairs of seeds: a single seed anywhere in the
-range is as good as any other, and only seeds used together, as in a
-series of runs, need to stay away from 2^30 and 2^31 apart. Runs meant
-to be independent should be streams of one seed in any case:
-independent sequences come from the streams of one seed, not from
-several seeds, whether those are far apart or consecutive.
+quarter, which keeping all the seeds below 2^30 rules out; and seeds
+in an arithmetic series, seed, seed + 1, seed + 2 and so on with any
+constant step, give sequences which step by the same amount at each
+draw, a lattice rather than independent runs (see \ref
+gislib_random_streams_quality), which no range rules out. Seeds drawn
+at random, or hashed from run names, avoid both relations as far as
+this generator allows; the sound layout is one seed with one stream
+per run, which for separate invocations needs the run number and the
+number of runs to reach the tool as options.
 
 A seed option is parsed into a `long long` with `strtoll()`, checking
 that the whole string was consumed and that `errno` is not `ERANGE`,
