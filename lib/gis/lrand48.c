@@ -497,6 +497,34 @@ long long G_random_seed_stream(struct G_random_state *state, long long seed,
 }
 
 /*!
+ * \brief Advance a caller-owned generator as if values had been drawn
+ *
+ * Moves the state along the cycle by \p draws steps in about the time of
+ * a seeding call, whatever the number, so that the next G_random_double()
+ * returns what the draw after those would have returned. This places a
+ * state at a known offset of one sequence: seed the state and skip the
+ * values the units before it draw, and the unit gets the stretch it
+ * would draw in a serial run, so the results stay equal to the serial
+ * ones under any schedule. Unlike G_random_seed_stream(), this gives the
+ * units no spacing: the caller must know the exact number of draws of
+ * every unit, and a unit drawing more than that runs into the next
+ * unit's values. Such a packed layout meets no twins as long as the
+ * whole sequence stays below 2^46 draws, a quarter of the period; see
+ * \ref gislib_random_streams.
+ *
+ * \param[in,out] state a seeded generator state
+ * \param[in] draws number of values to skip, not negative
+ */
+void G_random_skip(struct G_random_state *state, long long draws)
+{
+    if (draws < 0)
+        G_fatal_error(_("Cannot skip %lld random numbers (the number must "
+                        "not be negative)"),
+                      draws);
+    state->state = lcg_jump(state->state, (unsigned long long)draws);
+}
+
+/*!
  * \brief Generate a floating-point value in the range [0,1) from a
  *        caller-owned generator
  *

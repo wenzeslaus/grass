@@ -522,6 +522,7 @@ long long G_random_seed(struct G_random_state *, long long);
 long long G_random_seed_stream(struct G_random_state *, long long, long long,
                                long long);
 double G_random_double(struct G_random_state *);
+void G_random_skip(struct G_random_state *, long long);
 long long G_random_generate_seed(void);
 
 /* ls.c */

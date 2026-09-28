@@ -124,7 +124,8 @@ values repeat plus one quarter.
 `G_random_seed_stream()` seeds a state object to one stream of a
 layout, `G_random_seed()` does the same for a layout with a single
 stream, and `G_random_double()` draws the next value in [0, 1) from a
-state object:
+state object. `G_random_skip()` advances a state by a number of draws,
+which the last section uses to keep earlier results:
 
 \code
 #include <grass/gis.h>
@@ -376,6 +377,39 @@ for (long long row = 0; row < rows; row++)
     }
 }
 \endcode
+
+\subsection gislib_random_streams_keeping Keeping earlier results
+
+Where every unit draws a known, fixed number of values, the old
+single-threaded results can be kept and still be independent of the
+schedule: seed a state and skip the values drawn by the units before
+the current one with `G_random_skip()`, and the unit draws the stretch
+of the single sequence it drew in the serial run. A row of `cols` cells
+drawing one value per cell:
+
+\code
+#pragma omp parallel
+{
+    struct G_random_state state;
+
+#pragma omp for
+    for (long long row = 0; row < rows; row++) {
+        G_random_seed(&state, seed);
+        G_random_skip(&state, row * cols);
+        for (long long col = 0; col < cols; col++)
+            result[row][col] = G_random_double(&state);
+    }
+}
+\endcode
+
+The skip costs the same as a seeding call, whatever its size. This
+packed layout has no spacing between the units, so the number of draws
+of every unit must be exact, and a unit drawing more runs into the next
+unit's values. It meets no twins as long as the whole sequence stays
+below 2^46 draws, a quarter of the period, because all its values then
+lie within one quarter of the ring. Where the number of draws of a unit
+is not known in advance, as for a particle whose steps draw a varying
+number of values, use streams instead.
 
 The caller-owned API has no integer-returning functions at all. To get
 an integer in [0, n), use `(long)(G_random_double(&state) * n)`. With

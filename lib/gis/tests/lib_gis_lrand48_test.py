@@ -34,6 +34,7 @@ from grass.lib.gis import (
     G_random_generate_seed,
     G_random_seed,
     G_random_seed_stream,
+    G_random_skip,
     G_srand48,
     G_srand48_auto,
     struct_G_random_state,
@@ -808,6 +809,86 @@ def test_random_generate_seed_reduces_large_environment_value_with_a_warning(
     assert result.stdout.split() == [reduced, reduced]
     assert "5000000000 from GRASS_RANDOM_SEED" in result.stderr
     assert "low 32 bits" in result.stderr
+
+
+def skipped_stream(seed, draws, n):
+    """Draw n values after skipping the given number from a seeded state."""
+    state = struct_G_random_state()
+    G_random_seed(byref(state), seed)
+    G_random_skip(byref(state), draws)
+    return [G_random_double(byref(state)) for _ in range(n)]
+
+
+def test_random_skip_equals_drawing():
+    """Skipping values gives what drawing and discarding them gives."""
+    assert skipped_stream(1337, 60, 40) == random_stream(1337, 0, 1, 100)[60:]
+    assert skipped_stream(1337, 0, 10) == random_stream(1337, 0, 1, 10)
+
+
+def test_random_skip_composes():
+    """Two skips are one skip of their sum."""
+    state = struct_G_random_state()
+    G_random_seed(byref(state), 1337)
+    G_random_skip(byref(state), 25)
+    G_random_skip(byref(state), 35)
+    assert [G_random_double(byref(state)) for _ in range(10)] == skipped_stream(
+        1337, 60, 10
+    )
+
+
+def test_random_skip_a_quarter_period_shifts_by_a_quarter():
+    """After 2^46 draws the generator repeats its values plus one quarter.
+
+    This checks the jump for a number far beyond what can be drawn and
+    the fact behind the stream length the seeding calls return.
+    """
+    plain = random_states(1337, 0, 1, 20)
+    shifted = [int(value * LCG_MODULUS) for value in skipped_stream(1337, 2**46, 20)]
+    assert all(
+        (s - p) % LCG_MODULUS == QUARTER_TURN
+        for p, s in zip(plain, shifted, strict=True)
+    )
+
+
+def test_random_skip_gives_units_their_serial_stretch():
+    """Units seeded and skipped to their offset reproduce a serial run.
+
+    With a known number of draws per unit, unit r skips r times that
+    number and draws what a single sequence drawn unit by unit in order
+    would have given it, whatever the order the units are processed in.
+    """
+    per_unit = 7
+    serial = random_stream(1337, 0, 1, 5 * per_unit)
+    for unit in (4, 0, 2, 3, 1):
+        values = skipped_stream(1337, unit * per_unit, per_unit)
+        assert values == serial[unit * per_unit : (unit + 1) * per_unit], unit
+
+
+SKIP_SCRIPT = """
+from ctypes import byref
+
+from grass.lib.gis import G_random_seed, G_random_skip, struct_G_random_state
+
+state = struct_G_random_state()
+G_random_seed(byref(state), 1337)
+G_random_skip(byref(state), -1)
+"""
+
+
+def test_random_skip_rejects_negative(xy_session_for_module, tmp_path):
+    """Skipping a negative number of values is a fatal error."""
+    script = tmp_path / "skip.py"
+    script.write_text(SKIP_SCRIPT, encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        env=xy_session_for_module.env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "not be negative" in result.stderr
 
 
 def test_random_seeds_differ():
