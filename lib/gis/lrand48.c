@@ -22,8 +22,8 @@
  * caller, one state per thread or per unit of work, never shared. These
  * need neither atomics nor locks, are safe on every build, and give each
  * stream a reproducible sequence of its own. This is what parallel code
- * that must produce the same result for a given seed regardless of the
- * number of threads should use: number the streams by the unit of work,
+ * that must draw the same random numbers for a given seed regardless of
+ * the number of threads should use: number the streams by the unit of work,
  * the row, the chunk of walkers or the run. The streams are disjoint
  * stretches of the same cycle the shared generator walks, split into as
  * many streams as the caller asks for, and stream 0 starts where
@@ -366,7 +366,9 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  * per run of an ensemble, the run number and the number of runs. Numbering
  * the streams by the unit of work rather than by the thread keeps results
  * independent of how the work is scheduled, and therefore of the number
- * of threads.
+ * of threads. Seed stream 0 once before starting the threads: that
+ * rejects a bad seed or layout outside the parallel region and returns
+ * the length, which is the same for every stream of a layout.
  *
  * A struct G_random_state is a plain variable holding one generator.
  * The program keeps one for every sequence it draws at a time, one per

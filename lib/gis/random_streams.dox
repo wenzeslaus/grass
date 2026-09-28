@@ -20,10 +20,14 @@ shared generator nor is moved by it. `G_random_seed_stream()` is the
 function which gives several sequences. It derives from one seed as
 many streams as there are units of work, and each unit draws from a
 stream of its own, determined only by the seed, the unit's number and
-the number of units. Parallel code which draws this way gives the same
-result with one thread as with many. The shared generator cannot: it
-hands each value to whichever thread asks first, so a parallel run
-reproduces neither a serial run nor another parallel run.
+the number of units. Parallel code which draws this way draws the same
+random numbers with one thread as with many, and gives the same result
+when the rest of the computation is as independent of the schedule,
+which it is when every unit writes only its own output and is not when
+threads add into shared accumulators. The shared generator cannot even
+give the same numbers: it hands each value to whichever thread asks
+first, so a parallel run reproduces neither a serial run nor another
+parallel run.
 
 \section gislib_random_streams_ring The ring, streams, parts and stride
 
@@ -33,8 +37,9 @@ draws, about 281 trillion. A stream is a stretch of that ring.
 `G_random_seed_stream(state, seed, stream, streams)` cuts the ring into
 `streams` equal parts, or one part more when that number is even, and
 places the state object at the start of part number `stream`. The
-length of a part is the stride from the start of one stream to the
-start of the next. The function returns how many values the stream can
+length of a part, rounded down to an odd number for the reason given
+below, is the stride from the start of one stream to the start of the
+next. The function returns how many values the stream can
 draw before its values meet another stream's: the stride at most, and
 less where a twin at a lag, explained below, comes first.
 
@@ -166,9 +171,17 @@ why a run gives the same result under any schedule.
 The unit of work is what the computation is naturally divided into and
 numbered by: a raster row, a point, an object, a group of particles, a
 run of a model. The stream number is the unit's number and the number
-of streams is the number of units. Which of the two patterns below
-applies depends on whether a unit draws all of its values in one go or
-in many pieces over time.
+of streams is the number of units, or an upper bound on it, for
+example a capacity known before the units are counted; unused streams
+cost nothing but their share of the ring. Which of the two patterns
+below applies depends on whether a unit draws all of its values in one
+go or in many pieces over time.
+
+A single particle and a group of particles are both possible units.
+One stream per particle makes every path reproducible on its own, at 8
+bytes of state per particle; one stream per group keeps the states
+few, but the particles of a group then share one sequence, so their
+order within the group must be fixed as well.
 
 When units are nested, as `runs` runs of `rows` rows each, for example
 the members of an ensemble, number them flat: one numbering over all
@@ -197,9 +210,18 @@ thread takes a unit, it seeds its object to that unit's stream, draws
 the unit's values, and when it takes the next unit seeds the same object
 again to that unit's stream. The object's history does not matter: the
 values depend only on the seed, the unit's number and the number of
-units.
+units. Seed stream 0 once before the parallel region: that rejects a
+bad seed or layout with a fatal error before any thread starts, and
+returns the length, which is the same for every stream of the layout.
 
 \code
+struct G_random_state check;
+long long length = G_random_seed_stream(&check, seed, 0, units);
+
+if (length < values_per_unit)
+    G_fatal_error(_("Too many random numbers per unit for %lld units"),
+                  units);
+
 #pragma omp parallel
 {
     struct G_random_state state; /* One state per thread. */
@@ -212,6 +234,11 @@ units.
     }
 }
 \endcode
+
+When the draw happens in a function which does not know the unit, for
+example a callback of an expression evaluator, keep each thread's state
+where that function can reach it, such as in an array indexed by the
+thread number, and seed it when the unit starts, as above.
 
 Seeding costs about one hundred nanoseconds, roughly fifty draws, so
 this is cheap unless a unit draws only a handful of values; then choose
@@ -235,7 +262,9 @@ step and copy it back. It is never seeded again, because the stream
 must continue from step to step; seeding it again would return it to
 the start of its part and repeat the same values in every step. Just as
 a row's state is not seeded again between its columns, a group's state
-is not seeded again between its steps. What differs is how long the
+is not seeded again between its steps. Seeding a unit's state at its
+first draw instead of up front is the same thing, since the state's
+history does not matter; what matters is that it is seeded once. What differs is how long the
 unit lasts, and so where its state lives, in the thread's loop or in an
 array for the whole computation.
 
@@ -287,10 +316,13 @@ that is where a generator with a longer period becomes necessary.
 
 Compare the returned length with the most values a unit can draw, not
 the average: for a row, the columns times the draws per cell; for a
-particle, the time steps times the most draws a step can take, which
-is above the usual number when a rejection loop varies the draws per
-step. Refuse the layout with `G_fatal_error()` or warn with
-`G_warning()` when it does not fit.
+particle, the time steps times the draws per step. A rejection loop
+has no fixed maximum, but a bound is easy: a loop with acceptance rate
+p costs 1/p attempts per value on average, and the total over S steps
+varies by only about sqrt(S (1 - p)) / p attempts, so twice the
+average is a safe bound once S is more than a few dozen. Refuse the
+layout with `G_fatal_error()` or warn with `G_warning()` when it does
+not fit.
 
 How much an overlap matters depends on the use, and in many uses it
 matters little. Where a value's role is fixed by its position, as one
@@ -311,9 +343,16 @@ two things to know. The generator uses the low 32 bits of the seed, so
 -1 and 4294967295 are the same seed. Two seeds exactly 2^31 apart give
 sequences shifted by one half at every draw, and 2^30 apart by one
 quarter; that is why the recommended range ends at 2^30, below which no
-two seeds are that far apart. Independent sequences come from the
-streams of one seed, not from several seeds, whether those are far
-apart or consecutive.
+two seeds are that far apart. The range is the requirement, and the
+recommendation concerns pairs of seeds: a single seed anywhere in the
+range is as good as any other, and only seeds used together, as in a
+series of runs, need to stay away from 2^30 and 2^31 apart. Runs meant
+to be independent should be streams of one seed in any case:
+independent sequences come from the streams of one seed, not from
+several seeds, whether those are far apart or consecutive.
+
+A seed option is parsed into a `long long` with `strtoll()`; a `long`
+does not hold the range on every platform.
 
 When the user gives no seed, generate one with
 `G_random_generate_seed()`. It takes the value of `GRASS_RANDOM_SEED`,
@@ -346,6 +385,13 @@ for (int i = 0; i < n; i++)
 Code which generated a seed with `G_srand48_auto()` when the user gave
 none calls `G_random_generate_seed()` instead; it returns the same value
 without seeding the shared generator.
+
+`G_srand48()` silently reduced any seed to its low 32 bits, while the
+caller-owned functions refuse a seed outside their range with a fatal
+error. A tool which passes a user's seed through therefore now refuses
+seeds it once accepted silently, such as 5000000000. Validate the seed
+right after parsing, before any work is done, with `G_random_seed()`
+on a local state or with the stream 0 seeding shown in pattern 1.
 
 Existing results are reproduced by a single stream, and only by it: a
 layout with several streams changes the values, since only stream 0
