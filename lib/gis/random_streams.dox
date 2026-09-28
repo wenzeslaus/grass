@@ -505,7 +505,9 @@ to be independent should be streams of one seed in any case:
 independent sequences come from the streams of one seed, not from
 several seeds, whether those are far apart or consecutive.
 
-A seed option is parsed into a `long long` with `strtoll()`; a `long`
+A seed option is parsed into a `long long` with `strtoll()`, checking
+that the whole string was consumed and that `errno` is not `ERANGE`,
+since the parser accepts any digits for an integer option; a `long`
 does not hold the range on every platform.
 
 When the user gives no seed, generate one with
@@ -607,9 +609,12 @@ packed layout has no spacing between the units, so the number of draws
 of every unit must be exact, and a unit drawing more runs into the next
 unit's values. It meets no twins as long as the whole sequence stays
 below 2^46 draws, a quarter of the period, because all its values then
-lie within one quarter of the ring. Where the number of draws of a unit
-is not known in advance, as for a particle whose steps draw a varying
-number of values, use streams instead.
+lie within one quarter of the ring; that number is what
+`G_random_seed()` returns, so compare the total of all units with it,
+and warn rather than refuse where earlier versions produced the same
+values without complaint. Where the number of draws of a unit is not
+known in advance, as for a particle whose steps draw a varying number
+of values, use streams instead.
 
 \image html random_streams_packed.svg
 

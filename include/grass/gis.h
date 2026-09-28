@@ -630,8 +630,10 @@ struct Popen {
 
 /* State of a pseudo-random number generator owned by the caller rather
  * than shared by the program; see G_random_seed(). The contents are
- * private to the library and may change with the generator; use the
- * state only through the G_random_*() functions. */
+ * private to the library and may change with the generator; read and
+ * advance the state only through the G_random_*() functions. It is a
+ * plain value: copying it copies the generator's position, and the copy
+ * continues the same sequence. */
 struct G_random_state {
     unsigned long long state;
 };
