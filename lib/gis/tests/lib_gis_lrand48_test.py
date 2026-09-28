@@ -31,9 +31,11 @@ from grass.lib.gis import (
     G_lrand48,
     G_mrand48,
     G_random_double,
+    G_random_generate_seed,
     G_random_seed,
     G_random_seed_stream,
     G_srand48,
+    G_srand48_auto,
     struct_G_random_state,
 )
 
@@ -735,6 +737,77 @@ def test_random_streams_with_power_of_two_stride_have_no_twins():
     first = random_states(1337, 0, count, 100)
     second = random_states(1337, 2**23, count, 100)
     assert constant_shift(first, second) is None
+
+
+def test_random_generate_seed_is_in_range_without_environment(monkeypatch):
+    """A seed from the time and process ID is one the generators accept."""
+    monkeypatch.delenv("GRASS_RANDOM_SEED", raising=False)
+    monkeypatch.delenv("SOURCE_DATE_EPOCH", raising=False)
+    seed = G_random_generate_seed()
+    assert 0 <= seed < 2**32
+
+
+def test_random_generate_seed_reads_environment(monkeypatch):
+    """GRASS_RANDOM_SEED takes precedence over SOURCE_DATE_EPOCH."""
+    monkeypatch.setenv("GRASS_RANDOM_SEED", "1337")
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "42")
+    assert G_random_generate_seed() == 1337
+    monkeypatch.delenv("GRASS_RANDOM_SEED")
+    assert G_random_generate_seed() == 42
+
+
+def test_srand48_auto_uses_the_generated_seed(monkeypatch):
+    """The shared generator's automatic seed is the generated seed.
+
+    The returned value seeds a caller-owned generator to the same
+    sequence, so a tool can record it and streams derived from it agree
+    with the shared generator's stream 0.
+    """
+    monkeypatch.setenv("GRASS_RANDOM_SEED", "1337")
+    seed = G_srand48_auto()
+    assert seed == 1337
+    state = struct_G_random_state()
+    G_random_seed(byref(state), seed)
+    assert [G_drand48() for _ in range(10)] == [
+        G_random_double(byref(state)) for _ in range(10)
+    ]
+
+
+GENERATE_SEED_SCRIPT = """
+import os
+
+os.environ["GRASS_RANDOM_SEED"] = "5000000000"
+
+from grass.lib.gis import G_random_generate_seed, G_srand48_auto
+
+print(G_random_generate_seed())
+print(G_srand48_auto())
+"""
+
+
+def test_random_generate_seed_reduces_large_environment_value_with_a_warning(
+    xy_session_for_module, tmp_path
+):
+    """A value past 32 bits is reduced to its low 32 bits with a warning.
+
+    Both the generated seed and the shared generator's automatic seed are
+    the reduced value. Runs in a subprocess with a session environment
+    because the warning is written by the library to the process's
+    standard error and needs GISBASE to be printed.
+    """
+    script = tmp_path / "generate_seed.py"
+    script.write_text(GENERATE_SEED_SCRIPT)
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        env=xy_session_for_module.env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    reduced = str(5000000000 % 2**32)
+    assert result.stdout.split() == [reduced, reduced]
+    assert "5000000000 from GRASS_RANDOM_SEED" in result.stderr
+    assert "low 32 bits" in result.stderr
 
 
 def test_random_seeds_differ():

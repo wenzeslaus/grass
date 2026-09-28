@@ -314,6 +314,14 @@ two seeds are that far apart. Independent sequences come from the
 streams of one seed, not from several seeds, whether those are far
 apart or consecutive.
 
+When the user gives no seed, generate one with
+`G_random_generate_seed()`. It takes the value of `GRASS_RANDOM_SEED`,
+or of `SOURCE_DATE_EPOCH`, from the environment, which scripted and
+reproducible runs set, and otherwise uses the time and the process ID;
+the result is always in range. Record the seed the tool used, for
+example in the history of the output map, so that the run can be
+repeated.
+
 \section gislib_random_streams_migrating Migrating from the shared generator
 
 Code which seeds the shared generator with `G_srand48()` and draws with
@@ -333,6 +341,10 @@ G_random_seed(&state, seed);
 for (int i = 0; i < n; i++)
     values[i] = G_random_double(&state);
 \endcode
+
+Code which generated a seed with `G_srand48_auto()` when the user gave
+none calls `G_random_generate_seed()` instead; it returns the same value
+without seeding the shared generator.
 
 Existing results are reproduced by a single stream, and only by it: a
 layout with several streams changes the values, since only stream 0

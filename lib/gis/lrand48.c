@@ -175,32 +175,43 @@ void G_srand48(long seedval)
 }
 
 /*!
- * \brief Seed the shared pseudo-random number generator from the time and PID
+ * \brief Generate a seed for a random number generator
  *
- * A weak hash of the current time and PID is generated and used to
- * seed the PRNG
+ * The seed is the value of the environment variable GRASS_RANDOM_SEED,
+ * or of SOURCE_DATE_EPOCH when that one is not set, reduced to its low 32
+ * bits with a warning when that changes it, and otherwise a weak hash of
+ * the current time and process ID. The result lies between 0 and
+ * 2^32 - 1, so G_random_seed(), G_random_seed_stream() and G_srand48()
+ * accept it. Record it, for example in the history of the output map,
+ * so that the run can be repeated with it as the seed. Two calls within
+ * the same microsecond return the same value.
  *
- * This function is not thread-safe. In a multi-threaded program, call
- * `G_srand48_auto()` once *before* starting the worker threads; it must
- * not run concurrently with another thread seeding or generating values.
+ * This function is thread-safe; it reads the environment and the clock
+ * and changes no generator.
  *
- * A value of `GRASS_RANDOM_SEED` or `SOURCE_DATE_EPOCH` is used modulo
- * 2^32, like any seed; see G_srand48().
- *
- * \return generated seed value passed to G_srand48()
+ * \return the seed
  */
-long G_srand48_auto(void)
+long long G_random_generate_seed(void)
 {
-    unsigned long seed;
-    char *grass_random_seed = getenv("GRASS_RANDOM_SEED");
+    unsigned long long seed;
+    const char *name = "GRASS_RANDOM_SEED";
+    const char *text = getenv(name);
 
-    if (!grass_random_seed)
-        grass_random_seed = getenv("SOURCE_DATE_EPOCH");
-    if (grass_random_seed) {
-        seed = strtoull(grass_random_seed, NULL, 10);
+    if (!text) {
+        name = "SOURCE_DATE_EPOCH";
+        text = getenv(name);
+    }
+    if (text) {
+        unsigned long long given = strtoull(text, NULL, 10);
+
+        seed = given & 0xFFFFFFFF;
+        if (seed != given)
+            G_warning(_("Random number seed %s from %s is used as %llu, "
+                        "its low 32 bits"),
+                      text, name, seed);
     }
     else {
-        seed = (unsigned long)getpid();
+        seed = (unsigned long long)getpid();
 
 #ifdef HAVE_GETTIMEOFDAY
         {
@@ -208,17 +219,40 @@ long G_srand48_auto(void)
 
             if (gettimeofday(&tv, NULL) < 0)
                 G_fatal_error(_("gettimeofday failed: %s"), strerror(errno));
-            seed += (unsigned long)tv.tv_sec;
-            seed += (unsigned long)tv.tv_usec;
+            seed += (unsigned long long)tv.tv_sec;
+            seed += (unsigned long long)tv.tv_usec;
         }
 #else
         {
             time_t t = time(NULL);
 
-            seed += (unsigned long)t;
+            seed += (unsigned long long)t;
         }
 #endif
+        seed &= 0xFFFFFFFF;
     }
+
+    return (long long)seed;
+}
+
+/*!
+ * \brief Seed the shared pseudo-random number generator from the time and PID
+ *
+ * The seed is what G_random_generate_seed() returns: the value of
+ * GRASS_RANDOM_SEED or SOURCE_DATE_EPOCH reduced to its low 32 bits, or a
+ * weak hash of the current time and PID.
+ *
+ * This function is not thread-safe. In a multi-threaded program, call
+ * `G_srand48_auto()` once *before* starting the worker threads; it must
+ * not run concurrently with another thread seeding or generating values.
+ *
+ * \return the seed passed to G_srand48(), between 0 and 2^32 - 1; where
+ *         long has 32 bits, a value of 2^31 or more comes back negative,
+ *         which G_srand48() and G_random_seed() read as the same seed
+ */
+long G_srand48_auto(void)
+{
+    long long seed = G_random_generate_seed();
 
     G_srand48((long)seed);
     return (long)seed;
