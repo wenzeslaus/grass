@@ -33,8 +33,10 @@ draws, about 281 trillion. A stream is a stretch of that ring.
 `G_random_seed_stream(state, seed, stream, streams)` cuts the ring into
 `streams` equal parts, or one part more when that number is even, and
 places the state object at the start of part number `stream`. The
-length of a part, which is also the stride from the start of one stream
-to the start of the next, is what the function returns.
+length of a part is the stride from the start of one stream to the
+start of the next. The function returns how many values the stream can
+draw before its values meet another stream's: the stride at most, and
+less where a twin at a lag, explained below, comes first.
 
 \image html random_streams.svg
 
@@ -44,8 +46,7 @@ the red dot at the top, is where stream 0 starts and where
 drawing, one step per draw. Four streams cut the ring into five parts,
 since four is even: streams 0 to 3 are the four solid arcs, and the
 fifth part, left dashed, is the spare one. The double arrow below the
-ring spans one part, the stride, which is the length the seeding call
-returns. The box on the right stands for a `struct G_random_state`: a
+ring spans one part, the stride. The box on the right stands for a `struct G_random_state`: a
 position on the ring, the dot on stream 1 which its arrow points to.
 
 Two state objects seeded with the same seed and the same number of
@@ -110,7 +111,11 @@ the stride within a hundredth, so a twin is reached only by a stream
 drawn past a quarter of its length; from a few million streams upwards
 the lag can be anything down to a single draw, as in the example. Up
 to 2^30 streams, about one count in a hundred has a lag below a
-thousand draws.
+thousand draws. The seeding call returns this smallest lag as the
+stream length, so a caller who checks the returned length is protected
+from twins as well as from overlap. A single stream reports 2^46
+values, a quarter of the period, since after that many draws its own
+values repeat plus one quarter.
 
 \section gislib_random_streams_usage Usage
 
@@ -254,25 +259,29 @@ for (int step = 0; step < steps; step++) {
 
 The library does not limit how many values a stream draws, and cannot:
 it does not know how many values a unit will draw. A stream drawn past
-its length continues along the ring into the next stream's part and
-from there produces that stream's values, shifted in time. The number
-of streams times the number of values each draws must therefore stay
-below 2^48, about 2.8e14; use the returned length to check that a unit
-draws fewer values than that. Examples:
+the returned length meets another stream's values plus a constant, and
+drawn past the stride it continues into the next stream's part and from
+there produces that stream's values, shifted in time. The parts, one
+more than the streams when that number is even, times the values each
+draws must therefore stay below 2^48, about 2.8e14, and the values each
+draws must stay below the returned length, which covers both limits.
+Examples:
 
-- a million units drawing a million values each fit: each stream is
-  281,474,695 values long, about 280 times what it draws;
-- ten million units drawing ten thousand values each fit: 28,147,493
-  values per stream, about 2,800 times;
-- a billion units drawing ten thousand values each fit: 281,473 values
-  per stream, about 28 times;
+- a million units drawing a million values each fit: each stream can
+  draw 70,191,703 values, about 70 times what it draws;
+- ten million units drawing ten thousand values each fit: 4,792,165
+  values per stream, about 480 times;
+- a billion units drawing ten thousand values each fit narrowly: 14,701
+  values per stream;
 - a hundred billion units do not fit ten thousand values each: a stream
-  is only 2,813 values long.
+  can draw only 509.
 
-So one stream per row of a large raster, and one stream per particle of
-a simulation with millions of particles, both fit. One stream per
-particle for every run of a thousand-run ensemble with ten million
-particles, ten billion streams of 28,147 values each, is at the edge;
+The length depends on the exact count: ten million and 308 units can
+draw only 15,528 values each. Check the returned value rather than
+assume it. So one stream per row of a large raster, and one stream per
+particle of a simulation with millions of particles, both fit. One
+stream per particle for every run of a thousand-run ensemble with ten
+million particles, ten billion streams of 4,177 values each, does not;
 that is where a generator with a longer period becomes necessary.
 
 Compare the returned length with the most values a unit can draw, not

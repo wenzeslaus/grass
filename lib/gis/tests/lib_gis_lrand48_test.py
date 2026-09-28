@@ -486,6 +486,27 @@ def stream_stride(count):
     return stride - 1 if parts > 1 and stride % 2 == 0 else stride
 
 
+QUARTER_TURN = LCG_MODULUS // 4
+
+
+def stream_length(count):
+    """The length the library reports for a count: the smallest twin lag.
+
+    States a quarter, a half or three quarters of the cycle apart give
+    values which differ by a constant. With the streams a stride apart,
+    each of those three distances falls some steps after one stream start
+    and the rest of a stride before the next, and the smallest of those
+    six numbers is how many values a stream can draw before meeting
+    another stream's values plus a constant.
+    """
+    stride = stream_stride(count)
+    lags = []
+    for m in (1, 2, 3):
+        d = (m * QUARTER_TURN) % stride
+        lags.extend((d, stride - d))
+    return min(lags)
+
+
 def test_lcg_jump_reference_matches_stepping():
     """The closed form agrees with drawing from the generator step by step.
 
@@ -598,9 +619,9 @@ def test_random_streams_have_no_lockstep_twins(count):
     With the cycle split into an even number of parts, the streams 0 and
     count / 2 would be half a cycle apart, where this generator repeats
     itself up to a constant, and with a power-of-two count every stream
-    would be such a twin of stream 0. The library therefore splits the
-    cycle into an odd number of parts. This checks every pair of streams
-    over 100 draws and lags of up to 4 draws.
+    would be such a twin of the stream a quarter of the count away. The
+    library therefore splits the cycle into an odd number of parts. This
+    checks every pair of streams over 100 draws and lags of up to 4 draws.
     """
     streams = [random_states(1337, index, count, 100) for index in range(count)]
     twins = [
@@ -612,23 +633,56 @@ def test_random_streams_have_no_lockstep_twins(count):
     assert twins == []
 
 
-@pytest.mark.parametrize("count", STREAM_COUNTS)
-def test_random_seed_stream_returns_stream_length(count):
-    """The seeding call reports how many values a stream holds.
+LENGTH_COUNTS = [*STREAM_COUNTS, 6_878_864, 10_000_000, 10_000_308, 10**9]
 
-    The length is the period divided by the number of parts the cycle is
-    split into, which is the stride between neighbouring streams, so a
+
+@pytest.mark.parametrize("count", LENGTH_COUNTS)
+def test_random_seed_stream_returns_stream_length(count):
+    """The seeding call reports how many values a stream can draw safely.
+
+    The length is the smallest lag at which a stream meets another
+    stream's values plus a constant, a quarter of the stride for most
+    counts and much less for some counts of millions of streams, so a
     caller can compare it with the number of values it will draw.
     """
     state = struct_G_random_state()
     length = G_random_seed_stream(byref(state), 1337, 0, count)
-    assert length == stream_stride(count)
+    assert length == stream_length(count)
+    assert length <= stream_stride(count)
 
 
-def test_random_seed_returns_period():
-    """A single stream reports the whole period."""
+def test_random_seed_returns_quarter_period():
+    """A single stream reports a quarter of the period.
+
+    After 2^46 draws the values of the generator repeat plus one quarter.
+    """
     state = struct_G_random_state()
-    assert G_random_seed(byref(state), 1337) == LCG_MODULUS
+    assert G_random_seed(byref(state), 1337) == LCG_MODULUS // 4
+
+
+def test_random_stream_meets_a_twin_right_after_its_length():
+    """The reported length is exact: one more draw reaches a twin.
+
+    For 6,878,864 streams three quarters of the cycle fall 549 steps
+    before the start of stream 5,159,149, so from its 550th draw on
+    stream 0 repeats that stream's values plus one quarter, while no
+    constant relation exists at any shorter lag.
+    """
+    count = 6_878_864
+    length = stream_length(count)
+    assert length == 549
+    state = struct_G_random_state()
+    assert G_random_seed_stream(byref(state), 1337, 0, count) == length
+    twin = 5_159_149
+    first = random_states(1337, 0, count, length + 20)
+    second = random_states(1337, twin, count, 20)
+
+    def shift_at(lag):
+        differences = {(first[lag + i] - second[i]) % LCG_MODULUS for i in range(20)}
+        return differences.pop() if len(differences) == 1 else None
+
+    assert shift_at(length) == QUARTER_TURN
+    assert all(shift_at(lag) is None for lag in range(length))
 
 
 @pytest.mark.parametrize(

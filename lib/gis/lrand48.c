@@ -86,6 +86,31 @@ static inline unsigned long long lcg_seed(unsigned long long seed)
  * length, and caller-owned streams are stretches of it. */
 #define LCG_PERIOD (MASK48 + 1)
 
+/* The multiplier has order 2^46 modulo 2^48, so two states 2^46, 2^47 or
+ * 3 * 2^46 steps apart give values which differ by a constant for as long
+ * as they run. With the streams a stride apart, each of those three
+ * distances falls d steps after one stream start and stride - d steps
+ * before the next, so a stream drawn past the smallest such d (or stride
+ * - d) meets another stream's values plus a constant. This returns that
+ * smallest number of steps, the number of values a stream can draw
+ * safely; for a single stream it is 2^46. */
+static unsigned long long lcg_twin_margin(unsigned long long stride)
+{
+    unsigned long long margin = stride;
+    int m;
+
+    for (m = 1; m <= 3; m++) {
+        unsigned long long d =
+            ((unsigned long long)m * (LCG_PERIOD / 4)) % stride;
+
+        if (d < margin)
+            margin = d;
+        if (stride - d < margin)
+            margin = stride - d;
+    }
+    return margin;
+}
+
 /* Advance the generator by an arbitrary number of steps without taking
  * them one at a time. One step is the affine map x -> a * x + c, and
  * composing two such maps gives another, so the map for `steps` steps is
@@ -289,8 +314,9 @@ double G_drand48(void)
  * \param[out] state generator state to seed
  * \param[in] seed value to seed the generator with
  *
- * \return the number of values the generator produces before it repeats,
- *         see G_random_seed_stream()
+ * \return the number of values the generator produces before its values
+ *         repeat plus a constant, 2^46 for the current generator, a
+ *         quarter of its period; see G_random_seed_stream()
  */
 long long G_random_seed(struct G_random_state *state, long long seed)
 {
@@ -368,18 +394,22 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  * not positive or not below the period, or a \p stream outside 0 to
  * \p streams - 1, is a fatal error.
  *
- * The returned length is what the caller can compare with the most
- * values it is going to draw from the stream, for example columns times
- * draws per cell for a row, and refuse or warn when the stream is too
- * short for its layout. Nothing is enforced, since the library cannot
- * know how many values a stream will draw; a stream drawn past its
- * length continues into the next stream's part and from there produces
- * that stream's values, shifted in time. The number of streams times
- * the values each draws must therefore stay below 2^48. A million streams
- * are 281 million values long each, ten million streams 28 million, a
- * billion streams 281 thousand, and a hundred billion streams 2,813, so
- * a billion streams drawing ten thousand values each still fit and a
- * hundred billion do not.
+ * The returned length is the number of values the stream can draw before
+ * any of them meets, up to a constant, a value of another stream: the
+ * smallest of the lags above, which is at most the stride and a quarter
+ * of it for most counts. The caller compares it with the most values it
+ * is going to draw from the stream, for example columns times draws per
+ * cell for a row, and refuses or warns when the stream is too short for
+ * its layout. Nothing is enforced, since the library cannot know how
+ * many values a stream will draw; a stream drawn past its length meets
+ * another stream's values, plus a constant or, past the stride, exactly.
+ * A million streams can draw 70 million values each, ten million 4.8
+ * million, a billion 14,701, and a hundred billion 509, so a million
+ * streams drawing a million values each fit, a billion streams drawing
+ * ten thousand values each fit narrowly, and a hundred billion do not.
+ * The length depends on the exact count, ten million and 308 streams
+ * can draw only 15,528 each, so check the returned value rather than
+ * assume it.
  *
  * \param[out] state generator state to seed
  * \param[in] seed value to seed the generator with, see G_random_seed()
@@ -388,10 +418,10 @@ long long G_random_seed(struct G_random_state *state, long long seed)
  * \param[in] streams number of streams derived from \p seed, for example
  *            the number of rows, chunks or runs, positive
  *
- * \return the number of values this stream produces before it reaches
- *         the next one, the period divided by the number of parts; a
- *         generator with a longer period than the return type can hold
- *         returns LLONG_MAX
+ * \return the number of values this stream can draw before any of them
+ *         meets a value of another stream up to a constant, at most the
+ *         stride between neighbouring streams; a generator with a longer
+ *         period than the return type can hold returns LLONG_MAX
  */
 long long G_random_seed_stream(struct G_random_state *state, long long seed,
                                long long stream, long long streams)
@@ -416,7 +446,7 @@ long long G_random_seed_stream(struct G_random_state *state, long long seed,
                         "(must be between 0 and %lld)"),
                       stream, streams - 1);
 
-    /* An odd number of parts and an odd stride keep every pair of streams
+    /* An odd number of parts and an odd stride keep every stream start
      * away from the power-of-two fractions of the cycle at which this
      * generator repeats itself up to a constant; see the description
      * above. The stride is rounded down to odd so that the parts still fit
@@ -429,7 +459,7 @@ long long G_random_seed_stream(struct G_random_state *state, long long seed,
     state->state = lcg_jump(lcg_seed((unsigned long long)seed),
                             (unsigned long long)stream * stride);
 
-    return (long long)stride;
+    return (long long)lcg_twin_margin(stride);
 }
 
 /*!
