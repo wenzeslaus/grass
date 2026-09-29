@@ -18,6 +18,8 @@ BOWL = ((row - SIZE // 2) ** 2 + (col - SIZE // 2) ** 2) / 10.0
 RAIN = np.where(
     (abs(row - SIZE // 2) <= SIZE // 4) & (abs(col - SIZE // 2) <= SIZE // 4), 50, 0
 )
+# Infiltration only where it rains, at a lower rate than the rain
+INFILTRATION = np.where(RAIN > 0, 20, 0)
 
 
 @pytest.fixture(scope="module")
@@ -81,3 +83,30 @@ def test_all_walkers_move_with_nprocs(session):
     single = total_water(depth(session, nprocs=1, **options))
     multiple = total_water(depth(session, nprocs=4, **options))
     assert multiple == pytest.approx(single, rel=1e-6)
+
+
+@pytest.mark.parametrize("diffusion_coeff", [0, 0.8])
+def test_infiltration_takes_exactly_the_capacity(session, diffusion_coeff):
+    """Infiltration removes exactly the capacity of the cells, also in parallel.
+
+    The walkers created in a cell outweigh its infiltration capacity, so the
+    capacity is used up in the first step, before any walker moves, and it
+    is not restored. The water left for the rest of the simulation is then
+    the rain minus the infiltration whatever paths the walkers take, so the
+    total is that fraction of the total without infiltration. The total
+    without infiltration comes from a single-threaded run because lost
+    updates of the water depth would reduce both totals.
+    """
+    expected = total_water(
+        depth(session, nprocs=1, infil_value=0, diffusion_coeff=diffusion_coeff)
+    ) * (1 - INFILTRATION.sum() / RAIN.sum())
+    for nprocs in (1, 4, 4, 4):
+        actual = total_water(
+            depth(
+                session,
+                nprocs=nprocs,
+                infil=INFILTRATION,
+                diffusion_coeff=diffusion_coeff,
+            )
+        )
+        assert actual == pytest.approx(expected, rel=1e-6)
