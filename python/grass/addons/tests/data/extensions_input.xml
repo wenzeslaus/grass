@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE task SYSTEM "grass-addons.dtd">
+<addons version="8">
+    <task name="v.example.suite">
+        <binary>
+            <file>bin/v.example.one</file>
+            <file>scripts/v.example.two</file>
+            <file>docs/html/v.example.suite.html</file>
+        </binary>
+        <modules>
+            <module>v.example.one</module>
+            <module>v.example.two</module>
+        </modules>
+        <libgis revision="GOLDEN-REVISION" />
+    </task>
+    <task name="r.example.single">
+        <binary>
+            <file>bin/r.example.single</file>
+        </binary>
+        <modules>
+            <module>r.example.single</module>
+        </modules>
+        <libgis revision="GOLDEN-REVISION" />
+    </task>
+</addons>
