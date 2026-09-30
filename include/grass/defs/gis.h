@@ -536,6 +536,10 @@ void G_random_advance(struct G_random_state *, long long);
 double G_random_double(struct G_random_state *);
 long long G_random_generate_seed(void);
 
+/* random_options.c */
+long long G_random_seed_from_options(const struct Option *,
+                                     const struct Flag *);
+
 /* ls.c */
 void G_set_ls_filter(int (*)(const char *, void *), void *);
 void G_set_ls_exclude_filter(int (*)(const char *, void *), void *);
