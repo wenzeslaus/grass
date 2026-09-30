@@ -49,16 +49,9 @@ static double fixed_point_unit(double max_value, int count)
     return ldexp(1., exponent - 62);
 }
 
-/* The state of a walker in the current step is decided before the walkers
- * move. */
-enum {
-    WALKER_ACTIVE = 1,   // The weight was above EPS at the start of the step.
-    WALKER_ABSORBED = 2, // Infiltration eliminated the walker.
-};
-
 /* Infiltrate a walker of mass *m into a cell with infiltration rate *inf.
- * Returns true when the walker is eliminated. */
-static bool infiltrate_walker(double *inf, double *m, double factor,
+ * An eliminated walker gets zero mass. */
+static void infiltrate_walker(double *inf, double *m, double factor,
                               const Setup *setup, const Simulation *sim)
 {
     // Walker's contribution to water depth in this cell for this timestep [m]
@@ -69,7 +62,7 @@ static bool infiltrate_walker(double *inf, double *m, double factor,
         *inf -= decr / setup->deltap;
         // Eliminate the walker
         *m = 0.;
-        return true;
+        return;
     }
     // The cell can't absorb the full walker. Reduce the walker mass by the
     // equivalent of what an infiltration-rate source would generate as
@@ -78,11 +71,8 @@ static bool infiltrate_walker(double *inf, double *m, double factor,
     // Cell's infiltration capacity is fully exhausted
     *inf = 0.;
     // Eliminate walker if needed
-    if (*m < 0.) {
+    if (*m < 0.)
         *m = 0.;
-        return true;
-    }
-    return false;
 }
 
 /* **************************************************** */
@@ -180,9 +170,6 @@ void main_loop(const Setup *setup, const Geometry *geometry,
         sim->nwalka = 0;
         int nwalka = 0;
 
-        unsigned char *walker_state =
-            cells_with_capacity ? G_malloc(sim->nwalk) : NULL;
-
         // conn scales the cumulative partial sum in gama into an estimator
         // of the eventual total when blocks run sequentially.
         conn = (double)nblock / (double)iblock;
@@ -222,16 +209,13 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             nwalka = 0;
             sim->nstack = 0;
 
-            bool infiltration = cells_with_capacity > 0;
-            if (infiltration) {
+            if (cells_with_capacity > 0) {
                 /* Infiltration capacity goes to walkers in the order of their
                  * index, as in a single-threaded run, so it is decided in one
                  * sequential pass before the walkers move. */
                 for (lw = 0; lw < sim->nwalk; lw++) {
-                    walker_state[lw] = 0;
                     if (sim->w[lw].m <= EPS)
                         continue;
-                    walker_state[lw] = WALKER_ACTIVE;
                     l = (int)((sim->w[lw].x + stxm) / geometry->stepx) -
                         geometry->mx - 1;
                     k = (int)((sim->w[lw].y + stym) / geometry->stepy) -
@@ -240,9 +224,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                     // No capacity in the cell, or earlier walkers used it up.
                     if (grids->zz[k][l] == UNDEF || *inf <= 0)
                         continue;
-                    if (infiltrate_walker(inf, &sim->w[lw].m, factor, setup,
-                                          sim))
-                        walker_state[lw] |= WALKER_ABSORBED;
+                    infiltrate_walker(inf, &sim->w[lw].m, factor, setup, sim);
                     if (*inf <= 0)
                         cells_with_capacity--;
                 }
@@ -271,11 +253,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
 #else
                 for (lw = 0; lw < sim->nwalk; lw++) {
 #endif
-                    /* Check the walker weight before infiltration. */
-                    bool active = infiltration
-                                      ? walker_state[lw] & WALKER_ACTIVE
-                                      : sim->w[lw].m > EPS;
-                    if (active) {
+                    if (sim->w[lw].m > EPS) {
                         ++(nwalka);
                         l = (int)((sim->w[lw].x + stxm) / geometry->stepx) -
                             geometry->mx - 1;
@@ -299,10 +277,6 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                         }
 
                         if (grids->zz[k][l] != UNDEF) {
-                            if (infiltration &&
-                                walker_state[lw] & WALKER_ABSORBED)
-                                continue;
-
                             /* Add walker weight to water depth or
                              * concentration. */
                             double weight = addac * sim->w[lw].m;
@@ -529,7 +503,6 @@ void main_loop(const Setup *setup, const Geometry *geometry,
         }
         if (outputs->erdep != NULL)
             erod(grids->gama, setup, geometry, grids);
-        G_free(walker_state);
     }
     /*                       ........ end of iblock loop */
     G_free(added);
