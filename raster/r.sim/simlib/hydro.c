@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
 #include <grass/gis.h>
 #include <grass/bitmap.h>
 #include <grass/linkm.h>
@@ -29,6 +30,24 @@
 
 struct point2D;
 struct point3D;
+
+/* Returns the unit for summing walker weights as integers.
+ *
+ * Floating-point sums depend on the order of the additions, integer sums
+ * do not, so the weights of a step are summed as integer multiples of this
+ * unit, which makes the sums the same for any order of the walkers. The
+ * unit is a power of two, so that dividing by it is exact, and as small as
+ * the int64_t range allows for sums of up to count values between 0 and
+ * max_value, so that the rounding of each value to the unit is negligible. */
+static double fixed_point_unit(double max_value, int count)
+{
+    int exponent;
+
+    /* max_value * count < 2^exponent, so a sum stays below 2^62 units, which
+     * leaves room for each value being rounded up by half a unit. */
+    frexp(max_value * count, &exponent);
+    return ldexp(1., exponent - 62);
+}
 
 /* The state of a walker in the current step is decided before the walkers
  * move. */
@@ -105,10 +124,11 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     G_debug(2, " maxwa, nblock %d %d", sim->maxwa, nblock);
     G_debug(2, "rwalk, sisum: %f %f", sim->rwalk, setup->sisum);
 
-    /* The walkers add their weights here during a step, and the sums are
-     * moved to gama after the walker loop. */
-    double *added =
-        G_calloc((size_t)geometry->my * geometry->mx, sizeof(double));
+    /* The walkers add their weights here during a step, as integer
+     * multiples of the unit, and the sums are moved to gama after the walker
+     * loop. */
+    int64_t *added =
+        G_calloc((size_t)geometry->my * geometry->mx, sizeof(int64_t));
 
     /* Cells never gain infiltration capacity, so the infiltration pass
      * below is skipped once no cell has any. */
@@ -228,6 +248,14 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                 }
             }
 
+            double max_weight = 0.;
+#pragma omp parallel for schedule(static) reduction(max : max_weight)
+            for (int iw = 0; iw < sim->nwalk; iw++) {
+                if (sim->w[iw].m > max_weight)
+                    max_weight = sim->w[iw].m;
+            }
+            double unit = fixed_point_unit(addac * max_weight, sim->nwalk);
+
 #pragma omp parallel firstprivate(l, lw, k) reduction(+ : nwalka)
             {
 #if defined(_OPENMP)
@@ -279,7 +307,8 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                              * concentration. */
                             double weight = addac * sim->w[lw].m;
 #pragma omp atomic update
-                            added[(size_t)k * geometry->mx + l] += weight;
+                            added[(size_t)k * geometry->mx + l] +=
+                                llrint(weight / unit);
 
                             /* The walker sees gama of the previous iterations
                              * and its own weight, but not the weights of other
@@ -373,7 +402,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                     for (l = 0; l < geometry->mx; l++) {
                         size_t cell = (size_t)k * geometry->mx + l;
 
-                        grids->gama[k][l] += added[cell];
+                        grids->gama[k][l] += added[cell] * unit;
                         added[cell] = 0;
                     }
                 }
