@@ -12,7 +12,6 @@
 #include <omp.h>
 #endif
 
-#include <errno.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -175,9 +174,14 @@ int main(int argc, char **argv)
         G_fatal_error(_("%s= and %s= are mutually exclusive"), expr->key,
                       file->key);
 
-    if (seed->answer && random->answer)
-        G_fatal_error(_("%s= and -%c are mutually exclusive"), seed->key,
-                      random->key);
+    /* The helper requires the option or the flag. Without either, a seed
+     * is generated below, and only when the expression calls rand(). */
+    if (seed->answer || random->answer)
+        seed_value = G_random_seed_from_options(seed, random);
+    if (random->answer)
+        G_verbose_message(_("Flag 's' is deprecated and will be removed in "
+                            "a future release. "
+                            "Seeding is automatic or use parameter seed."));
 
     if (expr->answer)
         result = parse_string(expr->answer);
@@ -191,30 +195,14 @@ int main(int argc, char **argv)
 
     rand_calls = expr_list_count_rand_calls(result);
     if (seed->answer) {
-        struct G_random_state check;
-        char *end;
-
-        errno = 0;
-        seed_value = strtoll(seed->answer, &end, 10);
-        if (errno || end == seed->answer || *end)
-            G_fatal_error(_("Invalid random seed <%s>"), seed->answer);
-        /* Refuse a seed out of range now, before the output maps are
-         * created. */
-        G_random_seed(&check, seed_value);
         seeded = 1;
         G_debug(3, "Read random seed from seed=: %lld", seed_value);
     }
-    else {
-        if (rand_calls > 0) {
+    else if (rand_calls > 0) {
+        if (!random->answer)
             seed_value = G_random_generate_seed();
-            seeded = 1;
-            G_debug(3, "Automatically generated random seed: %lld", seed_value);
-        }
-        if (random->answer) {
-            G_verbose_message(_("Flag 's' is deprecated and will be removed in "
-                                "a future release. "
-                                "Seeding is automatic or use parameter seed."));
-        }
+        seeded = 1;
+        G_debug(3, "Automatically generated random seed: %lld", seed_value);
     }
 
     /* Set the global variable of the region setup approach */

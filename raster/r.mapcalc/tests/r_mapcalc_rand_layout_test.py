@@ -273,19 +273,29 @@ def test_automatic_seed_is_the_reported_seed(session_in_mapset, flags):
     )
 
 
-def test_seed_out_of_range(session_in_mapset):
+@pytest.mark.parametrize("seed", [-(2**31) - 1, 2**32])
+def test_seed_out_of_range(session_in_mapset, seed):
     """A seed the generator cannot use is an error, not silently reduced"""
     tools = Tools(
         session=session_in_mapset, consistent_return_value=True, errors="ignore"
     )
     tools.g_region(**REGION)
-    result = tools.r_mapcalc(expression="result = rand(0.0, 1.0)", seed=2**32)
+    result = tools.r_mapcalc(expression="result = rand(0.0, 1.0)", seed=seed)
     assert result.returncode == 1
-    assert "4294967296" in result.stderr
+    assert f"<{seed}>" in result.stderr
     assert not tools.g_list(type="raster", pattern="result").text
 
 
-@pytest.mark.parametrize("seed", ["12abc", "1.5", str(2**64)])
+@pytest.mark.parametrize("seed", [-(2**31), 2**32 - 1])
+def test_seed_at_range_limit(session_in_mapset, seed):
+    """The lowest and the highest seed are accepted and recorded"""
+    tools = Tools(session=session_in_mapset)
+    tools.g_region(**REGION)
+    tools.r_mapcalc(expression="result = rand(0.0, 1.0)", seed=seed)
+    assert f"random seed = {seed}" in tools.r_info(map="result", flags="h").text
+
+
+@pytest.mark.parametrize("seed", ["12abc", "1.5", "1e9", str(2**64)])
 def test_invalid_seed(session_in_mapset, seed):
     """A seed with trailing characters or beyond long long is an error
 
@@ -300,3 +310,22 @@ def test_invalid_seed(session_in_mapset, seed):
     assert result.returncode == 1
     assert f"Invalid random seed <{seed}>" in result.stderr
     assert not tools.g_list(type="raster", pattern="result").text
+
+
+def test_seed_and_flag_are_exclusive(session_in_mapset):
+    """The seed and the flag to generate one cannot be used together"""
+    tools = Tools(
+        session=session_in_mapset, consistent_return_value=True, errors="ignore"
+    )
+    tools.g_region(**REGION)
+    result = tools.r_mapcalc(expression="result = rand(0.0, 1.0)", seed=1, flags="s")
+    assert result.returncode == 1
+    assert "seed= and -s are mutually exclusive" in result.stderr
+
+
+def test_flag_without_rand_records_no_seed(session_in_mapset):
+    """The flag alone does not record a seed when rand() is not called"""
+    tools = Tools(session=session_in_mapset)
+    tools.g_region(**REGION)
+    tools.r_mapcalc(expression="result = 1", flags="s")
+    assert "random seed" not in tools.r_info(map="result", flags="h").text
