@@ -79,7 +79,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
 
     G_random_init_layout_bounded(&layout, settings->seed, sim->max_walkers,
                                  2 + 8LL * setup->miter);
-    if (G_random_layout_runs(&layout) < 1)
+    if (G_random_layout_batches(&layout) < 1)
         G_warning(_("%d walkers over %d time steps may draw more random "
                     "numbers than one seed provides; the random numbers "
                     "of some walkers then repeat those of others shifted "
@@ -87,7 +87,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                   sim->max_walkers, setup->miter);
 #pragma omp parallel for
     for (int lw = 0; lw < sim->max_walkers; lw++)
-        G_random_state_for_unit(&sim->states[lw], &layout, lw);
+        G_random_state_for_unit(&sim->w[lw].state, &layout, lw);
 
     for (iblock = 1; iblock <= nblock; iblock++) {
         int lw = 0;
@@ -110,7 +110,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
 
                     for (int iw = 1; iw <= mgen + 1;
                          iw++) { /* assign walkers */
-                        struct G_random_state *state = &sim->states[lw];
+                        struct G_random_state *state = &sim->w[lw].state;
 
                         sim->w[lw].x = x + geometry->stepx *
                                                (G_random_double(state) - 0.5);
@@ -257,7 +257,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
 
                             double d1 = gama * conn;
                             double gaux, gauy;
-                            gasdev(&sim->states[lw], &gaux, &gauy);
+                            gasdev(&sim->w[lw].state, &gaux, &gauy);
                             double hhc = pow(d1, 3. / 5.);
                             double velx, vely;
                             /* Diffusion coefficient of this walker's move */
@@ -279,7 +279,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                                 grids->trap[k][l] != 0.) { /* traps */
 
                                 float eff = G_random_double(
-                                    &sim->states[lw]); /* random generator */
+                                    &sim->w[lw].state); /* random generator */
 
                                 if (eff <= grids->trap[k][l]) {
                                     velx = -0.1 *
