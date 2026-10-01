@@ -220,7 +220,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
 #else
                 for (lw = 0; lw < sim->nwalk; lw++) {
 #endif
-                    if (sim->w[lw].m > EPS) {
+                    if (sim->w[lw].m > EPS) { /* check the walker weight */
                         ++(nwalka);
                         l = (int)((sim->w[lw].x + stxm) / geometry->stepx) -
                             geometry->mx - 1;
