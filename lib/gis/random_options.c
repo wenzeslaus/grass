@@ -30,10 +30,10 @@
  * G_random_generate_seed() returns, so the environment variables
  * GRASS_RANDOM_SEED and SOURCE_DATE_EPOCH apply.
  *
- * Either way, the result is a seed G_random_seed(), the layout functions
- * and G_srand48() accept. The function neither prints the seed nor records
- * it; the tool records it, for example in the history of its output, so
- * that the computation can be repeated.
+ * Either way, the result is a seed G_random_state_from_seed(), the layout
+ * functions and G_srand48() accept. The function neither prints the seed
+ * nor records it; the tool records it, for example in the history of its
+ * output, so that the computation can be repeated.
  *
  * \param seed the seed option, usually G_OPT_M_SEED, whatever its key
  * \param generate the flag which asks for a generated seed, or NULL
