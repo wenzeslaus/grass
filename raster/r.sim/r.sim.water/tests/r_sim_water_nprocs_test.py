@@ -97,3 +97,17 @@ def test_infiltration_takes_exactly_the_capacity(session):
             depth(session, nprocs=nprocs, infil=INFILTRATION, diffusion_coeff=0)
         )
         assert actual == pytest.approx(expected, rel=1e-6)
+
+
+@pytest.mark.parametrize("infil_value", [0, 20])
+def test_depth_does_not_depend_on_walker_order(session, infil_value):
+    """Results do not depend on the order in which walkers are processed.
+
+    Without diffusion, the random numbers do not change where walkers go.
+    With a low hmax, the depth a walker sees decides whether it moves with
+    its averaged velocity, so the depth must not include the weights added
+    by walkers which another thread happened to process first.
+    """
+    options = {"infil_value": infil_value, "diffusion_coeff": 0, "hmax": 0.001}
+    single = depth(session, nprocs=1, **options)
+    np.testing.assert_array_equal(depth(session, nprocs=4, **options), single)
