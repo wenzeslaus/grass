@@ -30,6 +30,32 @@
 struct point2D;
 struct point3D;
 
+/* Infiltrate a walker of mass *m into a cell with infiltration rate *inf.
+ * An eliminated walker gets zero mass. */
+static void infiltrate_walker(double *inf, double *m, double factor,
+                              const Setup *setup, const Simulation *sim)
+{
+    // Walker's contribution to water depth in this cell for this timestep [m]
+    double decr = factor * *m;
+    // Compare with the depth the cell can absorb this timestep [m]
+    if (*inf * setup->deltap > decr) {
+        // The cell can absorb the full walker. Reduce infiltration rate [m/s].
+        *inf -= decr / setup->deltap;
+        // Eliminate the walker
+        *m = 0.;
+        return;
+    }
+    // The cell can't absorb the full walker. Reduce the walker mass by the
+    // equivalent of what an infiltration-rate source would generate as
+    // walker weight.
+    *m -= sim->rwalk * *inf / setup->sisum;
+    // Cell's infiltration capacity is fully exhausted
+    *inf = 0.;
+    // Eliminate walker if needed
+    if (*m < 0.)
+        *m = 0.;
+}
+
 /* **************************************************** */
 /*       create walker representation of si */
 /* ******************************************************** */
@@ -68,6 +94,14 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     G_debug(2, " deldif, factor %f %e", deldif, factor);
     G_debug(2, " maxwa, nblock %d %d", sim->maxwa, nblock);
     G_debug(2, "rwalk, sisum: %f %f", sim->rwalk, setup->sisum);
+
+    /* Cells never gain infiltration capacity, so the infiltration pass
+     * below is skipped once no cell has any. */
+    int cells_with_capacity = 0;
+    for (k = 0; k < geometry->my; k++)
+        for (l = 0; l < geometry->mx; l++)
+            if (grids->zz[k][l] != UNDEF && grids->inf[k][l] > 0)
+                cells_with_capacity++;
 
     for (iblock = 1; iblock <= nblock; iblock++) {
         int lw = 0;
@@ -150,6 +184,27 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             nwalka = 0;
             sim->nstack = 0;
 
+            if (cells_with_capacity > 0) {
+                /* Infiltration capacity goes to walkers in the order of their
+                 * index, as in a single-threaded run, so it is decided in one
+                 * sequential pass before the walkers move. */
+                for (lw = 0; lw < sim->nwalk; lw++) {
+                    if (sim->w[lw].m <= EPS)
+                        continue;
+                    l = (int)((sim->w[lw].x + stxm) / geometry->stepx) -
+                        geometry->mx - 1;
+                    k = (int)((sim->w[lw].y + stym) / geometry->stepy) -
+                        geometry->my - 1;
+                    double *inf = &grids->inf[k][l];
+                    // No capacity in the cell, or earlier walkers used it up.
+                    if (grids->zz[k][l] == UNDEF || *inf <= 0)
+                        continue;
+                    infiltrate_walker(inf, &sim->w[lw].m, factor, setup, sim);
+                    if (*inf <= 0)
+                        cells_with_capacity--;
+                }
+            }
+
 #pragma omp parallel firstprivate(l, k) reduction(+ : nwalka)
             {
 #pragma omp for schedule(static)
@@ -178,55 +233,6 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                         }
 
                         if (grids->zz[k][l] != UNDEF) {
-                            /* Lock only cells which may have capacity left. */
-                            double inf;
-#pragma omp atomic read
-                            inf = grids->inf[k][l];
-                            bool eliminated = false;
-                            if (inf > 0) {
-#pragma omp critical(infiltration)
-                                if (grids->inf[k][l] != UNDEF &&
-                                    grids->inf[k][l] > 0) {
-                                    // Walker's contribution to water depth in
-                                    // this cell for this timestep [m]
-                                    double decr = factor * sim->w[lw].m;
-                                    // Compare with the depth the cell can
-                                    // absorb this timestep [m]
-                                    if (grids->inf[k][l] * setup->deltap >
-                                        decr) {
-                                        // The cell can absorb the full walker.
-                                        // Reduce infiltration rate [m/s].
-#pragma omp atomic
-                                        grids->inf[k][l] -=
-                                            decr / setup->deltap;
-                                        // Eliminate the walker
-                                        sim->w[lw].m = 0.;
-                                        eliminated = true;
-                                    }
-                                    else {
-                                        // The cell can't absorb the full
-                                        // walker. Reduce the walker mass by the
-                                        // equivalent of what an
-                                        // infiltration-rate source would
-                                        // generate as walker weight.
-                                        sim->w[lw].m -= sim->rwalk *
-                                                        grids->inf[k][l] /
-                                                        setup->sisum;
-                                        // Cell's infiltration capacity is fully
-                                        // exhausted
-#pragma omp atomic write
-                                        grids->inf[k][l] = 0.;
-                                        // Eliminate walker if needed
-                                        if (sim->w[lw].m < 0.) {
-                                            sim->w[lw].m = 0.;
-                                            eliminated = true;
-                                        }
-                                    }
-                                }
-                            }
-                            if (eliminated)
-                                continue;
-
                             /* Add walker weight to water depth or
                              * concentration. The captured sum includes the
                              * weights added before on any thread. */
