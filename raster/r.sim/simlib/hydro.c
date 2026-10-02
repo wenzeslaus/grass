@@ -356,10 +356,8 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                     }
                 } /* lw loop */
 
-                /* The walker ranges above are not a worksharing loop, so
-                 * nothing waits for all walkers to add their weights before
-                 * the sums go to gama. */
-#pragma omp barrier
+                /* The walker loop ends with an implicit barrier, so all
+                 * weights of this step are added before they go to gama. */
 #pragma omp for schedule(static)
                 for (k = 0; k < geometry->my; k++) {
                     for (l = 0; l < geometry->mx; l++) {
