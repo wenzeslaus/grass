@@ -12,6 +12,7 @@
 #include <omp.h>
 #endif
 
+#include <inttypes.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,7 +26,7 @@
 
 int overwrite_flag;
 
-long long seed_value;
+int64_t seed_value;
 long seeded;
 int rand_calls;
 int region_approach;
@@ -196,13 +197,13 @@ int main(int argc, char **argv)
     rand_calls = expr_list_count_rand_calls(result);
     if (seed->answer) {
         seeded = 1;
-        G_debug(3, "Read random seed from seed=: %lld", seed_value);
+        G_debug(3, "Read random seed from seed=: %" PRId64, seed_value);
     }
     else if (rand_calls > 0) {
         if (!random->answer)
             seed_value = G_random_generate_seed();
         seeded = 1;
-        G_debug(3, "Automatically generated random seed: %lld", seed_value);
+        G_debug(3, "Automatically generated random seed: %" PRId64, seed_value);
     }
 
     /* Set the global variable of the region setup approach */
