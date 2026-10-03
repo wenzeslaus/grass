@@ -1,9 +1,7 @@
 /* random.c (simlib), 20.nov.2002, JH */
 
-#include <errno.h>
 #include <inttypes.h>
 #include <math.h>
-#include <stdlib.h>
 
 #include <grass/gis.h>
 #include <grass/glocale.h>
@@ -13,9 +11,9 @@
 /*!
  * \brief Return the seed of the walkers' random numbers
  *
- * The seed is generated with the flag, read from the option, or 12345 when
- * neither is given. A seed which is not an integer or is outside the range
- * the generator accepts is a fatal error, here, before any input is read.
+ * The seed is read from the option or generated with the flag by
+ * G_random_seed_from_options(), which refuses both together, and reported
+ * in a verbose message. Without either, the seed is 12345, as it has been.
  *
  * \param seed the seed option
  * \param generate the flag to generate a seed
@@ -25,29 +23,15 @@
 int64_t simwe_seed(const struct Option *seed, const struct Flag *generate)
 {
     int64_t value;
-    struct G_random_state check;
 
-    if (generate->answer) {
-        value = G_random_generate_seed();
+    if (!seed->answer && !generate->answer)
+        return 12345;
+    value = G_random_seed_from_options(seed, generate);
+    if (generate->answer)
         G_verbose_message(_("Generated random seed (-s): %" PRId64), value);
-    }
-    else if (seed->answer) {
-        char *end;
-
-        errno = 0;
-        value = strtoll(seed->answer, &end, 10);
-        if (end == seed->answer || *end != '\0' || errno == ERANGE)
-            G_fatal_error(_("Invalid random seed <%s>"), seed->answer);
+    else
         G_verbose_message(_("Read random seed from %s option: %" PRId64),
                           seed->key, value);
-    }
-    else {
-        /* default as it used to be */
-        value = 12345;
-    }
-    /* The layout, which refuses a seed out of range, is built only when the
-     * number of time steps is known. */
-    G_random_state_from_seed(&check, value);
     return value;
 }
 
