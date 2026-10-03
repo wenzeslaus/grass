@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-26 18:44+0000\n"
+"POT-Creation-Date: 2026-10-03 18:52+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -8511,7 +8511,7 @@ msgid "Unable to create profile of raster map."
 msgstr ""
 
 #: ../gui/wxpython/lmgr/layertree.py:1117
-#: ../gui/wxpython/nviz/mapwindow.py:1780 ../gui/wxpython/nviz/tools.py:892
+#: ../gui/wxpython/nviz/mapwindow.py:1783 ../gui/wxpython/nviz/tools.py:892
 #: ../gui/wxpython/psmap/dialogs.py:1634
 msgid "Raster map"
 msgstr ""
@@ -10589,114 +10589,114 @@ msgstr ""
 msgid "Opening 3D view was not successful. Please try to change the value of depth buffer in GUI Settings dialog > tab Map Display > Advanced and restart GUI."
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:537
+#: ../gui/wxpython/nviz/mapwindow.py:540
 #, python-format
 msgid "Image is too large, your OpenGL implementation supports maximum texture size %d px."
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1094
+#: ../gui/wxpython/nviz/mapwindow.py:1097
 msgid "Easting"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1095
+#: ../gui/wxpython/nviz/mapwindow.py:1098
 msgid "Northing"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1096
+#: ../gui/wxpython/nviz/mapwindow.py:1099
 msgid "Elevation"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1107
+#: ../gui/wxpython/nviz/mapwindow.py:1110
 msgid "Surface map name"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1109
+#: ../gui/wxpython/nviz/mapwindow.py:1112
 msgid "Surface map elevation"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1111
+#: ../gui/wxpython/nviz/mapwindow.py:1114
 msgid "Surface map color"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1121
+#: ../gui/wxpython/nviz/mapwindow.py:1124
 msgid "XY distance from previous"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1123
+#: ../gui/wxpython/nviz/mapwindow.py:1126
 msgid "XYZ distance from previous"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1128
+#: ../gui/wxpython/nviz/mapwindow.py:1131
 msgid "Distance along surface"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1140
+#: ../gui/wxpython/nviz/mapwindow.py:1143
 msgid "Distance along exag. surface"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1151
+#: ../gui/wxpython/nviz/mapwindow.py:1154
 msgid "No point on surface"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1648
+#: ../gui/wxpython/nviz/mapwindow.py:1651
 msgid "Loading raster map"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1652
+#: ../gui/wxpython/nviz/mapwindow.py:1655
 msgid "Loading 3d raster map"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1658
+#: ../gui/wxpython/nviz/mapwindow.py:1661
 msgid "failed"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1660
+#: ../gui/wxpython/nviz/mapwindow.py:1663
 #, python-format
 msgid "Unsupported layer type '%s'"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1779
+#: ../gui/wxpython/nviz/mapwindow.py:1782
 msgid "Unable to unload raster map"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1784
+#: ../gui/wxpython/nviz/mapwindow.py:1787
 msgid "Unable to unload 3d raster map"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1785
+#: ../gui/wxpython/nviz/mapwindow.py:1788
 msgid "3d raster map"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1796
+#: ../gui/wxpython/nviz/mapwindow.py:1799
 msgid "unloaded successfully"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1849
+#: ../gui/wxpython/nviz/mapwindow.py:1852
 #, python-format
 msgid "Loading vector map <%(name)s> (%(type)s) failed"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1913
+#: ../gui/wxpython/nviz/mapwindow.py:1916
 #, python-format
 msgid "Unable to unload vector map <%(name)s> (%(type)s)"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:1918
+#: ../gui/wxpython/nviz/mapwindow.py:1921
 #, python-format
 msgid "Vector map <%(name)s> (%(type)s) unloaded successfully"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:2324
+#: ../gui/wxpython/nviz/mapwindow.py:2327
 #, python-format
 msgid "Vector point layer not found (id = %d)"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:2326
+#: ../gui/wxpython/nviz/mapwindow.py:2329
 #, python-format
 msgid "Unable to set data layer properties (id = %d)"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:2330
+#: ../gui/wxpython/nviz/mapwindow.py:2333
 #, python-format
 msgid ""
 "Setting data layer properties failed.\n"
@@ -10704,8 +10704,8 @@ msgid ""
 "%s"
 msgstr ""
 
-#: ../gui/wxpython/nviz/mapwindow.py:2390
-#: ../gui/wxpython/nviz/mapwindow.py:2409 ../gui/wxpython/nviz/tools.py:2803
+#: ../gui/wxpython/nviz/mapwindow.py:2393
+#: ../gui/wxpython/nviz/mapwindow.py:2412 ../gui/wxpython/nviz/tools.py:2803
 #: ../gui/wxpython/nviz/tools.py:5176
 msgid "constant#"
 msgstr ""
