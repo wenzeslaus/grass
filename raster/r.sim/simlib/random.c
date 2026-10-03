@@ -1,5 +1,6 @@
 /* random.c (simlib), 20.nov.2002, JH */
 
+#include <inttypes.h>
 #include <math.h>
 
 #include <grass/gis.h>
@@ -19,18 +20,18 @@
  *
  * \return the seed
  */
-long long simwe_seed(const struct Option *seed, const struct Flag *generate)
+int64_t simwe_seed(const struct Option *seed, const struct Flag *generate)
 {
-    long long value;
+    int64_t value;
 
     if (!seed->answer && !generate->answer)
         return 12345;
     value = G_random_seed_from_options(seed, generate);
     if (generate->answer)
-        G_verbose_message(_("Generated random seed (-s): %lld"), value);
+        G_verbose_message(_("Generated random seed (-s): %" PRId64), value);
     else
-        G_verbose_message(_("Read random seed from %s option: %lld"), seed->key,
-                          value);
+        G_verbose_message(_("Read random seed from %s option: %" PRId64),
+                          seed->key, value);
     return value;
 }
 
