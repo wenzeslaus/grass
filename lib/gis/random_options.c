@@ -40,10 +40,10 @@
  *
  * \return the seed, from -2^31 to 2^32 - 1
  */
-long long G_random_seed_from_options(const struct Option *seed,
-                                     const struct Flag *generate)
+int64_t G_random_seed_from_options(const struct Option *seed,
+                                   const struct Flag *generate)
 {
-    long long value;
+    int64_t value;
     char *end;
 
     if (generate) {
@@ -64,7 +64,8 @@ long long G_random_seed_from_options(const struct Option *seed,
     if (end == seed->answer || *end != '\0')
         G_fatal_error(_("Invalid random seed <%s> for %s=: not an integer"),
                       seed->answer, seed->key);
-    if (errno == ERANGE || value < -(1LL << 31) || value > (1LL << 32) - 1)
+    if (errno == ERANGE || value < -(INT64_C(1) << 31) ||
+        value > (INT64_C(1) << 32) - 1)
         G_fatal_error(_("Invalid random seed <%s> for %s=: outside the range "
                         "from -2147483648 to 4294967295"),
                       seed->answer, seed->key);
