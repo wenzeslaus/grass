@@ -222,7 +222,7 @@ Summary of a time series run with two output steps in JSON:
 
     ```sh
     r.sim.water elevation=elevation depth=depth discharge=discharge rain_value=50 \
-        man_value=0.05 nwalkers=100000 duration=20 output_step=10 random_seed=3 \
+        man_value=0.05 nwalkers=100000 duration=20 output_step=10 seed=3 \
         -t -p format=json
     ```
 
@@ -241,7 +241,7 @@ Summary of a time series run with two output steps in JSON:
         nwalkers=100000,
         duration=20,
         output_step=10,
-        random_seed=3,
+        seed=3,
         flags="tp",
         format="json",
     )
@@ -263,7 +263,7 @@ Summary of a time series run with two output steps in JSON:
         nwalkers=100000,
         duration=20,
         output_step=10,
-        random_seed=3,
+        seed=3,
         flags="tp",
         format="json",
     )
@@ -316,7 +316,7 @@ The printed summary:
 ### Random numbers and parallel processing
 
 The walkers are placed and moved using pseudo-random numbers. The seed
-is given by **random_seed**; without it, a seed is generated, so runs
+is given by **seed**; without it, a seed is generated, so runs
 without a seed differ from each other, as in *r.mapcalc*. The seed used
 is recorded in the history of the output maps and in the run summary of
 **-p** as `seed`, and reported with **--verbose**, so that a run
@@ -436,7 +436,7 @@ Simulate 30 minutes of overland flow with a uniform rainfall excess of
 
     ```sh
     r.sim.water elevation=elevation man=mannings rain_value=20 depth=depth \
-        duration=30 random_seed=1
+        duration=30 seed=1
     ```
 
 === "Python (grass.script)"
@@ -449,7 +449,7 @@ Simulate 30 minutes of overland flow with a uniform rainfall excess of
         rain_value=20,
         depth="depth",
         duration=30,
-        random_seed=1,
+        seed=1,
     )
     ```
 
@@ -462,7 +462,7 @@ Simulate 30 minutes of overland flow with a uniform rainfall excess of
         rain_value=20,
         depth="depth",
         duration=30,
-        random_seed=1,
+        seed=1,
     )
     ```
 <!-- markdownlint-enable MD046 -->
