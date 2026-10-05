@@ -11,9 +11,9 @@
 /*!
  * \brief Return the seed of the walkers' random numbers
  *
- * The seed is read from the option or generated with the flag by
- * G_random_seed_from_options(), which refuses both together, and reported
- * in a verbose message. Without either, the seed is 12345, as it has been.
+ * The seed is read from the option or generated with the flag, and
+ * reported in a verbose message; both together is a fatal error. Without
+ * either, the seed is 12345, as it has been.
  *
  * \param seed the seed option
  * \param generate the flag to generate a seed
@@ -24,14 +24,20 @@ int64_t simwe_seed(const struct Option *seed, const struct Flag *generate)
 {
     int64_t value;
 
-    if (!seed->answer && !generate->answer)
-        return 12345;
-    value = G_random_seed_from_options(seed, generate);
-    if (generate->answer)
-        G_verbose_message(_("Generated random seed (-s): %" PRId64), value);
-    else
+    if (seed->answer && generate->answer)
+        G_fatal_error(_("%s= and -%c are mutually exclusive"), seed->key,
+                      generate->key);
+    if (seed->answer) {
+        value = G_random_seed_from_option(seed);
         G_verbose_message(_("Read random seed from %s option: %" PRId64),
                           seed->key, value);
+    }
+    else if (generate->answer) {
+        value = G_random_generate_seed();
+        G_verbose_message(_("Generated random seed (-s): %" PRId64), value);
+    }
+    else
+        value = 12345;
     return value;
 }
 

@@ -175,10 +175,12 @@ int main(int argc, char **argv)
         G_fatal_error(_("%s= and %s= are mutually exclusive"), expr->key,
                       file->key);
 
-    /* The helper requires the option or the flag. Without either, a seed
-     * is generated below, and only when the expression calls rand(). */
-    if (seed->answer || random->answer)
-        seed_value = G_random_seed_from_options(seed, random);
+    if (seed->answer && random->answer)
+        G_fatal_error(_("%s= and -%c are mutually exclusive"), seed->key,
+                      random->key);
+    /* Refuse an invalid seed before the expression is parsed. */
+    if (seed->answer)
+        seed_value = G_random_seed_from_option(seed);
     if (random->answer)
         G_verbose_message(_("Flag 's' is deprecated and will be removed in "
                             "a future release. "
@@ -200,8 +202,7 @@ int main(int argc, char **argv)
         G_debug(3, "Read random seed from seed=: %" PRId64, seed_value);
     }
     else if (rand_calls > 0) {
-        if (!random->answer)
-            seed_value = G_random_generate_seed();
+        seed_value = G_random_generate_seed();
         seeded = 1;
         G_debug(3, "Automatically generated random seed: %" PRId64, seed_value);
     }
