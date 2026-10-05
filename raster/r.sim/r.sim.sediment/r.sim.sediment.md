@@ -39,7 +39,7 @@ erosion/deposition map is noisy, higher number of walkers, given by
 
 Increasing the number of threads with **nprocs** speeds up the
 simulation. The walkers draw their random numbers as in *r.sim.water*:
-each walker from a sequence of its own determined by **random_seed**
+each walker from a sequence of its own determined by **seed**
 (or the generated seed, recorded in the history and the run summary,
 when it is not given) and the walker's number, so the walkers move the
 same way whatever the value of **nprocs**. With **nprocs=1**, runs with
@@ -86,7 +86,7 @@ Summary of a run in JSON:
 r.sim.sediment elevation=elevation water_depth=water_depth detachment_coeff=detachment \
     transport_coeff=transport shear_stress=shear_stress man_value=1 \
     sediment_flux=flux erosion_deposition=erdep transport_capacity=tc \
-    duration=1 random_seed=1 -p format=json
+    duration=1 seed=1 -p format=json
 ```
 
 ```json
