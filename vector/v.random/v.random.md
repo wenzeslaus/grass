@@ -14,6 +14,8 @@ number.
 
 To produce repeatable results a random seed can be set using the option
 **seed**.
+The same **seed** with the same region and options gives the same points as
+in earlier versions; it must be between -2147483648 and 4294967295.
 
 ### Restriction to vector areas
 
