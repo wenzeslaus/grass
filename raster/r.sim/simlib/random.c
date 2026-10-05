@@ -11,12 +11,14 @@
 /*!
  * \brief Return the seed of the walkers' random numbers
  *
- * The seed is read from the option or generated with the flag, and
- * reported in a verbose message; both together is a fatal error. Without
- * either, the seed is 12345, as it has been.
+ * The seed is read from the option, or generated when the option is not
+ * given, as in r.mapcalc. A seed which is not an integer or is outside the
+ * range the generator accepts is a fatal error, here, before any input is
+ * read. The flag to generate a seed is deprecated, since generating is the
+ * default; the flag together with the option is a fatal error.
  *
  * \param seed the seed option
- * \param generate the flag to generate a seed
+ * \param generate the deprecated flag to generate a seed
  *
  * \return the seed
  */
@@ -27,17 +29,20 @@ int64_t simwe_seed(const struct Option *seed, const struct Flag *generate)
     if (seed->answer && generate->answer)
         G_fatal_error(_("%s= and -%c are mutually exclusive"), seed->key,
                       generate->key);
+    if (generate->answer)
+        G_verbose_message(_("Flag '%c' is deprecated and will be removed in a "
+                            "future release. Seeding is automatic or use "
+                            "parameter %s."),
+                          generate->key, seed->key);
     if (seed->answer) {
         value = G_random_seed_from_option(seed);
         G_verbose_message(_("Read random seed from %s option: %" PRId64),
                           seed->key, value);
     }
-    else if (generate->answer) {
+    else {
         value = G_random_generate_seed();
-        G_verbose_message(_("Generated random seed (-s): %" PRId64), value);
+        G_verbose_message(_("Generated random seed: %" PRId64), value);
     }
-    else
-        value = 12345;
     return value;
 }
 

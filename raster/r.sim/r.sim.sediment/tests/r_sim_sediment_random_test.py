@@ -79,10 +79,10 @@ def test_different_seeds_give_different_results(session):
 
 
 def test_generated_seed_is_the_seed_option(session):
-    """The -s flag with GRASS_RANDOM_SEED gives what the seed option gives."""
+    """Without a seed, GRASS_RANDOM_SEED gives what the seed option gives."""
     env = session.env.copy()
     env["GRASS_RANDOM_SEED"] = "3"
-    generated, _ = simulate(session, env=env, flags="s")
+    generated, _ = simulate(session, env=env)
     given, _ = simulate(session, random_seed=3)
     assert np.array_equal(generated, given)
 
@@ -123,10 +123,3 @@ def test_seed_and_flag_are_exclusive(session):
     """The seed option and the flag to generate a seed cannot be combined."""
     with pytest.raises(CalledModuleError, match="mutually exclusive"):
         simulate(session, random_seed=1, flags="s")
-
-
-def test_default_seed(session):
-    """Without the seed option or the flag, the seed is 12345."""
-    default, _ = simulate(session)
-    given, _ = simulate(session, random_seed=12345)
-    assert np.array_equal(default, given)
