@@ -65,15 +65,15 @@ def simulate(session, walkers=None, env=None, **kwargs):
 
 def test_same_seed_gives_same_flux(session):
     """Two runs with the same seed give the same sediment flux."""
-    first, _ = simulate(session, random_seed=1)
-    second, _ = simulate(session, random_seed=1)
+    first, _ = simulate(session, seed=1)
+    second, _ = simulate(session, seed=1)
     assert np.array_equal(first, second)
 
 
 def test_different_seeds_give_different_results(session):
     """Runs with different seeds give different fluxes and walker positions."""
-    first_flux, first_walkers = simulate(session, "walkers_seed_1", random_seed=1)
-    second_flux, second_walkers = simulate(session, "walkers_seed_2", random_seed=2)
+    first_flux, first_walkers = simulate(session, "walkers_seed_1", seed=1)
+    second_flux, second_walkers = simulate(session, "walkers_seed_2", seed=2)
     assert not np.array_equal(first_flux, second_flux)
     assert not np.array_equal(first_walkers, second_walkers)
 
@@ -83,17 +83,15 @@ def test_generated_seed_is_the_seed_option(session):
     env = session.env.copy()
     env["GRASS_RANDOM_SEED"] = "3"
     generated, _ = simulate(session, env=env)
-    given, _ = simulate(session, random_seed=3)
+    given, _ = simulate(session, seed=3)
     assert np.array_equal(generated, given)
 
 
 @pytest.mark.parametrize("nprocs", [2, 4])
 def test_walkers_do_not_depend_on_nprocs(session, nprocs):
     """Walkers end at the same positions with any number of threads."""
-    _, serial = simulate(session, f"walkers_{nprocs}_serial", random_seed=5)
-    _, parallel = simulate(
-        session, f"walkers_{nprocs}_parallel", random_seed=5, nprocs=nprocs
-    )
+    _, serial = simulate(session, f"walkers_{nprocs}_serial", seed=5)
+    _, parallel = simulate(session, f"walkers_{nprocs}_parallel", seed=5, nprocs=nprocs)
     assert serial.size
     assert np.array_equal(parallel, serial)
 
@@ -103,23 +101,23 @@ def test_seed_outside_range_is_an_error(session, seed):
     """A seed the generator cannot use is refused, not silently wrapped."""
     # The message is wrapped, so the words may be on separate lines.
     with pytest.raises(CalledModuleError, match=r"outside\s+the\s+range"):
-        simulate(session, random_seed=seed)
+        simulate(session, seed=seed)
 
 
 @pytest.mark.parametrize("seed", ["12abc", "1.5", "1e9", "-", "99999999999999999999"])
 def test_seed_which_is_not_an_integer_is_an_error(session, seed):
     """A seed which the parser lets through but which is not an integer is refused."""
     with pytest.raises(CalledModuleError, match="Invalid random seed"):
-        simulate(session, random_seed=seed)
+        simulate(session, seed=seed)
 
 
 @pytest.mark.parametrize("seed", [-(2**31), 2**32 - 1])
 def test_seed_at_range_limit_is_accepted(session, seed):
     """The lowest and the highest seed the generator can use are accepted."""
-    simulate(session, random_seed=seed)
+    simulate(session, seed=seed)
 
 
 def test_seed_and_flag_are_exclusive(session):
     """The seed option and the flag to generate a seed cannot be combined."""
     with pytest.raises(CalledModuleError, match="mutually exclusive"):
-        simulate(session, random_seed=1, flags="s")
+        simulate(session, seed=1, flags="s")
