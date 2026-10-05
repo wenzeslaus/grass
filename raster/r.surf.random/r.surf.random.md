@@ -3,8 +3,9 @@
 **r.surf.random** produces a raster map layer of uniform random deviates
 whose range can be expressed by the user. It is essentially the same as
 *r.surf.gauss*, but uses a linear random number generator instead. It
-uses the random number generator drand48() or rand(), depending on the
-user's platform.
+uses the random number generator of drand48(), so the same **seed** in
+the same computational region gives the same map, as in earlier
+versions. The **seed** must be between -2147483648 and 4294967295.
 
 ## EXAMPLE
 
