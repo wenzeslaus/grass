@@ -93,6 +93,10 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     for (int lw = 0; lw < sim->max_walkers; lw++)
         G_random_state_for_unit(&sim->w[lw].state, &layout, lw);
 
+    /* The walkers add their weights here during a step, and the sums are
+     * moved to gama after the walker loop. */
+    double *added = G_calloc((size_t)geometry->my * geometry->mx, sizeof(double));
+
     for (iblock = 1; iblock <= nblock; iblock++) {
         int lw = 0;
         double walkwe = 0.;
@@ -248,16 +252,16 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                                 continue;
 
                             /* Add walker weight to water depth or
-                             * concentration. The captured sum includes the
-                             * weights added before on any thread. */
-                            double gama;
-#pragma omp atomic capture
-                            {
-                                grids->gama[k][l] += addac * sim->w[lw].m;
-                                gama = grids->gama[k][l];
-                            }
+                             * concentration. */
+                            double weight = addac * sim->w[lw].m;
+#pragma omp atomic update
+                            added[(size_t)k * geometry->mx + l] += weight;
 
-                            double d1 = gama * conn;
+                            /* The walker sees gama of the previous iterations
+                             * and its own weight, but not the weights of other
+                             * walkers in this iteration, which would make the
+                             * result depend on the order of the walkers. */
+                            double d1 = (grids->gama[k][l] + weight) * conn;
                             double gaux, gauy;
                             gasdev(&sim->w[lw].state, &gaux, &gauy);
                             double hhc = pow(d1, 3. / 5.);
@@ -330,6 +334,18 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                         }
                     }
                 } /* lw loop */
+
+                /* The walker loop ends with an implicit barrier, so all
+                 * weights of this step are added before they go to gama. */
+#pragma omp for schedule(static)
+                for (k = 0; k < geometry->my; k++) {
+                    for (l = 0; l < geometry->mx; l++) {
+                        size_t cell = (size_t)k * geometry->mx + l;
+
+                        grids->gama[k][l] += added[cell];
+                        added[cell] = 0;
+                    }
+                }
             }
             /* Total remaining walkers for this iteration */
             sim->nwalka = nwalka;
@@ -478,6 +494,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             erod(grids->gama, setup, geometry, grids);
     }
     /*                       ........ end of iblock loop */
+    G_free(added);
 
     // Finalize the err map as the sample standard deviation of the per-block
     // estimators of the final field: sqrt(|E[X^2] - E[X]^2|), where each X
