@@ -21,15 +21,13 @@
  * read with strtoll(); an answer which is not an integer, has anything
  * after the integer, or is outside the range from -2^31 to 2^32 - 1 is a
  * fatal error naming the option. Leading white space and a sign are
- * allowed. The parser checks an integer option only loosely, so a tool
- * cannot rely on it for these checks.
+ * allowed. The parser itself checks an integer option only loosely, so
+ * these checks are needed.
  *
- * The result is a seed G_random_state_from_seed(), the layout functions
- * and G_srand48() accept. The function neither prints the seed nor
- * records it; the tool records it, for example in the history of its
- * output, so that the computation can be repeated. What the tool does
- * without the option, such as generating a seed with
- * G_random_generate_seed(), is the tool's decision.
+ * The result is a seed accepted by G_random_state_from_seed(), the layout
+ * functions and G_srand48(). The function does nothing beyond parsing and
+ * checking: recording the seed, or generating one when the option is not
+ * given, is up to the tool.
  *
  * \param seed the seed option, usually G_OPT_M_SEED, whatever its key
  *
