@@ -135,10 +135,8 @@ def test_depth_does_not_depend_on_nprocs_below_hmax(session, nprocs):
     Above hmax a walker reacts to the depth the walkers before it in the
     same step left, and that order depends on the threads.
     """
-    serial = simulate_depth(session, random_seed=5, **NO_DEPTH_FEEDBACK)
-    parallel = simulate_depth(
-        session, random_seed=5, nprocs=nprocs, **NO_DEPTH_FEEDBACK
-    )
+    serial = simulate_depth(session, seed=5, **NO_DEPTH_FEEDBACK)
+    parallel = simulate_depth(session, seed=5, nprocs=nprocs, **NO_DEPTH_FEEDBACK)
     assert np.array_equal(parallel, serial)
 
 
