@@ -2,8 +2,6 @@
 #define GRASS_CALCDEFS_H
 
 extern void calc_init(int);
-extern void pre_exec(void);
-extern void post_exec(void);
 
 /* Set the function which gives rand() the generator state to draw from.
  * It must return the calling thread's state, which the tool places at the
