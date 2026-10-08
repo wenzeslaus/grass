@@ -121,6 +121,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     for (iblock = 1; iblock <= nblock; iblock++) {
         int lw = 0;
         double walkwe = 0.;
+        double max_weight = 0.;
 
         G_message(_("Processing block %d of %d"), iblock, nblock);
 
@@ -136,6 +137,9 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                     double gen = sim->rwalk * grids->si[k][l] / setup->sisum;
                     int mgen = (int)gen;
                     double wei = gen / (double)(mgen + 1);
+
+                    if (wei > max_weight)
+                        max_weight = wei;
 
                     for (int iw = 1; iw <= mgen + 1;
                          iw++) { /* assign walkers */
@@ -195,11 +199,18 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             nwalka = 0;
             sim->nstack = 0;
 
-            double max_weight = 0.;
+            /* In r.sim.water, weights only decrease after their creation,
+             * so the largest weight at creation bounds them in every step.
+             * r.sim.sediment multiplies weights by sigma, which exceeds 1
+             * when the detachment and transport coefficients have opposite
+             * signs, so there the largest weight is found again each step. */
+            if (inputs->wdepth != NULL) {
+                max_weight = 0.;
 #pragma omp parallel for schedule(static) reduction(max : max_weight)
-            for (int iw = 0; iw < sim->nwalk; iw++) {
-                if (sim->w[iw].m > max_weight)
-                    max_weight = sim->w[iw].m;
+                for (int iw = 0; iw < sim->nwalk; iw++) {
+                    if (sim->w[iw].m > max_weight)
+                        max_weight = sim->w[iw].m;
+                }
             }
             double unit = fixed_point_unit(addac * max_weight, sim->nwalk);
 
