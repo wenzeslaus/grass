@@ -1,3 +1,5 @@
+import os
+
 import grass.script as gs
 
 DEFAULT_KEYS = [
@@ -7,6 +9,15 @@ DEFAULT_KEYS = [
     "build_date",
     "build_platform",
     "build_off_t_size",
+]
+
+PROJ_RUNTIME_KEYS = [
+    "proj_runtime",
+    "proj_db",
+    "proj_db_layout",
+    "proj_db_epsg",
+    "proj_db_proj",
+    "proj_searchpath",
 ]
 
 
@@ -115,6 +126,7 @@ def test_e_flag_shell(session):
     expected_keys = [
         *DEFAULT_KEYS,
         "proj",
+        *PROJ_RUNTIME_KEYS,
         "gdal",
         "geos",
         "sqlite",
@@ -228,6 +240,7 @@ def test_g_version_e_flag_json(session):
     expected_keys = [
         *DEFAULT_KEYS,
         "proj",
+        *PROJ_RUNTIME_KEYS,
         "gdal",
         "geos",
         "sqlite",
@@ -236,3 +249,21 @@ def test_g_version_e_flag_json(session):
         assert key in output.keys(), (
             f"Expected key '{key}' in g.version -e json output, but it was not found."
         )
+
+
+def test_e_flag_proj_runtime_values(session):
+    """Test that g.version -e reports a usable PROJ runtime and database."""
+    output = gs.parse_command("g.version", flags="e", format="json", env=session.env)
+    assert output["proj_runtime"].count(".") == 2, (
+        "Expected a dotted PROJ runtime version, got %s" % output["proj_runtime"]
+    )
+    # A session created with an EPSG code needs a working proj.db,
+    # so the database must have been found.
+    assert output["proj_db"], "Expected a path to proj.db"
+    assert output["proj_db"].endswith("proj.db")
+    assert output["proj_db_layout"].count(".") == 1
+    assert output["proj_db_epsg"]
+    assert output["proj_db_proj"]
+    assert output["proj_db"].startswith(
+        tuple(output["proj_searchpath"].split(":"))
+    ) or (os.name == "nt"), "proj.db should be in one of the search path entries"

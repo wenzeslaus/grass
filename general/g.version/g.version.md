@@ -16,7 +16,15 @@ printed by **-r** flag.
 
 Version numbers of additional libraries like [PROJ](https://proj.org/),
 [GDAL/OGR](https://gdal.org/) or [GEOS](https://trac.osgeo.org/geos) are
-printed by **-e** flag.
+printed by **-e** flag. For PROJ, the flag also reports the library and
+the database (`proj.db`) which are actually in use at runtime
+(`proj_runtime`, `proj_db`, `proj_db_layout`, `proj_db_epsg`,
+`proj_db_proj`) together with the directories PROJ searched
+(`proj_searchpath`). These can differ from the compile-time version when
+another package in the same environment points the `PROJ_DATA`
+environment variable to its own copy of `proj.db`, which is a common
+cause of errors mentioning `proj.db`. An empty `proj_db` (`null` in JSON)
+means PROJ could not find its database at all.
 
 See also function `version()` from [Python Scripting
 Library](https://grasswiki.osgeo.org/wiki/GRASS_Python_Scripting_Library).
@@ -68,6 +76,12 @@ libgis date: 2024-04-27T09:38:49+00:00
     libgis_revision=c9e8576cf
     libgis_date=2024-04-27T09:38:49+00:00
     proj=8.2.1
+    proj_runtime=8.2.1
+    proj_db=/usr/share/proj/proj.db
+    proj_db_layout=1.2
+    proj_db_epsg=v10.054
+    proj_db_proj=8.2.1
+    proj_searchpath=/home/user/.local/share/proj:/usr/share/proj
     gdal=3.4.3
     geos=3.9.2
     sqlite=3.36.0
@@ -107,6 +121,12 @@ libgis date: 2024-04-27T09:38:49+00:00
         "libgis_revision": "c9e8576cf",
         "libgis_date": "2024-04-27T09:38:49+00:00",
         "proj": "8.2.1",
+        "proj_runtime": "8.2.1",
+        "proj_db": "/usr/share/proj/proj.db",
+        "proj_db_layout": "1.2",
+        "proj_db_epsg": "v10.054",
+        "proj_db_proj": "8.2.1",
+        "proj_searchpath": "/home/user/.local/share/proj:/usr/share/proj",
         "gdal": "3.4.3",
         "geos": "3.9.2",
         "sqlite": "3.36.0"
