@@ -292,6 +292,108 @@ int main(int argc, char *argv[])
             break;
         }
         G_free(proj);
+
+        /* PROJ runtime information: the library and the database (proj.db)
+         * actually in use. These can differ from the compile-time version
+         * above, e.g., when another package in the same environment sets
+         * PROJ_DATA to its own copy of proj.db. */
+        {
+            PJ_INFO proj_runtime = proj_info();
+            const char *proj_db = proj_context_get_database_path(NULL);
+            char *db_path = NULL;
+            char *db_layout = NULL;
+            char *db_epsg = NULL;
+            char *db_proj = NULL;
+
+            if (proj_db) {
+                const char *value;
+                const char *major;
+                const char *minor;
+
+                /* Pointers returned by PROJ are only valid until the next
+                 * call, so copy right away. */
+                db_path = G_store(proj_db);
+                major = proj_context_get_database_metadata(
+                    NULL, "DATABASE.LAYOUT.VERSION.MAJOR");
+                if (major) {
+                    char *major_copy = G_store(major);
+
+                    minor = proj_context_get_database_metadata(
+                        NULL, "DATABASE.LAYOUT.VERSION.MINOR");
+                    G_asprintf(&db_layout, "%s.%s", major_copy,
+                               minor ? minor : "");
+                    G_free(major_copy);
+                }
+                value =
+                    proj_context_get_database_metadata(NULL, "EPSG.VERSION");
+                if (value)
+                    db_epsg = G_store(value);
+                value =
+                    proj_context_get_database_metadata(NULL, "PROJ.VERSION");
+                if (value)
+                    db_proj = G_store(value);
+            }
+
+            switch (format) {
+            case SHELL:
+                fprintf(stdout, "proj_runtime=%s\n", proj_runtime.version);
+                fprintf(stdout, "proj_db=%s\n", db_path ? db_path : "");
+                fprintf(stdout, "proj_db_layout=%s\n",
+                        db_layout ? db_layout : "");
+                fprintf(stdout, "proj_db_epsg=%s\n", db_epsg ? db_epsg : "");
+                fprintf(stdout, "proj_db_proj=%s\n", db_proj ? db_proj : "");
+                fprintf(stdout, "proj_searchpath=%s\n",
+                        proj_runtime.searchpath);
+                break;
+            case PLAIN:
+                fprintf(stdout, "PROJ runtime: %s\n", proj_runtime.version);
+                if (db_path) {
+                    fprintf(stdout, "PROJ database: %s\n", db_path);
+                    fprintf(stdout,
+                            "PROJ database layout: %s, EPSG: %s, built with "
+                            "PROJ: %s\n",
+                            db_layout ? db_layout : "?",
+                            db_epsg ? db_epsg : "?", db_proj ? db_proj : "?");
+                }
+                else {
+                    fprintf(stdout, "%s\n",
+                            _("PROJ database: not found (set PROJ_DATA to "
+                              "the directory containing proj.db)"));
+                }
+                fprintf(stdout, "PROJ search path: %s\n",
+                        proj_runtime.searchpath);
+                break;
+            case JSON:
+                G_json_object_set_string(root_object, "proj_runtime",
+                                         proj_runtime.version);
+                if (db_path)
+                    G_json_object_set_string(root_object, "proj_db", db_path);
+                else
+                    G_json_object_set_null(root_object, "proj_db");
+                if (db_layout)
+                    G_json_object_set_string(root_object, "proj_db_layout",
+                                             db_layout);
+                else
+                    G_json_object_set_null(root_object, "proj_db_layout");
+                if (db_epsg)
+                    G_json_object_set_string(root_object, "proj_db_epsg",
+                                             db_epsg);
+                else
+                    G_json_object_set_null(root_object, "proj_db_epsg");
+                if (db_proj)
+                    G_json_object_set_string(root_object, "proj_db_proj",
+                                             db_proj);
+                else
+                    G_json_object_set_null(root_object, "proj_db_proj");
+                G_json_object_set_string(root_object, "proj_searchpath",
+                                         proj_runtime.searchpath);
+                break;
+            }
+            G_free(db_path);
+            G_free(db_layout);
+            G_free(db_epsg);
+            G_free(db_proj);
+        }
         switch (format) {
         case SHELL:
             fprintf(stdout, "gdal=%s\n", GDAL_RELEASE_NAME);
