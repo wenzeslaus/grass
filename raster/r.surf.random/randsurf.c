@@ -42,9 +42,7 @@ int randsurf(char *out, double min, double max, int int_map,
         G_random_state_for_unit(&state, layout, row_count);
         for (col_count = 0; col_count < ncols; col_count++) {
             if (int_map) {
-                /* The value G_mrand48() gave, cast to unsigned int. */
-                unsigned int x =
-                    (unsigned int)(G_random_double(&state) * 4294967296.0);
+                unsigned int x = G_random_uint32(&state);
 
                 *(row_out_C + col_count) =
                     (CELL)(min + x % (unsigned int)(max + 1 - min));
