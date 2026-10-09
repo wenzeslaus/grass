@@ -367,12 +367,22 @@ double G_drand48(void)
 #endif
 }
 
-/* Advance a generator of the program's own by one step. The
- * multiplication may wrap around at 2^64; that does not change the result
- * modulo 2^48. */
+/* Multiply two values modulo 2^48. The unsigned multiplication may wrap
+ * around modulo 2^64. This is intentional and does not change the result:
+ * since 2^48 divides 2^64, masking the wrapped product to 48 bits gives
+ * the same result as computing the full product modulo 2^48. */
+static uint64_t mul48(uint64_t a, uint64_t b)
+{
+    /* coverity[integer_overflow] */
+    return (a * b) & MASK48;
+}
+
+/* Advance a generator of the program's own by one step. All generator
+ * arithmetic is modulo 2^48; mul48() performs multiplication with
+ * intentional unsigned wraparound as described above. */
 static uint64_t lcg_step(uint64_t x)
 {
-    return (LCG_A * x + LCG_B) & MASK48;
+    return (mul48(LCG_A, x) + LCG_B) & MASK48;
 }
 
 /* Turn a seed into a generator state the way G_srand48() does: only the
@@ -386,7 +396,8 @@ static uint64_t lcg_seed(int64_t seed)
 /* Advance the generator by an arbitrary number of steps without taking
  * them one at a time. One step is the affine map x -> a * x + c, and
  * composing two such maps gives another, so the map for `steps` steps is
- * built by repeated squaring, as an integer power would be. */
+ * built by repeated squaring, as an integer power would be. All
+ * multiplication is modulo 2^48; see mul48(). */
 static uint64_t lcg_jump(uint64_t x, uint64_t steps)
 {
     uint64_t a_total = 1, c_total = 0; /* the identity map */
@@ -394,16 +405,16 @@ static uint64_t lcg_jump(uint64_t x, uint64_t steps)
 
     while (steps) {
         if (steps & 1) {
-            c_total = (a * c_total + c) & MASK48;
-            a_total = (a * a_total) & MASK48;
+            c_total = (mul48(a, c_total) + c) & MASK48;
+            a_total = mul48(a, a_total);
         }
         /* Square the map, so a and c then describe twice as many steps. */
-        c = (a * c + c) & MASK48;
-        a = (a * a) & MASK48;
+        c = (mul48(a, c) + c) & MASK48;
+        a = mul48(a, a);
         steps >>= 1;
     }
 
-    return (a_total * x + c_total) & MASK48;
+    return (mul48(a_total, x) + c_total) & MASK48;
 }
 
 /* The generator tells seeds apart by their low 32 bits only. Seeds read
@@ -773,6 +784,64 @@ double G_random_double(struct G_random_state *state)
     state->state = lcg_step(state->state);
     /* The state is below 2^53, so the conversion to double is exact. */
     return (double)state->state / 281474976710656.0; /* 2^48 */
+}
+
+/*!
+ * \brief Generate an integer in the range [0, 2^32) from a generator of
+ *        the program's own
+ *
+ * The high 32 bits of the state after the draw, which is also the floor
+ * of 2^32 times what G_random_double() returns for the same draw.
+ * G_random_int32() reads the same bits as a signed value and
+ * G_random_int() keeps their top 31, so the three are one draw read in
+ * three ways.
+ *
+ * Thread-safe as long as no two threads share a state.
+ *
+ * \param[in,out] state a seeded generator state
+ *
+ * \return the generated value
+ */
+uint32_t G_random_uint32(struct G_random_state *state)
+{
+    state->state = lcg_step(state->state);
+    return (uint32_t)(state->state >> 16);
+}
+
+/*!
+ * \brief Generate an integer in the range [-2^31, 2^31) from a generator
+ *        of the program's own
+ *
+ * The bits of G_random_uint32() read as a signed value.
+ *
+ * Thread-safe as long as no two threads share a state.
+ *
+ * \param[in,out] state a seeded generator state
+ *
+ * \return the generated value
+ */
+int32_t G_random_int32(struct G_random_state *state)
+{
+    return (int32_t)G_random_uint32(state);
+}
+
+/*!
+ * \brief Generate a non-negative integer from a generator of the
+ *        program's own
+ *
+ * A value in the range [0, 2^31), which every int holds, for uses such
+ * as an index or a value modulo n. It is the top 31 bits of
+ * G_random_uint32().
+ *
+ * Thread-safe as long as no two threads share a state.
+ *
+ * \param[in,out] state a seeded generator state
+ *
+ * \return the generated value
+ */
+int G_random_int(struct G_random_state *state)
+{
+    return (int)(G_random_uint32(state) >> 1);
 }
 
 /*
