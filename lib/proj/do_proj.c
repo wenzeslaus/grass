@@ -19,6 +19,16 @@
 #include <grass/gprojects.h>
 #include <grass/glocale.h>
 
+/* Warn about a failed proj_create() together with the PROJ database state,
+ * which is the most common reason for the failure. */
+static void warn_proj_create_failed(const char *def)
+{
+    char *db_status = GPJ_proj_db_status();
+
+    G_warning(_("proj_create() failed for '%s'. %s"), def, db_status);
+    G_free(db_status);
+}
+
 /* a couple defines to simplify reading the function */
 #define MULTIPLY_LOOP(x, y, c, m) \
     do {                          \
@@ -93,7 +103,7 @@ int get_pj_area(const struct pj_info *iproj, double *xmin, double *xmax,
         tproj.pj = proj_create(PJ_DEFAULT_CTX, tproj.def);
 
         if (tproj.pj == NULL) {
-            G_warning(_("proj_create() failed for '%s'"), tproj.def);
+            warn_proj_create_failed(tproj.def);
             G_free(indef);
             G_free(tproj.def);
             proj_destroy(tproj.pj);
@@ -452,7 +462,7 @@ int GPJ_init_transform(const struct pj_info *info_in,
         /* create a pj from user-defined transformation pipeline */
         info_trans->pj = proj_create(PJ_DEFAULT_CTX, info_trans->def);
         if (info_trans->pj == NULL) {
-            G_warning(_("proj_create() failed for '%s'"), info_trans->def);
+            warn_proj_create_failed(info_trans->def);
 
             return -1;
         }
@@ -503,7 +513,7 @@ int GPJ_init_transform(const struct pj_info *info_in,
         G_asprintf(&(info_trans->def), "+proj=pipeline +step +inv %s", indef);
         info_trans->pj = proj_create(PJ_DEFAULT_CTX, info_trans->def);
         if (info_trans->pj == NULL) {
-            G_warning(_("proj_create() failed for '%s'"), info_trans->def);
+            warn_proj_create_failed(info_trans->def);
             G_free(indef);
 
             return -1;
@@ -830,7 +840,7 @@ int GPJ_init_transform(const struct pj_info *info_in,
         G_free(outdef);
     }
     if (info_trans->pj == NULL) {
-        G_warning(_("proj_create() failed for '%s'"), info_trans->def);
+        warn_proj_create_failed(info_trans->def);
 
         return -1;
     }

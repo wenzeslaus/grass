@@ -50,6 +50,9 @@ void GPJ_free_datum(struct gpj_datum *);
 struct gpj_datum_transform_list *GPJ_get_datum_transform_by_name(const char *);
 void GPJ_free_datum_transform(struct gpj_datum_transform_list *);
 
+/* db_info.c */
+char *GPJ_proj_db_status(void);
+
 /* ellipse.c */
 int GPJ_get_ellipsoid_by_name(const char *, struct gpj_ellps *);
 int GPJ_get_ellipsoid_params(double *, double *, double *);
