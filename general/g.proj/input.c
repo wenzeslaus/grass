@@ -274,8 +274,12 @@ int input_srid(char *srid)
 
     /* GDAL alternative: OSRSetFromUserInput() */
     obj = proj_create(NULL, srid);
-    if (!obj)
-        G_fatal_error(_("SRID <%s> not recognized by PROJ"), srid);
+    if (!obj) {
+        char *db_status = GPJ_proj_db_status();
+
+        G_fatal_error(_("SRID <%s> not recognized by PROJ. %s"), srid,
+                      db_status);
+    }
 
     tmpwkt = proj_as_wkt(NULL, obj, PJ_WKT2_LATEST, NULL);
     hSRS = OSRNewSpatialReference(tmpwkt);

@@ -3,8 +3,7 @@
 #include <grass/gis.h>
 #include <grass/glocale.h>
 #include <grass/config.h>
-
-#include <proj.h>
+#include <grass/gprojects.h>
 
 char *get_authority_names(void)
 {
@@ -13,12 +12,12 @@ char *get_authority_names(void)
     PROJ_STRING_LIST authlist = proj_get_authorities_from_database(NULL);
 
     if (!authlist) {
-        /* PROJ has already reported the reason on stderr, typically
-         * "Cannot find proj.db" or "Open of <path> failed". */
+        char *db_status = GPJ_proj_db_status();
+
         G_fatal_error(
             _("Unable to get the list of authorities from the PROJ database. "
-              "Check the PROJ installation or set the PROJ_DATA environment "
-              "variable to the directory containing proj.db."));
+              "%s"),
+            db_status);
     }
 
     len = 0;

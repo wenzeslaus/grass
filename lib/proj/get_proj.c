@@ -64,6 +64,7 @@ int pj_get_kv(struct pj_info *info, const struct Key_Value *in_proj_keys,
     char buffa[300], factbuff[50];
     int deflen;
     char proj_in[250], *datum, *params;
+    char *db_status;
 
     PJ *pj;
     PJ_CONTEXT *pjc;
@@ -247,7 +248,9 @@ int pj_get_kv(struct pj_info *info, const struct Key_Value *in_proj_keys,
             snprintf(err, sizeof(err), " +%s", opt_in[i]);
             strcat(buffa, err);
         }
-        G_warning("%s", buffa);
+        db_status = GPJ_proj_db_status();
+        G_warning("%s %s", buffa, db_status);
+        G_free(db_status);
         return -1;
     }
 
@@ -393,8 +396,11 @@ int pj_get_string(struct pj_info *info, char *str)
     alloc_options("type=crs");
     pjc = proj_context_create();
     if (!(pj = proj_create_argv(pjc, nopt, opt_in))) {
-        G_warning(_("Unable to initialize pj cause: %s"),
-                  proj_errno_string(proj_context_errno(pjc)));
+        char *db_status = GPJ_proj_db_status();
+
+        G_warning(_("Unable to initialize pj cause: %s. %s"),
+                  proj_errno_string(proj_context_errno(pjc)), db_status);
+        G_free(db_status);
         return -1;
     }
 

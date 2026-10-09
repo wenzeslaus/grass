@@ -254,9 +254,13 @@ void print_wkt(int esristyle, int dontprettify)
         PJ *obj;
 
         obj = proj_create(NULL, projsrid);
-        if (!obj)
-            G_fatal_error(_("Unable to create PROJ definition from srid <%s>"),
-                          projsrid);
+        if (!obj) {
+            char *db_status = GPJ_proj_db_status();
+
+            G_fatal_error(
+                _("Unable to create PROJ definition from srid <%s>. %s"),
+                projsrid, db_status);
+        }
         const char *tmpwkt = proj_as_wkt(NULL, obj, PJ_WKT2_LATEST, NULL);
         hSRS = OSRNewSpatialReference(tmpwkt);
         OSRExportToWktEx(hSRS, &outwkt, (const char **)papszOptions);
