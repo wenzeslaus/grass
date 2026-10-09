@@ -790,17 +790,15 @@ double G_random_double(struct G_random_state *state)
  * \brief Generate an integer in the range [0, 2^32) from a generator of
  *        the program's own
  *
- * The high 32 bits of the generator state after the draw: the bits
- * G_mrand48() returns, read as unsigned, and the floor of 2^32 times
- * what G_random_double() returns for the same draw. G_random_int32()
- * reads the same bits as a signed value and G_random_int() keeps their
- * top 31, so the three functions are one draw taken three ways.
+ * The high 32 bits of the state after the draw, which is also the floor
+ * of 2^32 times what G_random_double() returns for the same draw.
+ * G_random_int32() reads the same bits as a signed value and
+ * G_random_int() keeps their top 31, so the three are one draw read in
+ * three ways.
  *
  * Thread-safe as long as no two threads share a state.
  *
- * \param[in,out] state generator state, set with
- *                G_random_state_from_seed(), G_random_state_for_unit() or
- *                G_random_state_for_batch()
+ * \param[in,out] state a seeded generator state
  *
  * \return the generated value
  */
@@ -814,14 +812,11 @@ uint32_t G_random_uint32(struct G_random_state *state)
  * \brief Generate an integer in the range [-2^31, 2^31) from a generator
  *        of the program's own
  *
- * The value G_mrand48() returns for the same draw: the bits of
- * G_random_uint32() read as a signed value.
+ * The bits of G_random_uint32() read as a signed value.
  *
  * Thread-safe as long as no two threads share a state.
  *
- * \param[in,out] state generator state, set with
- *                G_random_state_from_seed(), G_random_state_for_unit() or
- *                G_random_state_for_batch()
+ * \param[in,out] state a seeded generator state
  *
  * \return the generated value
  */
@@ -835,14 +830,12 @@ int32_t G_random_int32(struct G_random_state *state)
  *        program's own
  *
  * A value in the range [0, 2^31), which every int holds, for uses such
- * as a random index or a value modulo n. It is what G_lrand48() returns
- * for the same draw: the top 31 bits of G_random_uint32().
+ * as an index or a value modulo n. It is the top 31 bits of
+ * G_random_uint32().
  *
  * Thread-safe as long as no two threads share a state.
  *
- * \param[in,out] state generator state, set with
- *                G_random_state_from_seed(), G_random_state_for_unit() or
- *                G_random_state_for_batch()
+ * \param[in,out] state a seeded generator state
  *
  * \return the generated value
  */
