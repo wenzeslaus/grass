@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from grass.app import resource_paths
-from grass.app.runtime import RuntimePaths
+from grass.app.runtime import RuntimePaths, set_proj_data_path
 from grass.script.setup import get_install_path
 
 
@@ -201,3 +201,43 @@ def test_passing_non_existent_path(path_type):
     This is a non-FHS oriented test.
     """
     assert get_install_path(path_type("/does/not/exist")) == get_install_path()
+
+
+def test_proj_data_set_from_projshare(tmp_path):
+    """PROJ_DATA is set when it is unset and proj.db exists at the path"""
+    (tmp_path / "proj.db").write_bytes(b"")
+    env = {}
+    set_proj_data_path(tmp_path, env=env)
+    assert env == {"PROJ_DATA": str(tmp_path)}
+
+
+def test_proj_data_set_from_projshare_str(tmp_path):
+    """The path is accepted as a string, too"""
+    (tmp_path / "proj.db").write_bytes(b"")
+    env = {}
+    set_proj_data_path(str(tmp_path), env=env)
+    assert env == {"PROJ_DATA": str(tmp_path)}
+
+
+@pytest.mark.parametrize("variable", ["PROJ_DATA", "PROJ_LIB"])
+def test_proj_data_existing_value_is_respected(tmp_path, variable):
+    """A PROJ variable set by the user or the platform is left alone"""
+    (tmp_path / "proj.db").write_bytes(b"")
+    env = {variable: "/elsewhere"}
+    set_proj_data_path(tmp_path, env=env)
+    assert env == {variable: "/elsewhere"}
+
+
+def test_proj_data_not_set_without_proj_db(tmp_path):
+    """A build-time path without proj.db is not used"""
+    env = {}
+    set_proj_data_path(tmp_path, env=env)
+    assert env == {}
+
+
+@pytest.mark.parametrize("path", [None, ""])
+def test_proj_data_not_set_without_path(path):
+    """Missing build-time path is tolerated"""
+    env = {}
+    set_proj_data_path(path, env=env)
+    assert env == {}

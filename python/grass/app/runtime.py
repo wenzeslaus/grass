@@ -353,6 +353,34 @@ def set_path_to_python_executable(env):
         env["GRASS_PYTHON"] = sys.executable
 
 
+def set_proj_data_path(config_projshare_path, env):
+    """Point PROJ to the proj.db GRASS was built against if nothing else does
+
+    PROJ finds its resource directory, which contains proj.db, through the
+    PROJ_DATA environment variable (PROJ_LIB before PROJ 9.1), then through
+    a path relative to the PROJ library, and finally through a path compiled
+    into the library. The last two are unreliable in relocated installations,
+    e.g., in a conda environment which was not activated (the activation
+    script is what normally sets PROJ_DATA). GRASS tools then fail with
+    "Cannot find proj.db" or "Open of ... failed".
+
+    GRASS knows where proj.db was when it was built, so when neither
+    PROJ_DATA nor PROJ_LIB is set and proj.db is still there, set PROJ_DATA
+    to that directory. A variable set by the user or the platform wins.
+    The path is left alone when proj.db is not there, so a broken
+    build-time path never replaces PROJ's own detection.
+
+    :param config_projshare_path: PROJ data directory from build time
+    :param env: environment to modify (e.g., os.environ)
+    """
+    if env.get("PROJ_DATA") or env.get("PROJ_LIB"):
+        return
+    if not config_projshare_path:
+        return
+    if Path(config_projshare_path, "proj.db").is_file():
+        env["PROJ_DATA"] = os.fspath(config_projshare_path)
+
+
 def set_defaults(config_projshare_path):
     """Set paths or commands for dependencies and auxiliary utilities"""
     # GRASS_PAGER
@@ -377,6 +405,9 @@ def set_defaults(config_projshare_path):
     # GRASS_PROJSHARE
     if not os.getenv("GRASS_PROJSHARE") and config_projshare_path:
         os.environ["GRASS_PROJSHARE"] = config_projshare_path
+
+    # PROJ_DATA
+    set_proj_data_path(config_projshare_path, env=os.environ)
 
 
 def set_display_defaults():
