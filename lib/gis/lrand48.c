@@ -786,6 +786,71 @@ double G_random_double(struct G_random_state *state)
     return (double)state->state / 281474976710656.0; /* 2^48 */
 }
 
+/*!
+ * \brief Generate an integer in the range [0, 2^32) from a generator of
+ *        the program's own
+ *
+ * The high 32 bits of the generator state after the draw: the bits
+ * G_mrand48() returns, read as unsigned, and the floor of 2^32 times
+ * what G_random_double() returns for the same draw. G_random_int32()
+ * reads the same bits as a signed value and G_random_int() keeps their
+ * top 31, so the three functions are one draw taken three ways.
+ *
+ * Thread-safe as long as no two threads share a state.
+ *
+ * \param[in,out] state generator state, set with
+ *                G_random_state_from_seed(), G_random_state_for_unit() or
+ *                G_random_state_for_batch()
+ *
+ * \return the generated value
+ */
+uint32_t G_random_uint32(struct G_random_state *state)
+{
+    state->state = lcg_step(state->state);
+    return (uint32_t)(state->state >> 16);
+}
+
+/*!
+ * \brief Generate an integer in the range [-2^31, 2^31) from a generator
+ *        of the program's own
+ *
+ * The value G_mrand48() returns for the same draw: the bits of
+ * G_random_uint32() read as a signed value.
+ *
+ * Thread-safe as long as no two threads share a state.
+ *
+ * \param[in,out] state generator state, set with
+ *                G_random_state_from_seed(), G_random_state_for_unit() or
+ *                G_random_state_for_batch()
+ *
+ * \return the generated value
+ */
+int32_t G_random_int32(struct G_random_state *state)
+{
+    return (int32_t)G_random_uint32(state);
+}
+
+/*!
+ * \brief Generate a non-negative integer from a generator of the
+ *        program's own
+ *
+ * A value in the range [0, 2^31), which every int holds, for uses such
+ * as a random index or a value modulo n. It is what G_lrand48() returns
+ * for the same draw: the top 31 bits of G_random_uint32().
+ *
+ * Thread-safe as long as no two threads share a state.
+ *
+ * \param[in,out] state generator state, set with
+ *                G_random_state_from_seed(), G_random_state_for_unit() or
+ *                G_random_state_for_batch()
+ *
+ * \return the generated value
+ */
+int G_random_int(struct G_random_state *state)
+{
+    return (int)(G_random_uint32(state) >> 1);
+}
+
 /*
 
    Test program
