@@ -12,6 +12,15 @@ char *get_authority_names(void)
     int i, len;
     PROJ_STRING_LIST authlist = proj_get_authorities_from_database(NULL);
 
+    if (!authlist) {
+        /* PROJ has already reported the reason on stderr, typically
+         * "Cannot find proj.db" or "Open of <path> failed". */
+        G_fatal_error(
+            _("Unable to get the list of authorities from the PROJ database. "
+              "Check the PROJ installation or set the PROJ_DATA environment "
+              "variable to the directory containing proj.db."));
+    }
+
     len = 0;
     for (i = 0; authlist[i]; i++) {
         len += strlen(authlist[i]) + 1;
@@ -28,6 +37,7 @@ char *get_authority_names(void)
     else {
         authnames = G_store("");
     }
+    proj_string_list_destroy(authlist);
 
     return authnames;
 }
