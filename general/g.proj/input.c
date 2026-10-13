@@ -274,8 +274,10 @@ int input_srid(char *srid)
 
     /* GDAL alternative: OSRSetFromUserInput() */
     obj = proj_create(NULL, srid);
-    if (!obj)
+    if (!obj) {
+        GPJ_report_db_status();
         G_fatal_error(_("SRID <%s> not recognized by PROJ"), srid);
+    }
 
     tmpwkt = proj_as_wkt(NULL, obj, PJ_WKT2_LATEST, NULL);
     hSRS = OSRNewSpatialReference(tmpwkt);
@@ -329,8 +331,11 @@ int input_epsg(int epsg_num)
     /* SetCSVFilenameHook(GPJ_set_csv_loc); */
 
     hSRS = OSRNewSpatialReference(NULL);
-    if (OSRImportFromEPSG(hSRS, epsg_num) != OGRERR_NONE)
+    if (OSRImportFromEPSG(hSRS, epsg_num) != OGRERR_NONE) {
+        /* GDAL uses its own PROJ context, but with the same search rules */
+        GPJ_report_db_status();
         G_fatal_error(_("Unable to translate EPSG code"));
+    }
 
     /* GRASS proj info + units */
     ret = GPJ_osr_to_grass(&cellhd, &projinfo, &projunits, hSRS, 0);
