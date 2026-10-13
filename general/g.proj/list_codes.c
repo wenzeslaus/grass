@@ -10,7 +10,25 @@ char *get_authority_names(void)
 {
     char *authnames;
     int i, len;
-    PROJ_STRING_LIST authlist = proj_get_authorities_from_database(NULL);
+    PROJ_STRING_LIST authlist;
+    PJ_LOG_LEVEL log_level;
+
+    /* This runs for every g.proj call while the options are defined.
+     * Keep PROJ quiet here; operations which need the database repeat
+     * the lookup and PROJ reports the reason then. PROJ reports the level
+     * without its sign, so a negative PROJ_DEBUG level is restored as
+     * positive, which only makes PROJ more verbose. */
+    log_level = proj_log_level(NULL, PJ_LOG_NONE);
+    authlist = proj_get_authorities_from_database(NULL);
+    proj_log_level(NULL, log_level);
+
+    if (!authlist) {
+        /* PROJ cannot open its database. Leave the option values
+         * unrestricted so that operations which do not need the list
+         * still work. list_codes() reports the error when the list is
+         * actually requested. */
+        return NULL;
+    }
 
     len = 0;
     for (i = 0; authlist[i]; i++) {
@@ -28,6 +46,7 @@ char *get_authority_names(void)
     else {
         authnames = G_store("");
     }
+    proj_string_list_destroy(authlist);
 
     return authnames;
 }
@@ -40,8 +59,22 @@ void list_codes(char *authname)
     crs_cnt = 0;
     proj_crs_info =
         proj_get_crs_info_list_from_database(NULL, authname, NULL, &crs_cnt);
-    if (crs_cnt < 1)
+    if (crs_cnt < 1) {
+        PJ_LOG_LEVEL log_level;
+        const char *db_path;
+
+        /* PROJ has already reported the missing database above. */
+        log_level = proj_log_level(NULL, PJ_LOG_NONE);
+        db_path = proj_context_get_database_path(NULL);
+        proj_log_level(NULL, log_level);
+        if (!db_path)
+            G_fatal_error(
+                _("Unable to list codes because PROJ cannot find its "
+                  "database (proj.db). Check the PROJ installation or set "
+                  "the PROJ_DATA environment variable (PROJ_LIB before "
+                  "PROJ 9.1) to the directory containing proj.db."));
         G_fatal_error(_("No codes found for authority %s"), authname);
+    }
 
     for (i = 0; i < crs_cnt; i++) {
         const char *proj_definition;
