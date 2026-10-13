@@ -35,7 +35,8 @@ int main(int argc, char *argv[])
         *printwkt,          /* Print projection in WKT format           */
         *esristyle,         /* Use ESRI-style WKT format                */
         *dontprettify,      /* Print 'flat' output (no linebreaks)      */
-        *forcedatumtrans;   /* Force override of datumtrans parameters  */
+        *forcedatumtrans,   /* Force override of datumtrans parameters  */
+        *projinstall;       /* Print PROJ installation in use           */
 
     struct Option *location, /* Name of new location to create           */
         *insrid,             /* spatial reference id (auth name + code   */
@@ -72,6 +73,13 @@ int main(int argc, char *argv[])
     printinfo->key = 'p';
     printinfo->guisection = _("Print");
     printinfo->description = _("Print projection information");
+
+    projinstall = G_define_flag();
+    projinstall->key = 'i';
+    projinstall->guisection = _("Print");
+    projinstall->label = _("Print information about the PROJ installation");
+    projinstall->description =
+        _("PROJ version, database (proj.db) and search path in use");
 
     shellinfo = G_define_flag();
     shellinfo->key = 'g';
@@ -225,7 +233,11 @@ int main(int argc, char *argv[])
           "proj4;PROJ.4 style text output;");
     format->guisection = _("Print");
 
-    G_option_exclusive(printinfo, datuminfo, create, NULL);
+    G_option_exclusive(printinfo, datuminfo, create, projinstall, NULL);
+    G_option_excludes(projinstall, shellinfo, printproj4, printwkt, esristyle,
+                      dontprettify, forcedatumtrans, ingeo, inwkt, insrid,
+                      inproj4, inepsg, listcodes, datum, dtrans, location,
+                      NULL);
 
     if (G_parser(argc, argv))
         exit(EXIT_FAILURE);
@@ -246,6 +258,15 @@ int main(int argc, char *argv[])
     }
     else {
         outputFormat = PLAIN;
+    }
+
+    /* PROJ installation does not depend on the current project */
+    if (projinstall->answer) {
+        if (outputFormat != PLAIN && outputFormat != SHELL)
+            G_fatal_error(_("Flag -%c supports only plain and shell format"),
+                          projinstall->key);
+        print_proj_install_info(outputFormat);
+        exit(EXIT_SUCCESS);
     }
 
     if (outputFormat != PLAIN && (!printinfo->answer || shellinfo->answer ||
