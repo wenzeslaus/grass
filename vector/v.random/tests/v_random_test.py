@@ -58,11 +58,7 @@ def test_restrict_to_area(session):
 
 
 def test_2d_points_for_seed(session):
-    """Seed 42 gives the pinned 2D points
-
-    Pinned separately from the 3D points, since how the draws are ordered
-    between the coordinates could change.
-    """
+    """Seed 42 gives the pinned 2D points"""
     tools = Tools(session=session)
     tools.v_random(output="points", npoints=3, seed=42)
 
@@ -81,7 +77,11 @@ def test_2d_points_for_seed(session):
 
 
 def test_points_for_seed(session):
-    """Seed 42 gives the pinned 3D points"""
+    """Seed 42 gives the pinned 3D points
+
+    Pinned separately from the 2D points, since how the draws are ordered
+    between the coordinates could change.
+    """
     tools = Tools(session=session)
     tools.v_random(output="points", npoints=3, seed=42, zmin=10, zmax=120, flags="z")
 
