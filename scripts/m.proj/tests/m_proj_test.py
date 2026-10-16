@@ -40,6 +40,15 @@ def nad83_session(tmp_path_factory):
         yield session
 
 
+@pytest.fixture(scope="module")
+def utm_session(tmp_path_factory):
+    """Active session in a WGS 84 / UTM zone 17N project (EPSG:32617)"""
+    project = tmp_path_factory.mktemp("m_proj") / "utm17n"
+    gs.create_project(project, epsg="32617")
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        yield session
+
+
 def reproject(session, text, **kwargs):
     """Run m.proj on the text and return list of rows of floats"""
     output = Tools(session=session).m_proj(input=StringIO(text), **kwargs).text
@@ -122,11 +131,18 @@ def test_current_project_crs_is_exact(nad83_session):
     assert rows[0][1] == pytest.approx(ITRF_LAT, abs=DEGREE_TOLERANCE)
 
 
-def test_ll_flags_round_trip(nad83_session):
-    """-i and -o convert between LL WGS84 and the current project"""
-    to_project = reproject(nad83_session, f"{LON} {LAT}\n", flags="id")
+def test_ll_flags_round_trip(utm_session):
+    """-i and -o convert between LL WGS84 and the current project
+
+    The project is on WGS 84, so both directions are conversions only.
+    With a datum change, some PROJ versions (e.g., 9.0) select different
+    operations for the two directions and the round trip does not close.
+    """
+    to_project = reproject(utm_session, f"{LON} {LAT}\n", flags="id")
+    assert to_project[0][0] == pytest.approx(UTM_X, abs=UTM_TOLERANCE)
+    assert to_project[0][1] == pytest.approx(UTM_Y, abs=UTM_TOLERANCE)
     back = reproject(
-        nad83_session, f"{to_project[0][0]} {to_project[0][1]}\n", flags="od"
+        utm_session, f"{to_project[0][0]} {to_project[0][1]}\n", flags="od"
     )
     assert back[0][0] == pytest.approx(LON, abs=DEGREE_TOLERANCE)
     assert back[0][1] == pytest.approx(LAT, abs=DEGREE_TOLERANCE)
