@@ -25,6 +25,15 @@ disabled (not recommended).
 *v.proj* supports general datum transformations, making use of the
 *PROJ* coordinate system translation library.
 
+Accurate datum transformations often need transformation grids which
+are not part of PROJ itself. When a grid is missing, PROJ silently uses
+a less accurate operation, possibly without any datum shift. Install
+the grids from [PROJ-data](https://github.com/OSGeo/PROJ-data) or set
+the environment variable `PROJ_NETWORK` to `ON` to let PROJ download
+them on demand (see [PROJ network
+access](https://proj.org/usage/network.html)). *v.proj* prints the
+selected pipeline as a message; the **pipeline** option forces a
+specific one.
 When projecting into a latlon project, east coordinates are wrapped by
 the proj4 library to fit into the range -180,180. This is in most cases
 appropriate, but can cause errors the input vector crosses the datum
