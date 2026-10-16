@@ -407,6 +407,14 @@ PERMANENT
     The default is set to the number of CPUs on the system.
     Setting to '1' effectively disables parallel processing.</dd>
 
+  <dt>PROJ_NETWORK</dt>
+  <dd>[PROJ, r.proj, v.proj]<br>
+    Set to <code>ON</code> to let PROJ download transformation grids on
+    demand instead of using a less accurate transformation when a grid is
+    not installed locally. See
+    <a href="https://proj.org/usage/network.html">PROJ network access</a>
+    and <em><a href="r.proj.html">r.proj</a></em>.</dd>
+
   <dt>TMPDIR, TEMP, TMP</dt>
   <dd>[Various GRASS commands and wxGUI]<br>
   <!-- what about Windows %TEMP% and https://trac.osgeo.org/grass/ticket/560#comment:21 ? -->

@@ -391,6 +391,13 @@ If OpenMP support is enabled this limits the number of threads. The
 default is set to the number of CPUs on the system. Setting to '1'
 effectively disables parallel processing.
 
+PROJ_NETWORK  
+\[PROJ, r.proj, v.proj\]  
+Set to `ON` to let PROJ download transformation grids on demand instead
+of using a less accurate transformation when a grid is not installed
+locally. See [PROJ network access](https://proj.org/usage/network.html)
+and *[r.proj](r.proj.md)*.
+
 TMPDIR, TEMP, TMP  
 \[Various GRASS commands and wxGUI\]  
 The default wxGUI temporary directory is chosen from a
