@@ -5,12 +5,10 @@
 
 Each walker draws from a random number state of its own, set by the seed and
 the walker's number, so its random numbers do not depend on the number of
-threads. Without infiltration, the water depth then does not depend on the
-number of threads either: a walker decides about increased diffusion from the
-depth at the start of the step, and the weights are summed in an order-free
-way. With a large hmax, a walker's path depends only on the slope and its
-random numbers, not on the depth. The elevation is a bowl, so that the walkers
-stay in the region until the end of the simulation.
+threads, and without infiltration neither does the water depth. With a large
+hmax, a walker's path depends only on the slope and its random numbers, not on
+the depth. The elevation is a bowl, so that the walkers stay in the region
+until the end of the simulation.
 """
 
 import os
@@ -132,9 +130,7 @@ def test_seed_and_flag_are_exclusive(session):
 def test_depth_does_not_depend_on_nprocs(session, nprocs):
     """The depth is identical with any number of threads, also above hmax.
 
-    With a low hmax, the depth a walker sees decides about increased
-    diffusion for many walkers, so the depth would differ if a walker saw
-    the weights added by walkers processed before it in the same step.
+    A low hmax makes the depth decide about diffusion for many walkers.
     """
     serial = simulate_depth(session, seed=5, hmax=0.001)
     parallel = simulate_depth(session, seed=5, nprocs=nprocs, hmax=0.001)

@@ -28,20 +28,13 @@
  *
  */
 
-/* Returns the unit for summing walker weights as integers.
- *
- * Floating-point sums depend on the order of the additions, integer sums
- * do not, so the weights of a step are summed as integer multiples of this
- * unit, which makes the sums the same for any order of the walkers. The
- * unit is a power of two, so that dividing by it is exact, and as small as
- * the int64_t range allows for sums of up to count values between 0 and
- * max_value, so that the rounding of each value to the unit is negligible. */
+/* Returns the power-of-two unit for summing weights as integers, which,
+ * unlike floating-point sums, do not depend on the order of the additions.
+ * A sum of count values up to max_value stays below 2^62 units. */
 static double fixed_point_unit(double max_value, int count)
 {
     int exponent;
 
-    /* max_value * count < 2^exponent, so a sum stays below 2^62 units, which
-     * leaves room for each value being rounded up by half a unit. */
     frexp(max_value * count, &exponent);
     return ldexp(1., exponent - 62);
 }
@@ -112,9 +105,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     for (int lw = 0; lw < sim->max_walkers; lw++)
         G_random_state_for_unit(&sim->w[lw].state, &layout, lw);
 
-    /* The walkers add their weights here during a step, as integer
-     * multiples of the unit, and the sums are moved to gama after the walker
-     * loop. */
+    /* Weights added in a step, in units, moved to gama after the step. */
     int64_t *added =
         G_calloc((size_t)geometry->my * geometry->mx, sizeof(int64_t));
 
@@ -199,11 +190,8 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             nwalka = 0;
             sim->nstack = 0;
 
-            /* In r.sim.water, weights only decrease after their creation,
-             * so the largest weight at creation bounds them in every step.
-             * r.sim.sediment multiplies weights by sigma, which exceeds 1
-             * when the detachment and transport coefficients have opposite
-             * signs, so there the largest weight is found again each step. */
+            /* Weights only decrease in r.sim.water, but sigma can increase
+             * them in r.sim.sediment. */
             if (inputs->wdepth != NULL) {
                 max_weight = 0.;
 #pragma omp parallel for schedule(static) reduction(max : max_weight)
@@ -298,10 +286,8 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                             added[(size_t)k * geometry->mx + l] +=
                                 llrint(weight / unit);
 
-                            /* The walker sees gama of the previous iterations
-                             * and its own weight, but not the weights of other
-                             * walkers in this iteration, which would make the
-                             * result depend on the order of the walkers. */
+                            /* Depth at the start of the step plus the own
+                             * weight, independent of the order of walkers. */
                             double d1 = (grids->gama[k][l] + weight) * conn;
                             double gaux, gauy;
                             gasdev(&sim->w[lw].state, &gaux, &gauy);
@@ -376,8 +362,6 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                     }
                 } /* lw loop */
 
-                /* The walker loop ends with an implicit barrier, so all
-                 * weights of this step are added before they go to gama. */
 #pragma omp for schedule(static)
                 for (k = 0; k < geometry->my; k++) {
                     for (l = 0; l < geometry->mx; l++) {
