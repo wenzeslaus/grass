@@ -1,3 +1,8 @@
+import sqlite3
+from pathlib import Path
+
+import pytest
+
 import grass.script as gs
 
 DEFAULT_KEYS = [
@@ -7,6 +12,11 @@ DEFAULT_KEYS = [
     "build_date",
     "build_platform",
     "build_off_t_size",
+]
+
+PROJ_RUNTIME_KEYS = [
+    "proj_runtime",
+    "proj_db",
 ]
 
 
@@ -115,6 +125,7 @@ def test_e_flag_shell(session):
     expected_keys = [
         *DEFAULT_KEYS,
         "proj",
+        *PROJ_RUNTIME_KEYS,
         "gdal",
         "geos",
         "sqlite",
@@ -228,6 +239,7 @@ def test_g_version_e_flag_json(session):
     expected_keys = [
         *DEFAULT_KEYS,
         "proj",
+        *PROJ_RUNTIME_KEYS,
         "gdal",
         "geos",
         "sqlite",
@@ -236,3 +248,44 @@ def test_g_version_e_flag_json(session):
         assert key in output.keys(), (
             f"Expected key '{key}' in g.version -e json output, but it was not found."
         )
+
+
+def test_e_flag_proj_runtime_values(session):
+    """Test that g.version -e reports a usable PROJ runtime and database."""
+    output = gs.parse_command("g.version", flags="e", format="json", env=session.env)
+    assert output["proj_runtime"].count(".") == 2, (
+        "Expected a dotted PROJ runtime version, got %s" % output["proj_runtime"]
+    )
+    # A session created with an EPSG code needs a working proj.db,
+    # so the database must have been found.
+    assert output["proj_db"], "Expected a path to proj.db"
+    if not Path(output["proj_db"]).is_file():
+        pytest.skip("PROJ database is embedded in PROJ")
+    assert Path(output["proj_db"]).name == "proj.db"
+
+
+def test_e_flag_incompatible_proj_db(session, tmp_path):
+    """Test that a proj.db which PROJ rejects is reported as such."""
+    proj_data = tmp_path / "proj_data"
+    user_dir = tmp_path / "user_dir"
+    proj_data.mkdir()
+    user_dir.mkdir()
+    # Database from a future PROJ version
+    with sqlite3.connect(proj_data / "proj.db") as connection:
+        connection.execute("CREATE TABLE metadata (key TEXT, value TEXT)")
+        connection.execute(
+            "INSERT INTO metadata VALUES ('DATABASE.LAYOUT.VERSION.MAJOR', '999')"
+        )
+    connection.close()
+    env = session.env.copy()
+    # PROJ 9.0 uses only PROJ_LIB.
+    env["PROJ_DATA"] = str(proj_data)
+    env["PROJ_LIB"] = str(proj_data)
+    env["PROJ_USER_WRITABLE_DIRECTORY"] = str(user_dir)
+
+    output = gs.parse_command("g.version", flags="eg", env=env)
+    if output["proj_db"]:
+        pytest.skip("PROJ database cannot be replaced (embedded in PROJ)")
+    text = " ".join(gs.read_command("g.version", flags="e", env=env).split())
+    assert "another PROJ installation" in text
+    assert str(proj_data / "proj.db") in text

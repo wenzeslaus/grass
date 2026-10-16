@@ -59,8 +59,8 @@ build_program_in_subdir(g.tempfile DEPENDS grass_gis)
 
 build_program_in_subdir(
     g.version
-    DEPENDS grass_gis grass_parson
-    OPTIONAL_DEPENDS GDAL::GDAL GEOS::geos_c PROJ::proj SQLite3::SQLite3
+    DEPENDS PROJ::proj grass_gis grass_parson
+    OPTIONAL_DEPENDS GDAL::GDAL GEOS::geos_c SQLite3::SQLite3
     DEFS
         "-DARCH=\"${BUILD_ARCH}\""
         "-DGRASS_VERSION_GIT=\"${GRASS_VERSION_GIT}\""

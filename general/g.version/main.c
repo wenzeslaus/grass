@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <grass/gis.h>
 #include <grass/glocale.h>
@@ -49,6 +50,53 @@ static const char CITING[] =
 static const char GRASS_CONFIGURE_PARAMS[] =
 #include <grass/confparms.h>
     ;
+
+#ifdef _WIN32
+#define PROJ_SEARCH_PATH_SEPARATOR ';'
+#else
+#define PROJ_SEARCH_PATH_SEPARATOR ':'
+#endif
+
+/* Return the first proj.db file in the PROJ search path, or NULL.
+ * When PROJ cannot open any database, such a file was rejected, typically
+ * because it comes from another PROJ installation. The same as
+ * GPJ_search_proj_db() in lib/proj which g.version does not link. */
+static char *search_proj_db(void)
+{
+    /* Each proj_info() call frees the previous search path string. */
+    char *searchpath = G_store(proj_info().searchpath);
+    const char *start = searchpath;
+    char *found = NULL;
+
+    while (*start) {
+        const char *end = strchr(start, PROJ_SEARCH_PATH_SEPARATOR);
+        size_t len = end ? (size_t)(end - start) : strlen(start);
+
+        if (len > 0) {
+            char *path = NULL;
+
+            G_asprintf(&path, "%.*s%cproj.db", (int)len, start, HOST_DIRSEP);
+            if (access(path, F_OK) == 0) {
+                found = path;
+                break;
+            }
+            G_free(path);
+        }
+        if (!end)
+            break;
+        start = end + 1;
+    }
+    G_free(searchpath);
+    return found;
+}
+
+/* PROJ_DATA is used since PROJ 9.1, older versions use PROJ_LIB. */
+static const char *proj_data_variable(PJ_INFO info)
+{
+    if (info.major < 9 || (info.major == 9 && info.minor < 1))
+        return "PROJ_LIB";
+    return "PROJ_DATA";
+}
 
 int main(int argc, char *argv[])
 {
@@ -292,6 +340,69 @@ int main(int argc, char *argv[])
             break;
         }
         G_free(proj);
+
+        /* PROJ runtime information: the library and the database (proj.db)
+         * actually in use. These can differ from the compile-time version
+         * above, e.g., when another package in the same environment sets
+         * PROJ_DATA to its own copy of proj.db. */
+        {
+            PJ_LOG_LEVEL log_level;
+            const char *db;
+            char *db_path;
+            char *db_rejected = NULL;
+            PJ_INFO proj_runtime;
+
+            /* A missing database is reported below, so keep PROJ quiet.
+             * PROJ reports the level without its sign, so a negative
+             * PROJ_DEBUG level is restored as positive, which only makes
+             * PROJ more verbose. */
+            log_level = proj_log_level(NULL, PJ_LOG_NONE);
+            db = proj_context_get_database_path(NULL);
+            /* Valid only until the next PROJ call, so copy right away. */
+            db_path = db ? G_store(db) : NULL;
+            proj_log_level(NULL, log_level);
+            if (!db_path)
+                db_rejected = search_proj_db();
+            /* Called last because each call invalidates the search path
+             * string of the previous one. */
+            proj_runtime = proj_info();
+
+            switch (format) {
+            case SHELL:
+                fprintf(stdout, "proj_runtime=%s\n", proj_runtime.version);
+                fprintf(stdout, "proj_db=%s\n", db_path ? db_path : "");
+                break;
+            case PLAIN: {
+                char *text = NULL;
+
+                if (db_rejected)
+                    G_asprintf(&text,
+                               _("%s cannot be used, it probably comes from "
+                                 "another PROJ installation"),
+                               db_rejected);
+                else if (!db_path)
+                    G_asprintf(&text,
+                               _("not found (set %s to the directory "
+                                 "containing proj.db)"),
+                               proj_data_variable(proj_runtime));
+                fprintf(stdout, "PROJ runtime: %s\n", proj_runtime.version);
+                fprintf(stdout, "PROJ database: %s\n",
+                        db_path ? db_path : text);
+                G_free(text);
+                break;
+            }
+            case JSON:
+                G_json_object_set_string(root_object, "proj_runtime",
+                                         proj_runtime.version);
+                if (db_path)
+                    G_json_object_set_string(root_object, "proj_db", db_path);
+                else
+                    G_json_object_set_null(root_object, "proj_db");
+                break;
+            }
+            G_free(db_path);
+            G_free(db_rejected);
+        }
         switch (format) {
         case SHELL:
             fprintf(stdout, "gdal=%s\n", GDAL_RELEASE_NAME);
