@@ -57,8 +57,31 @@ def test_restrict_to_area(session):
     assert points["points"] == clipped["points"] == NPOINTS
 
 
+def test_2d_points_for_seed(session):
+    """Seed 42 gives the pinned 2D points
+
+    Pinned separately from the 3D points, since how the draws are ordered
+    between the coordinates could change.
+    """
+    tools = Tools(session=session)
+    tools.v_random(output="points", npoints=3, seed=42)
+
+    text = tools.v_out_ascii(
+        input="points", format="point", precision=17, separator="comma"
+    ).text
+    values = [float(value) for line in text.split() for value in line.split(",")]
+    assert values == pytest.approx(
+        [
+            *(25.547499993899336, 34.2701478718908, 1),
+            *(57.7661042011691, 8.111117117831057, 2),
+            *(50.12005778059212, 47.88142906446282, 3),
+        ],
+        rel=1e-15,
+    )
+
+
 def test_points_for_seed(session):
-    """Seed 42 gives the pinned points"""
+    """Seed 42 gives the pinned 3D points"""
     tools = Tools(session=session)
     tools.v_random(output="points", npoints=3, seed=42, zmin=10, zmax=120, flags="z")
 
