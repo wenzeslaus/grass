@@ -1,16 +1,8 @@
-# SPDX-License-Identifier: GPL-2.0-or-later
+"""Test v.proj with a time-dependent datum transformation
 
-"""Test v.proj with a time-dependent datum transformation.
-
-NAD83(2011) and ITRF2014 are related by a 15-parameter Helmert
-transformation whose parameters change with time (EPSG:7807, reference
-epoch 2010.0). Without a coordinate epoch, PROJ evaluates the parameters at
-the reference epoch. GRASS used to pass epoch 0 (year 0) instead of "no
-epoch", which extrapolated the rates two millennia back and moved the
-point by tens of meters.
-
-The expected values are what ``cs2cs EPSG:6318 EPSG:9000`` and GDAL give
-for the same point.
+NAD83(2011) to ITRF2014 (EPSG:7807) is a Helmert transformation with
+time-dependent parameters. Without a coordinate epoch, PROJ evaluates it
+at its reference epoch. The expected values come from cs2cs and GDAL.
 """
 
 import os
@@ -44,8 +36,10 @@ TOLERANCE = 1e-7
 
 @pytest.fixture
 def nad83_to_itrf_session(tmp_path):
-    """Active session in an ITRF2014 project (EPSG:9000), with a NAD83(2011)
-    project (EPSG:6318) next to it containing a point and a line.
+    """Active session in an ITRF2014 project with a NAD83(2011) project next to it
+
+    The ITRF2014 project (EPSG:9000) is the target. The NAD83(2011) project
+    (EPSG:6318) is the source and contains a point and a line.
     """
     source = "nad83_2011"
     gs.create_project(tmp_path, source, epsg="6318")
@@ -75,7 +69,7 @@ def read_coords(tools, vector_map, geometry_type):
 
 
 def test_point_uses_reference_epoch(nad83_to_itrf_session):
-    """A point goes through GPJ_transform()"""
+    """A point is reprojected at the reference epoch"""
     tools = Tools(session=nad83_to_itrf_session.session)
     tools.v_proj(project=nad83_to_itrf_session.source, input="point", output="point")
     coords = read_coords(tools, "point", "point")
@@ -85,7 +79,7 @@ def test_point_uses_reference_epoch(nad83_to_itrf_session):
 
 
 def test_line_uses_reference_epoch(nad83_to_itrf_session):
-    """A line with smax=0 goes through GPJ_transform_array()"""
+    """Vertices of a line are reprojected at the reference epoch"""
     tools = Tools(session=nad83_to_itrf_session.session)
     tools.v_proj(
         project=nad83_to_itrf_session.source, input="line", output="line", smax=0

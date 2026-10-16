@@ -935,9 +935,8 @@ int GPJ_transform(const struct pj_info *info_in, const struct pj_info *info_out,
 
     /* prepare */
     /* The time coordinate t is the coordinate epoch in decimal years.
-     * HUGE_VAL means "no epoch": time-dependent transformations are then
-     * evaluated at their reference epoch. Zero would mean year 0 and would
-     * extrapolate the rates two millennia back. */
+     * HUGE_VAL means no epoch, so time-dependent transformations are
+     * evaluated at their reference epoch. */
     if (in_is_ll) {
         if (in_deg2rad) {
             /* convert degrees to radians */
