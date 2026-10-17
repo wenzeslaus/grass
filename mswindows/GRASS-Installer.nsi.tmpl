@@ -594,11 +594,9 @@ Section "GRASS" SecGRASS
 	FileClose $0
 	done_create_run_gmkfontcap.bat.manifest:
 
-	;Run g.mkfontcap outside a grass session during installation to catch all fonts
-	ExecWait '"$INSTALL_DIR\etc\run_gmkfontcap.bat"'
-
-	;set $INSTDIR\etc back to read accessible
-	AccessControl::SetOnFile "$INSTDIR\etc" "(S-1-5-32-545)" "GenericRead + GenericExecute"
+	;g.mkfontcap is run later, in the hidden RunMkFontCap section placed after
+	;the Microsoft runtime section, so that the runtime DLLs it needs are
+	;already installed (see https://github.com/OSGeo/grass/issues/5663)
 
 	;Install demolocation into the GIS_DATABASE directory
 	SetOutPath "$GIS_DATABASE\demolocation"
@@ -835,17 +833,31 @@ FunctionEnd
 Section "Important Microsoft Runtime DLLs" SecMSRuntime
 
 	;Set the size (in KB)  of the archive file
-	StrCpy $ARCHIVE_SIZE_KB 833
+	StrCpy $ARCHIVE_SIZE_KB 920
 
 	;Set the size (in KB) of the unpacked archive file
-	AddSize 13500
+	AddSize 2424
 
 	StrCpy $HTTP_PATH "http://download.osgeo.org/osgeo4w/v2/${PLATFORM}/release/msvcrt2019/"
-        StrCpy $ARCHIVE_NAME "msvcrt2019-14.2-1.tar.bz2"
+        StrCpy $ARCHIVE_NAME "msvcrt2019-14.2-2.tar.bz2"
 	StrCpy $EXTENDED_ARCHIVE_NAME "Microsoft Visual C++ Redistributable Packages"
 	StrCpy $ORIGINAL_UNTAR_FOLDER "install_msruntime"
 
 	Call DownloadInstallMSRuntime
+
+SectionEnd
+
+;Hidden section which always runs; it is placed after the Microsoft runtime
+;section because g.mkfontcap needs the runtime DLLs installed by that section,
+;while the runtime section itself needs $INSTALL_DIR set and the GRASS files
+;extracted by the GRASS section (https://github.com/OSGeo/grass/issues/5663)
+Section "-RunMkFontCap"
+
+	;Run g.mkfontcap outside a grass session during installation to catch all fonts
+	ExecWait '"$INSTALL_DIR\etc\run_gmkfontcap.bat"'
+
+	;set $INSTDIR\etc back to read accessible
+	AccessControl::SetOnFile "$INSTDIR\etc" "(S-1-5-32-545)" "GenericRead + GenericExecute"
 
 SectionEnd
 
@@ -984,7 +996,7 @@ SectionEnd
 ;Installer Section Descriptions
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
 	!insertmacro MUI_DESCRIPTION_TEXT ${SecGRASS} "Install GRASS ${VERSION_NUMBER}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${SecMSRuntime} "Some software included in this installer (e.g. GDAL, Python) may need Microsoft's Visual C++ redistributable system libraries.$\r$\nDownload and install the Redistributable Package. (12 MB)"
+	!insertmacro MUI_DESCRIPTION_TEXT ${SecMSRuntime} "Some software included in this installer (e.g. GDAL, Python) may need Microsoft's Visual C++ redistributable system libraries.$\r$\nDownload and install the Redistributable Package. (1 MB)"
 	!insertmacro MUI_DESCRIPTION_TEXT ${SecNorthCarolinaSDB} "Download and install the North Carolina (Wake County) sample data set. (141 MB)"
 	!insertmacro MUI_DESCRIPTION_TEXT ${SecSpearfishSDB} "Download and install the South Dakota (Spearfish County) sample data set. (22 MB)"
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
