@@ -1,7 +1,7 @@
 <h2>DESCRIPTION</h2>
 
-This program allows a user to convert coordinates from one projection
-to another. Coordinates can be read from one file, converted, and
+This program allows a user to convert coordinates from one coordinate
+reference system (CRS) to another. Coordinates can be read from one file, converted, and
 results written to another file. Alternatively, if the <b>input=-</b>,
 eastings and northings may be passed to the program directly from
 standard input. If the <b>output</b> option is omitted, the results
@@ -11,6 +11,11 @@ the <a href="https://proj.org/apps/cs2cs.html">PROJ</a>
 <em>cs2cs</em> utility. The <b>-i</b> or <b>-o</b> flags make the task
 especially easy for the common problem of converting to or from lat/long
 WGS84.
+<p>
+The input and output CRS are given with the <b>proj_in</b> and
+<b>proj_out</b> options as anything PROJ understands: an authority code
+such as <code>EPSG:4326</code>, WKT, PROJJSON, or a PROJ string. When
+<b>proj_in</b> is not given, the CRS of the current project is used.
 <p>
 <i>Note</i>: This program does not transform GRASS maps, it is
 designed to determine the equivalent coordinate values of an
@@ -23,10 +28,14 @@ For an introduction to map projections (with PROJ),see the manual page of
 
 <h2>NOTES</h2>
 
-<em>cs2cs</em> expects input data to formatted as <code>x y</code>, so if
-working with latitude-longitude data be sure to send the <code>x</code>
+<em>m.proj</em> expects input data to be formatted as <code>x y</code>, so
+if working with latitude-longitude data be sure to send the <code>x</code>
 value first, i.e., <code>longitude&nbsp;latitude</code>. Output data will
-be exported using the same convention.
+be exported using the same convention. This holds for every kind of CRS
+definition, including authority codes and WKT whose official axis order
+is latitude first, such as <code>EPSG:4326</code>. (<em>cs2cs</em> itself
+honors the official axis order of a CRS; <em>m.proj</em> takes care of the
+difference.)
 <p>
 <em>cs2cs</em> will treat a third data column as a <code>z</code> value
 (elevation) and will modify the value accordingly. This usually
@@ -45,15 +54,23 @@ stop listening for incoming data after 2 seconds of inactivity. You
 may use the projection parameters gleaned from <em>m.proj</em>'s
 verbose mode (<b>--verbose</b>) with <em>cs2cs</em> directly in this case.
 <p>
-Custom projection parameters can be used via the <b>proj_in</b> and
-<b>proj_out</b> options. Full documentation of the projection
-parameter format may be found on
+Any CRS definition can be used via the <b>proj_in</b> and
+<b>proj_out</b> options: an authority code (<code>EPSG:4326</code>,
+<code>ESRI:102008</code>, ...), WKT, PROJJSON, or a PROJ string. Full
+documentation of the formats may be found on
 the <a href="https://proj.org">PROJ</a> website. Using
 these options will fully override the default parameters the module
-would normally use.
+would normally use. When the current project is used as input or output,
+its CRS is passed to <em>cs2cs</em> as WKT, so the datum of the project is
+used as it is.
+<p>
+The datum transformation between the two CRS is selected by PROJ.
+Accurate transformations often need transformation grids which are not
+part of PROJ itself; see the manual of <a href="r.proj.html">r.proj</a>
+for where to get them and how to let PROJ download them on demand.
 <p>
 By using the <b>--verbose</b> verbose flag, the user can see exactly
-what projection parameters will be used in the conversion as well as
+what CRS definitions will be used in the conversion as well as
 some other informative messages.
 <p>
 If output is to lat/long, it will be formatted using PROJ's
@@ -101,7 +118,7 @@ using the <b>-i</b> flag which sets the target projection parameters
 automatically from the current project definition:
 <div class="code"><pre>
 echo "-78.61168178 33.92225767" | m.proj -i input=-
-645513.47|19180.31|0.00
+645513.69|19179.57|0.00
 </pre></div>
 
 <p>
@@ -121,10 +138,31 @@ m.proj -i input=waypoints.txt | v.in.ascii input=- output=test_pnts
 
 # verify result
 v.db.select test_pnts cat|dbl_1|dbl_2|dbl_3
-1|661427.74|16329.14|0
-2|651285.43|15586.79|0
-3|654867.21|14690.64|0
-4|778074.58|207402.6|0
+1|661427.96|16328.4|0
+2|651285.65|15586.05|0
+3|654867.43|14689.9|0
+4|778074.78|207401.82|0
+</pre></div>
+
+<h3>Using EPSG codes</h3>
+
+To transform points from Long/Lat WGS84 (<code>EPSG:4326</code>) to UTM
+zone 17N (<code>EPSG:32617</code>), with longitude first in the input and
+easting first in the output:
+
+<div class="code"><pre>
+echo "-78 35" | m.proj -d input=- proj_in=EPSG:4326 proj_out=EPSG:32617
+773798.09633960|3877156.69164467|0.00000000
+</pre></div>
+
+<p>
+To transform the coordinates of the current project, here NAD83(2011),
+to ITRF2014 (<code>EPSG:9000</code>), the input CRS is taken from the
+project:
+
+<div class="code"><pre>
+echo "-78 35" | m.proj -d input=- proj_out=EPSG:9000
+-78.00000454|35.00000747|-1.39523194
 </pre></div>
 
 <h3>Custom projection parameter usage</h3>
