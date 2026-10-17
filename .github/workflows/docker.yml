@@ -139,6 +139,16 @@ jobs:
           echo "latest is ${latest}"
           echo "current=${current}" >> "${GITHUB_OUTPUT}"
           echo "current is ${current}"
+      - name: Slim the build context
+        # The generated files provide the version information which the build
+        # otherwise gets from git. With the files in place, the .git directory
+        # (hundreds of MB of history) does not need to be in the build context
+        # and in the cached image layers. Steps which need git must run before
+        # this one.
+        run: |
+          ./utils/generate_version_git_file.sh
+          python utils/generate_last_commit_file.py .
+          rm -rf .git
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
@@ -190,8 +200,15 @@ jobs:
           # Don't use gha cache for releases. Cache is not used if `cache-from:` is empty
           cache-from: >-
             ${{ !contains(fromJSON('["tag", "release"]'), github.event_name)
-                && format('type=gha,scope={0}', matrix.os) || '' }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.os }}
+                && format('type=gha,scope={0}', matrix.name) || '' }}
+          # Don't write cache for releases (a cache stored under a tag ref can
+          # never be read) nor for pull requests (only the same pull request
+          # could read it, and pull requests read the main branch cache).
+          # This keeps the shared repository cache quota for entries which
+          # will actually be read.
+          cache-to: >-
+            ${{ !contains(fromJSON('["tag", "release", "pull_request"]'), github.event_name)
+                && format('type=gha,mode=max,scope={0},ignore-error=true', matrix.name) || '' }}
       - name: Image digest
         run: echo "${STEPS_DOCKER_BUILD_OUTPUTS_DIGEST}"
         env:
