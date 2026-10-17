@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE task SYSTEM "grass-addons.dtd">
+<addons version="8">
+    <task name="i.example.one">
+        <description>Example description</description>
+        <keywords>example,test</keywords>
+        <libgis revision="GOLDEN-REVISION" />
+    </task>
+</addons>

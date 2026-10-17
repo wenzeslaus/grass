@@ -6,6 +6,7 @@ include $(MODULE_TOPDIR)/include/Make/Python.make
 PYDIR = $(ETC)/python/grass
 
 SUBDIRS = \
+	addons \
 	app \
 	benchmark \
 	exceptions \
