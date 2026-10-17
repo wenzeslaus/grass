@@ -145,18 +145,24 @@ def run_projinfo(args, crs):
     env = os.environ.copy()
     # Interpret +init=epsg:XXXX in PROJ strings the way PROJ 4 did.
     env["PROJ_USE_PROJ4_INIT_RULES"] = "YES"
+    # Read bytes: the area of use in the output can contain non-ASCII
+    # characters such as a degree sign, which projinfo on Windows writes
+    # in the ANSI code page, so the output is not always valid UTF-8.
+    # Only ASCII parts of the output are used, so replace what does not
+    # decode.
     process = gcore.Popen(
         ["projinfo", "-q", *args, crs],
         stdout=gcore.PIPE,
         stderr=gcore.PIPE,
         env=env,
+        text=False,
     )
     stdout, stderr = process.communicate()
-    stdout = decode(stdout).strip()
+    stdout = stdout.decode("utf-8", errors="replace").strip()
     if process.returncode != 0 or not stdout:
         gcore.fatal(
             _("Unable to interpret coordinate reference system '{crs}': {msg}").format(
-                crs=crs, msg=decode(stderr).strip()
+                crs=crs, msg=stderr.decode("utf-8", errors="replace").strip()
             )
         )
     return stdout
