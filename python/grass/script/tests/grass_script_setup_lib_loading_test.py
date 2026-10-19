@@ -16,18 +16,19 @@ WINDOWS = sys.platform.startswith("win")
 
 
 @pytest.mark.usefixtures("mock_no_session")
-def test_grass_lib_importable_after_init(
+def test_grass_lib_importable_with_init(
     tmp_path, run_code_in_environment, clean_subprocess_environment
 ):
-    """Check that grass.lib modules can be imported after init"""
+    """Check that grass.lib modules can be imported before and after init"""
     project = tmp_path / "test"
     code = f"""
         import json
+
+        import grass.lib.gis
         import grass.script as gs
 
         gs.create_project(r"{project}")
         with gs.setup.init(r"{project}"):
-            import grass.lib.gis
             import grass.lib.raster
         print(json.dumps({{"imported": True}}))
     """
@@ -48,13 +49,13 @@ def test_grass_lib_usable_after_init(
     project = tmp_path / "test"
     code = f"""
         import json
+
+        import grass.lib.gis as libgis
+        import grass.lib.raster as libraster
         import grass.script as gs
 
         gs.create_project(r"{project}")
         with gs.setup.init(r"{project}"):
-            import grass.lib.gis as libgis
-            import grass.lib.raster as libraster
-
             libgis.G_gisinit(b"test")
             gs.run_command("g.region", rows=2, cols=2)
             gs.mapcalc("ones = 1")
