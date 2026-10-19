@@ -115,7 +115,9 @@ static char *search_proj_db(void)
     return found;
 }
 
-/* PROJ_DATA is used since PROJ 9.1, older versions use PROJ_LIB. */
+/* Return the name of the environment variable which points PROJ to its
+ * data: PROJ_DATA since PROJ 9.1, PROJ_LIB in PROJ 9.0. Remove this, and
+ * use PROJ_DATA directly, when GRASS requires PROJ 9.1 or later. */
 static const char *proj_data_variable(PJ_INFO info)
 {
     if (info.major < 9 || (info.major == 9 && info.minor < 1))
