@@ -264,9 +264,14 @@ def test_e_flag_proj_runtime_values(session):
     assert Path(output["proj_db"]).name == "proj.db"
 
 
-def test_e_flag_incompatible_proj_db(session, tmp_path):
-    """Test that a proj.db which PROJ rejects is reported as such."""
-    proj_data = tmp_path / "proj_data"
+@pytest.mark.parametrize("dir_name", ["proj_data", "proj_data_\u00e9"])
+def test_e_flag_incompatible_proj_db(session, tmp_path, dir_name):
+    """Test that a proj.db which PROJ rejects is reported as such.
+
+    The non-ASCII directory name checks that the path is handled as UTF-8
+    as PROJ uses it, which on Windows needs a wide-character file check.
+    """
+    proj_data = tmp_path / dir_name
     user_dir = tmp_path / "user_dir"
     proj_data.mkdir()
     user_dir.mkdir()
@@ -288,4 +293,6 @@ def test_e_flag_incompatible_proj_db(session, tmp_path):
         pytest.skip("PROJ database cannot be replaced (embedded in PROJ)")
     text = " ".join(gs.read_command("g.version", flags="e", env=env).split())
     assert "another PROJ installation" in text
-    assert str(proj_data / "proj.db") in text
+    # The encoding of a non-ASCII path in the output depends on the platform.
+    if dir_name.isascii():
+        assert str(proj_data / "proj.db") in text
