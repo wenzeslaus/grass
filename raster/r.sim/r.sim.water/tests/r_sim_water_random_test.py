@@ -5,12 +5,10 @@
 
 Each walker draws from a random number state of its own, set by the seed and
 the walker's number, so its random numbers do not depend on the number of
-threads. The water depth still does at nprocs > 1, because walkers in the same
-cell add to the depth grid without synchronization, so the tests which compare
-numbers of threads compare the walker positions instead. With a large hmax and
-no infiltration, a walker's path depends only on the slope and its random
-numbers, not on the depth. The elevation is a bowl, so that the walkers stay
-in the region until the end of the simulation.
+threads, and without infiltration neither does the water depth. With a large
+hmax, a walker's path depends only on the slope and its random numbers, not on
+the depth. The elevation is a bowl, so that the walkers stay in the region
+until the end of the simulation.
 """
 
 import os
@@ -129,14 +127,13 @@ def test_seed_and_flag_are_exclusive(session):
 
 
 @pytest.mark.parametrize("nprocs", [2, 4])
-def test_depth_does_not_depend_on_nprocs_below_hmax(session, nprocs):
-    """The depth is identical with any number of threads while it stays below hmax.
+def test_depth_does_not_depend_on_nprocs(session, nprocs):
+    """The depth is identical with any number of threads, also above hmax.
 
-    Above hmax a walker reacts to the depth the walkers before it in the
-    same step left, and that order depends on the threads.
+    A low hmax makes the depth decide about diffusion for many walkers.
     """
-    serial = simulate_depth(session, seed=5, **NO_DEPTH_FEEDBACK)
-    parallel = simulate_depth(session, seed=5, nprocs=nprocs, **NO_DEPTH_FEEDBACK)
+    serial = simulate_depth(session, seed=5, hmax=0.001)
+    parallel = simulate_depth(session, seed=5, nprocs=nprocs, hmax=0.001)
     assert np.array_equal(parallel, serial)
 
 
