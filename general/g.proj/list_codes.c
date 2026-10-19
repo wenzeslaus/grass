@@ -3,8 +3,7 @@
 #include <grass/gis.h>
 #include <grass/glocale.h>
 #include <grass/config.h>
-
-#include <proj.h>
+#include <grass/gprojects.h>
 
 char *get_authority_names(void)
 {
@@ -60,19 +59,7 @@ void list_codes(char *authname)
     proj_crs_info =
         proj_get_crs_info_list_from_database(NULL, authname, NULL, &crs_cnt);
     if (crs_cnt < 1) {
-        PJ_LOG_LEVEL log_level;
-        const char *db_path;
-
-        /* PROJ has already reported the missing database above. */
-        log_level = proj_log_level(NULL, PJ_LOG_NONE);
-        db_path = proj_context_get_database_path(NULL);
-        proj_log_level(NULL, log_level);
-        if (!db_path)
-            G_fatal_error(
-                _("Unable to list codes because PROJ cannot find its "
-                  "database (proj.db). Check the PROJ installation or set "
-                  "the PROJ_DATA environment variable (PROJ_LIB before "
-                  "PROJ 9.1) to the directory containing proj.db."));
+        GPJ_report_db_status();
         G_fatal_error(_("No codes found for authority %s"), authname);
     }
 
