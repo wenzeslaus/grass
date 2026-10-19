@@ -20,6 +20,8 @@ def run_g_proj(args, env):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        # Paths with non-ASCII characters may not be in the expected encoding.
+        errors="replace",
     )
     _, stderr = process.communicate()
     return process.returncode, " ".join(stderr.split())
@@ -117,4 +119,23 @@ def test_epsg_fails_with_hint_for_incompatible_proj_db_in_user_dir(
     returncode, stderr = run_g_proj(["-w", "epsg=3358"], env=env)
     assert returncode == 1, stderr
     assert str(proj_db) in stderr
+    assert "Remove it" in stderr
+
+
+def test_incompatible_proj_db_in_non_ascii_user_dir(env_without_proj_db, tmp_path):
+    """A rejected proj.db is found in a directory with a non-ASCII name
+
+    PROJ uses UTF-8 paths, which on Windows need a wide-character file
+    check. The user directory is under the user's home directory there,
+    so non-ASCII user names are a common case.
+    """
+    env, _, _ = env_without_proj_db
+    user_dir = tmp_path / "user_dir_\u00e9"
+    user_dir.mkdir()
+    env["PROJ_USER_WRITABLE_DIRECTORY"] = str(user_dir)
+    write_incompatible_proj_db(user_dir / "proj.db")
+    returncode, stderr = run_g_proj(["-w", "epsg=3358"], env=env)
+    assert returncode == 1, stderr
+    # The path itself is not checked since its encoding in the output
+    # depends on the platform.
     assert "Remove it" in stderr

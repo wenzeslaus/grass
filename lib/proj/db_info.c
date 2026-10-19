@@ -12,6 +12,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef _WIN32
+#include <io.h>
+#include <windows.h>
+#endif
 
 #include <grass/gis.h>
 #include <grass/gprojects.h>
@@ -22,6 +26,27 @@
 #else
 #define SEARCH_PATH_SEPARATOR ':'
 #endif
+
+/* Return 1 if the file exists, 0 otherwise. The path is in UTF-8 as PROJ
+ * uses it; on Windows, access() would read it in the ANSI code page. */
+static int file_exists(const char *path)
+{
+#ifdef _WIN32
+    int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
+    wchar_t *wide_path;
+    int exists;
+
+    if (len <= 0)
+        return 0;
+    wide_path = G_malloc(len * sizeof(wchar_t));
+    MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, len);
+    exists = _waccess(wide_path, 0) == 0;
+    G_free(wide_path);
+    return exists;
+#else
+    return access(path, F_OK) == 0;
+#endif
+}
 
 /*!
    \brief Find a proj.db file in the PROJ search path
@@ -53,7 +78,7 @@ char *GPJ_search_proj_db(void)
             char *path = NULL;
 
             G_asprintf(&path, "%.*s%cproj.db", (int)len, start, HOST_DIRSEP);
-            if (access(path, F_OK) == 0) {
+            if (file_exists(path)) {
                 found = path;
                 break;
             }
