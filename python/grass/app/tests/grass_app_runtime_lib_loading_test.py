@@ -11,8 +11,23 @@ import os
 import sys
 from pathlib import Path
 
-from grass.app.runtime import RuntimePaths
+from grass.app.runtime import RuntimePaths, preload_dynamic_libraries
 from grass.script.setup import get_install_path
+
+
+def test_preload_reports_libraries_which_cannot_be_loaded(tmp_path):
+    """Check that libraries which fail to load are reported, not raised"""
+    lib_path = tmp_path / "lib"
+    lib_path.mkdir()
+    broken = lib_path / "libgrass_notalibrary.so"
+    broken.write_text("This is not a shared library.")
+    failures = preload_dynamic_libraries(lib_path)
+    if sys.platform.startswith("win"):
+        assert failures == []
+    else:
+        # Paths are compared by name because the function resolves them and
+        # the temporary directory may be behind a symbolic link.
+        assert [path.name for path, _error in failures] == [broken.name]
 
 
 def test_grass_lib_importable_without_session(
