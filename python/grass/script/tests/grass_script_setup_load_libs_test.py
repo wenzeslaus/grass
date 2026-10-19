@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-"""Tests of loading the C libraries into the process with init(load_libs=True)
+"""Tests of loading the C libraries into the process for grass.lib
 
 This file is meant to be executed also standalone (pytest with this file as
 the only argument) against an installation which was moved away from the
@@ -11,7 +11,6 @@ import json
 import os
 import subprocess
 import sys
-from pathlib import Path
 from textwrap import dedent
 
 import pytest
@@ -26,8 +25,8 @@ def run_in_clean_environment(code, tmp_path):
     """Run code in a subprocess without the dynamic library search path variable
 
     The variable is what a parent GRASS session or a manual setup uses to make
-    the GRASS libraries available, so removing it leaves the loading done by
-    init as the only mechanism which can make grass.lib work.
+    the GRASS libraries available, so removing it leaves the loading done on
+    the grass.lib import as the only mechanism which can make grass.lib work.
     """
     source_file = tmp_path / "code.py"
     source_file.write_text(dedent(code))
@@ -50,96 +49,12 @@ def run_in_clean_environment(code, tmp_path):
     return json.loads(result.stdout)
 
 
-@pytest.fixture
-def global_environment():
-    """Restore the global environment after a test which modifies it"""
-    saved = dict(os.environ)
-    yield
-    os.environ.clear()
-    os.environ.update(saved)
-
-
 @pytest.mark.usefixtures("mock_no_session")
-def test_grass_lib_importable_with_load_libs(tmp_path):
-    """Check that grass.lib modules can be imported after init with load_libs
+def test_grass_lib_importable(tmp_path):
+    """Check that grass.lib modules can be imported after init
 
     The import loads the libraries, which fails when the GRASS libraries they
     depend on cannot be found.
-    """
-    project = tmp_path / "test"
-    code = f"""
-        import json
-        import grass.script as gs
-
-        gs.create_project(r"{project}")
-        with gs.setup.init(r"{project}", load_libs=True):
-            import grass.lib.gis
-            import grass.lib.raster
-        print(json.dumps({{"imported": True}}))
-    """
-    assert run_in_clean_environment(code, tmp_path=tmp_path)["imported"]
-
-
-@pytest.mark.xfail(
-    WINDOWS,
-    reason="On Windows, the C libraries (built with a different C runtime than"
-    " Python) do not see the environment variables set by init in the running"
-    " process, so they do not see the session",
-)
-@pytest.mark.usefixtures("mock_no_session")
-def test_grass_lib_usable_with_load_libs(tmp_path):
-    """Check that grass.lib sees the session and works with rasters after init
-
-    Opening a raster needs the session state held by libgrass_gis, so this
-    also fails when the process ends up with two copies of that library.
-    """
-    project = tmp_path / "test"
-    code = f"""
-        import json
-        import grass.script as gs
-
-        gs.create_project(r"{project}")
-        with gs.setup.init(r"{project}", load_libs=True):
-            import grass.lib.gis as libgis
-            import grass.lib.raster as libraster
-
-            libgis.G_gisinit(b"test")
-            gs.run_command("g.region", rows=2, cols=2)
-            gs.mapcalc("ones = 1")
-            fd = libraster.Rast_open_old(b"ones", b"")
-            libraster.Rast_close(fd)
-        print(json.dumps({{"raster_opened": True}}))
-    """
-    assert run_in_clean_environment(code, tmp_path=tmp_path)["raster_opened"]
-
-
-@pytest.mark.usefixtures("mock_no_session", "global_environment")
-def test_libraries_not_loaded_by_default(tmp_path, monkeypatch):
-    """Check that a session does not load the C libraries unless asked to"""
-    calls = []
-
-    def record_call(install_path):
-        calls.append(install_path)
-        # The replaced function returns the list of load failures.
-        return []
-
-    monkeypatch.setattr(grass.app.runtime, "preload_dynamic_libraries", record_call)
-    project = tmp_path / "test"
-    gs.create_project(project)
-    with gs.setup.init(project, env=os.environ.copy()):
-        pass
-    assert not calls
-    with gs.setup.init(project, load_libs=True):
-        pass
-    assert calls
-
-
-@pytest.mark.usefixtures("mock_no_session")
-def test_grass_lib_importable_without_load_libs(tmp_path):
-    """Check that grass.lib works after init also without load_libs
-
-    The grass.lib package loads the libraries itself when it is imported
-    and the dynamic linker cannot find them.
     """
     project = tmp_path / "test"
     code = f"""
@@ -174,49 +89,85 @@ def test_grass_lib_importable_without_session(tmp_path):
     assert run_in_clean_environment(code, tmp_path=tmp_path)["imported"]
 
 
+@pytest.mark.xfail(
+    WINDOWS,
+    reason="On Windows, the C libraries (built with a different C runtime than"
+    " Python) do not see the environment variables set by init in the running"
+    " process, so they do not see the session",
+)
 @pytest.mark.usefixtures("mock_no_session")
-def test_init_load_libs_with_custom_env_raises(tmp_path):
-    """Check that load_libs combined with a custom environment is refused"""
+def test_grass_lib_usable(tmp_path):
+    """Check that grass.lib sees the session and works with rasters after init
+
+    Opening a raster needs the session state held by libgrass_gis, so this
+    also fails when the process ends up with two copies of that library.
+    """
+    project = tmp_path / "test"
+    code = f"""
+        import json
+        import grass.script as gs
+
+        gs.create_project(r"{project}")
+        with gs.setup.init(r"{project}"):
+            import grass.lib.gis as libgis
+            import grass.lib.raster as libraster
+
+            libgis.G_gisinit(b"test")
+            gs.run_command("g.region", rows=2, cols=2)
+            gs.mapcalc("ones = 1")
+            fd = libraster.Rast_open_old(b"ones", b"")
+            libraster.Rast_close(fd)
+        print(json.dumps({{"raster_opened": True}}))
+    """
+    assert run_in_clean_environment(code, tmp_path=tmp_path)["raster_opened"]
+
+
+@pytest.mark.usefixtures("mock_no_session")
+def test_init_does_not_load_libraries(tmp_path, monkeypatch):
+    """Check that a session does not load the C libraries
+
+    The loading happens on the grass.lib import, so sessions using only
+    tools don't pay for it.
+    """
+    calls = []
+
+    def record_call(install_path):
+        calls.append(install_path)
+        # The replaced function returns the list of load failures.
+        return []
+
+    monkeypatch.setattr(grass.app.runtime, "preload_dynamic_libraries", record_call)
     project = tmp_path / "test"
     gs.create_project(project)
-    with (
-        pytest.raises(ValueError, match="global environment"),
-        gs.setup.init(project, env=os.environ.copy(), load_libs=True),
-    ):
+    with gs.setup.init(project, env=os.environ.copy()):
         pass
+    assert not calls
 
 
-@pytest.mark.usefixtures("mock_no_session", "global_environment")
-def test_init_load_libs_raises_for_failing_core_library(tmp_path, monkeypatch):
-    """Check that a failure to load the core library is an error"""
+@pytest.mark.skipif(WINDOWS, reason="Loading is a no-op on Windows")
+def test_grass_lib_load_failure_raises_import_error(tmp_path):
+    """Check that a failure to load the core library is an import error"""
+    import grass.lib
 
-    def fail_gis(install_path):
-        library = Path(install_path) / "lib" / "libgrass_gis.so"
-        return [(library, OSError("mock failure"))]
-
-    monkeypatch.setattr(grass.app.runtime, "preload_dynamic_libraries", fail_gis)
-    project = tmp_path / "test"
-    gs.create_project(project)
-    with (
-        pytest.raises(RuntimeError, match="libgrass_gis"),
-        gs.setup.init(project, load_libs=True),
-    ):
-        pass
+    lib_path = tmp_path / "lib"
+    lib_path.mkdir()
+    (lib_path / "libgrass_gis.9.9.so").write_text("This is not a shared library.")
+    with pytest.raises(ImportError, match="libgrass_gis"):
+        grass.lib._load_libraries(tmp_path)
 
 
-@pytest.mark.usefixtures("mock_no_session", "global_environment")
-def test_init_load_libs_tolerates_failing_optional_library(tmp_path, monkeypatch):
-    """Check that a failure to load an optional library is not an error"""
+def test_grass_lib_loading_without_grass_libraries_is_noop(tmp_path):
+    """Check that loading does nothing without the core library files
 
-    def fail_ogsf(install_path):
-        library = Path(install_path) / "lib" / "libgrass_ogsf.so"
-        return [(library, OSError("mock failure"))]
+    This is the case on Windows, where the library files have different names
+    and the loading is left to the loader of the wrapper modules.
+    """
+    import grass.lib
 
-    monkeypatch.setattr(grass.app.runtime, "preload_dynamic_libraries", fail_ogsf)
-    project = tmp_path / "test"
-    gs.create_project(project)
-    with gs.setup.init(project, load_libs=True):
-        pass
+    lib_path = tmp_path / "lib"
+    lib_path.mkdir()
+    (lib_path / "libgrass_notalibrary.so").write_text("This is not a shared library.")
+    grass.lib._load_libraries(tmp_path)
 
 
 def test_preload_reports_libraries_which_cannot_be_loaded(tmp_path):

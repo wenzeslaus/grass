@@ -142,7 +142,8 @@ jobs:
         run: |
           # The installation is moved away from the prefix it was configured
           # with, so that the libraries cannot find each other through their
-          # RUNPATH and the loading done by init is the only mechanism left.
+          # RUNPATH and the loading done on the grass.lib import is the only
+          # mechanism left.
           # The Python package moves with it, so its path is taken beforehand.
           python_path="$(grass --config python_path)"
           mv "${HOME}/install" "${HOME}/install-relocated"
