@@ -154,17 +154,17 @@ jobs:
         run: |
           # The installation is moved away from the prefix it was configured
           # with, so that the libraries cannot find each other through their
-          # RUNPATH. Only the tests which provide the search path variable
-          # themselves can pass here. The Python package moves with the
-          # installation, so its path is taken beforehand.
+          # RUNPATH and the loading done on the grass.lib import is the only
+          # mechanism left. The Python package moves with the installation,
+          # so its path is taken beforehand.
           python_path="$(grass --config python_path)"
           mv "${HOME}/install" "${HOME}/install-relocated"
           trap 'mv "${HOME}/install-relocated" "${HOME}/install"' EXIT
           PYTHONPATH="${HOME}/install-relocated${python_path#"${HOME}/install"}"
           export PYTHONPATH
           pytest \
+            python/grass/script/tests/grass_script_setup_lib_loading_test.py \
             python/grass/app/tests/grass_app_runtime_lib_loading_test.py \
-            -k manual \
             --junitxml=pytest.lib_loading_relocated.junit.xml
       - name: Fix non-standard installed script paths in coverage data
         run: |

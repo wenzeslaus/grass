@@ -11,8 +11,34 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 from grass.app.runtime import RuntimePaths, preload_dynamic_libraries
 from grass.script.setup import get_install_path
+
+
+@pytest.mark.skipif(
+    sys.platform.startswith("win"), reason="Loading is a no-op on Windows"
+)
+def test_grass_lib_load_failure_raises_import_error(tmp_path):
+    """Check that a failure to load the core library is an import error"""
+    import grass.lib
+
+    lib_path = tmp_path / "lib"
+    lib_path.mkdir()
+    (lib_path / "libgrass_gis.9.9.so").write_text("This is not a shared library.")
+    with pytest.raises(ImportError, match="libgrass_gis"):
+        grass.lib._load_libraries(lib_path)
+
+
+def test_grass_lib_loading_without_grass_libraries_is_noop(tmp_path):
+    """Check that loading does nothing without the core library files"""
+    import grass.lib
+
+    lib_path = tmp_path / "lib"
+    lib_path.mkdir()
+    (lib_path / "libgrass_notalibrary.so").write_text("This is not a shared library.")
+    grass.lib._load_libraries(lib_path)
 
 
 def test_preload_reports_libraries_which_cannot_be_loaded(tmp_path):

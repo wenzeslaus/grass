@@ -1,3 +1,4 @@
+import ctypes
 import os
 
 from .ctypes_loader import add_library_search_dirs
@@ -41,6 +42,39 @@ def _find_lib_path():
     return None
 
 
+
+def _load_libraries(lib_path):
+    """Load the GRASS libraries unless they already find each other.
+
+    Loading the libraries into the process by their full paths makes them
+    find each other even when the process was started without the library
+    search path variable and the search path recorded in the libraries at
+    build time does not point to them, e.g., for an installation moved
+    away from the prefix it was configured with.
+    """
+    core_libraries = _core_libraries(lib_path)
+    if not core_libraries:
+        return
+    try:
+        # The core library loads by its full path when the GRASS libraries it
+        # depends on resolve through the search path recorded at build time,
+        # the search path variable, or a registration with the linker, and
+        # then all the libraries find each other without any loading here.
+        ctypes.CDLL(core_libraries[0])
+    except OSError:
+        pass
+    else:
+        return
+    # Lazy import to avoid the cost when no loading is needed.
+    from grass.app.runtime import preload_dynamic_libraries
+
+    failures = preload_dynamic_libraries(lib_path)
+    for library, error in failures:
+        if library.name.startswith("libgrass_gis."):
+            msg = f"The GRASS core library failed to load ({library}: {error})"
+            raise ImportError(msg)
+
+
 _lib_path = _find_lib_path()
 if _lib_path:
     # Registering the directory makes the wrapper modules resolve the
@@ -51,6 +85,7 @@ if _lib_path:
         # On Windows, dependent DLLs resolve from the directories registered
         # here and from the directory of the loaded DLL itself.
         os.add_dll_directory(_lib_path)
+    _load_libraries(_lib_path)
 
 __all__ = [
     'arraystats',
