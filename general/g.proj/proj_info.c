@@ -58,6 +58,18 @@ static void print_shell(const char *key, const char *value)
     fprintf(stdout, "%s=%s\n", key, value ? value : "");
 }
 
+/* Return the name of the environment variable which points PROJ to its
+ * data: PROJ_DATA since PROJ 9.1, PROJ_LIB in PROJ 9.0. Remove this, and
+ * use PROJ_DATA directly, when GRASS requires PROJ 9.1 or later. */
+static const char *proj_data_variable(void)
+{
+    PJ_INFO info = proj_info();
+
+    if (info.major < 9 || (info.major == 9 && info.minor < 1))
+        return "PROJ_LIB";
+    return "PROJ_DATA";
+}
+
 void print_proj_install_info(enum OutputFormat format)
 {
     PJ_LOG_LEVEL log_level;
@@ -71,7 +83,7 @@ void print_proj_install_info(enum OutputFormat format)
     char *db_layout = NULL;
     char *db_epsg = NULL;
     char *db_proj_version = NULL;
-    const char *variable = GPJ_proj_data_variable();
+    const char *variable = proj_data_variable();
 
     /* Missing or unusable database is reported below, so keep PROJ's
      * own logger quiet. PROJ reports the level without its sign, so a
