@@ -125,6 +125,24 @@ specification</a>
 <p>The maximum size of input WKT or PROJ CRS descriptions is
 limited to 8000 bytes.
 
+<p>The <b>-i</b> flag reports the PROJ installation in use rather than a CRS:
+the PROJ library version, the PROJ database (<code>proj.db</code>) with its layout
+version, EPSG dataset version and the PROJ version it was created with,
+and the directories PROJ searches for its resources. It does not read
+the CRS of the current project and works without a working <code>proj.db</code>,
+so it can be used to diagnose errors which mention <code>proj.db</code>. A GRASS
+session is still needed, e.g., <code>grass --tmp-project XY --exec g.proj -i</code>.
+The PROJ version which created the database is marked when it differs
+from the PROJ version in use. When PROJ cannot open any database but a
+<code>proj.db</code> file exists in its search path, the file is reported as
+rejected (<code>proj_db_rejected</code> in shell format). This typically means that
+another package in the same environment points the <code>PROJ_DATA</code>
+environment variable (<code>PROJ_LIB</code> before PROJ 9.1) to its own copy of the
+database from a different PROJ version. Only the <i>plain</i> and <i>shell</i>
+formats are supported with <b>-i</b>. The runtime PROJ version (<code>proj_runtime</code>)
+and database path (<code>proj_db</code>) are also part of the
+<a href="g.version.html">g.version</a> <b>-e</b> output.
+
 <h2>EXAMPLES</h2>
 
 <h3>Print information</h3>
@@ -133,6 +151,35 @@ Print the CRS information for the current project:<br>
 
 <div class="code"><pre>
 g.proj -p
+</pre></div>
+
+<p>
+Print information about the PROJ installation in use:<br>
+
+<div class="code"><pre>
+g.proj -i
+
+PROJ version:              9.4.0
+Database:                  /usr/share/proj/proj.db
+Database layout version:   1.3
+EPSG version:              v11.004
+Database created by PROJ:  9.4.0
+Search path:               /home/user/.local/share/proj:/usr/share/proj
+</pre></div>
+
+<p>
+The same in shell script style:<br>
+
+<div class="code"><pre>
+g.proj -i format=shell
+
+proj_runtime=9.4.0
+proj_db=/usr/share/proj/proj.db
+proj_db_rejected=
+proj_db_layout=1.3
+proj_db_epsg=v11.004
+proj_db_created_by_proj=9.4.0
+proj_searchpath=/home/user/.local/share/proj:/usr/share/proj
 </pre></div>
 
 <p>
