@@ -92,14 +92,10 @@ char *GPJ_search_proj_db(void)
     return found;
 }
 
-/*!
-   \brief Name of the environment variable which points PROJ to its data
-
-   PROJ_DATA is used since PROJ 9.1, older versions use PROJ_LIB.
-
-   \return PROJ_DATA or PROJ_LIB depending on the PROJ version in use
- */
-const char *GPJ_proj_data_variable(void)
+/* Return the name of the environment variable which points PROJ to its
+ * data: PROJ_DATA since PROJ 9.1, PROJ_LIB in PROJ 9.0. Remove this, and
+ * use PROJ_DATA directly, when GRASS requires PROJ 9.1 or later. */
+static const char *proj_data_variable(void)
 {
     PJ_INFO info = proj_info();
 
@@ -152,7 +148,7 @@ void GPJ_report_db_status(void)
         return;
     }
 
-    variable = GPJ_proj_data_variable();
+    variable = proj_data_variable();
     set_variable = variable;
     value = getenv(variable);
     /* PROJ 9.1 and later still use PROJ_LIB when PROJ_DATA is not set. */
