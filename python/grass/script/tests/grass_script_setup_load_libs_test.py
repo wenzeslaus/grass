@@ -135,6 +135,46 @@ def test_libraries_not_loaded_by_default(tmp_path, monkeypatch):
 
 
 @pytest.mark.usefixtures("mock_no_session")
+def test_grass_lib_importable_without_load_libs(tmp_path):
+    """Check that grass.lib works after init also without load_libs
+
+    The grass.lib package loads the libraries itself when it is imported
+    and the dynamic linker cannot find them.
+    """
+    project = tmp_path / "test"
+    code = f"""
+        import json
+        import grass.script as gs
+
+        gs.create_project(r"{project}")
+        with gs.setup.init(r"{project}"):
+            import grass.lib.gis
+            import grass.lib.raster
+        print(json.dumps({{"imported": True}}))
+    """
+    assert run_in_clean_environment(code, tmp_path=tmp_path)["imported"]
+
+
+@pytest.mark.usefixtures("mock_no_session")
+def test_grass_lib_importable_without_session(tmp_path):
+    """Check that grass.lib can be imported without any session
+
+    Importing only loads the libraries; a session is needed for calling
+    functions which use it, not for the import.
+    """
+    code = """
+        import json
+        import os
+
+        os.environ.pop("GISBASE", None)
+        import grass.lib.gis
+        import grass.lib.raster
+        print(json.dumps({"imported": True}))
+    """
+    assert run_in_clean_environment(code, tmp_path=tmp_path)["imported"]
+
+
+@pytest.mark.usefixtures("mock_no_session")
 def test_init_load_libs_with_custom_env_raises(tmp_path):
     """Check that load_libs combined with a custom environment is refused"""
     project = tmp_path / "test"
