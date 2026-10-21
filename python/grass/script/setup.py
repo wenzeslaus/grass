@@ -318,10 +318,7 @@ def init(
     not depend on this function, but using it does: the C libraries read
     the session from the environment of the process, so :mod:`grass.lib`
     sees the session only when it is set up in the global environment,
-    i.e., without *env*. The import works also for an installation moved
-    away from the prefix it was configured for, because :mod:`grass.lib`
-    loads the C libraries when it is imported and the dynamic linker
-    cannot find them by itself.
+    i.e., without *env*.
 
     When the path or specified mapset does not exist, ValueError is raised.
 
