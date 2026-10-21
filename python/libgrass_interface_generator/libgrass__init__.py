@@ -47,6 +47,56 @@ def _find_lib_path():
     return None
 
 
+# Every other GRASS library needs libgrass_gis and libgrass_gis needs
+# libgrass_datetime, so these two are loaded before the rest. A library loaded
+# before the GRASS libraries it needs makes the dynamic linker resolve those
+# through the process-startup search path, which may find another GRASS
+# installation and leave the process with two copies of the same library.
+# Only these two are ordered: a second copy of libgrass_gis breaks every other
+# library because they all rely on the session state it holds.
+_BASE_LIBRARY_NAMES = ("datetime", "gis")
+
+
+def _preload_libraries(lib_path):
+    """Load the GRASS libraries in a directory into the process by full path.
+
+    Libraries can be loaded only after the libraries they depend on, so
+    loading is repeated until it makes no progress. Windows DLLs are not
+    matched because dependent DLLs resolve from the registered directories.
+
+    Returns a list of (path, error) pairs for libraries which failed to load.
+    """
+    # Versioned files and the unversioned symlinks pointing to them are both
+    # listed, so the real paths are collected to load each file once.
+    libraries = {
+        os.path.realpath(os.path.join(lib_path, name))
+        for name in os.listdir(lib_path)
+        if name.startswith("libgrass_")
+        and (name.endswith((".so", ".dylib")) or ".so." in name)
+    }
+
+    def load_order(library):
+        name = os.path.basename(library).removeprefix("libgrass_").partition(".")[0]
+        if name in _BASE_LIBRARY_NAMES:
+            return (_BASE_LIBRARY_NAMES.index(name), name)
+        return (len(_BASE_LIBRARY_NAMES), name)
+
+    remaining = sorted(libraries, key=load_order)
+    while remaining:
+        failed = []
+        errors = []
+        for library in remaining:
+            try:
+                ctypes.CDLL(library)
+            except OSError as error:
+                failed.append(library)
+                errors.append((library, error))
+        if len(failed) == len(remaining):
+            return errors
+        remaining = failed
+    return []
+
+
 def _load_libraries(lib_path):
     """Load the GRASS libraries unless they already find each other.
 
@@ -69,12 +119,8 @@ def _load_libraries(lib_path):
         pass
     else:
         return
-    # Lazy import to avoid the cost when no loading is needed.
-    from grass.app.runtime import preload_dynamic_libraries
-
-    failures = preload_dynamic_libraries(lib_path)
-    for library, error in failures:
-        if library.name.startswith("libgrass_gis."):
+    for library, error in _preload_libraries(lib_path):
+        if os.path.basename(library).startswith("libgrass_gis."):
             msg = f"The GRASS core library failed to load ({library}: {error})"
             raise ImportError(msg)
 

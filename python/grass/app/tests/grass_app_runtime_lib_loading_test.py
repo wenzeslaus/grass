@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from grass.app.runtime import RuntimePaths, preload_dynamic_libraries
+from grass.app.runtime import RuntimePaths
 from grass.script.setup import get_install_path
 
 
@@ -46,7 +46,7 @@ def test_grass_lib_loading_without_grass_libraries_is_noop(tmp_path, monkeypatch
         # The replaced function returns the list of load failures.
         return []
 
-    monkeypatch.setattr("grass.app.runtime.preload_dynamic_libraries", record_call)
+    monkeypatch.setattr("grass.lib._preload_libraries", record_call)
     lib_path = tmp_path / "lib"
     lib_path.mkdir()
     (lib_path / "libgrass_notalibrary.so").write_text("This is not a shared library.")
@@ -56,17 +56,16 @@ def test_grass_lib_loading_without_grass_libraries_is_noop(tmp_path, monkeypatch
 
 def test_preload_reports_libraries_which_cannot_be_loaded(tmp_path):
     """Check that libraries which fail to load are reported, not raised"""
+    import grass.lib
+
     lib_path = tmp_path / "lib"
     lib_path.mkdir()
     broken = lib_path / "libgrass_notalibrary.so"
     broken.write_text("This is not a shared library.")
-    failures = preload_dynamic_libraries(lib_path)
-    if sys.platform.startswith("win"):
-        assert failures == []
-    else:
-        # Paths are compared by name because the function resolves them and
-        # the temporary directory may be behind a symbolic link.
-        assert [path.name for path, _error in failures] == [broken.name]
+    failures = grass.lib._preload_libraries(lib_path)
+    # Paths are compared by name because the function resolves them and
+    # the temporary directory may be behind a symbolic link.
+    assert [os.path.basename(path) for path, _error in failures] == [broken.name]
 
 
 def test_grass_lib_importable_without_session(
