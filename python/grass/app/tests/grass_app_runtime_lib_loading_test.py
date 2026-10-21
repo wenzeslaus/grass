@@ -30,7 +30,7 @@ def test_grass_lib_load_failure_raises_import_error(tmp_path):
 
     lib_path = tmp_path / "lib"
     lib_path.mkdir()
-    (lib_path / "libgrass_gis.9.9.so").write_text("This is not a shared library.")
+    (lib_path / "libgrass_gis.so").write_text("This is not a shared library.")
     with pytest.raises(ImportError, match="libgrass_gis"):
         grass.lib._load_libraries(lib_path)
 
