@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Tests of making the GRASS C libraries (grass.lib) work without a session
 
+The loading done by the grass.lib package on import is tested here through
+its private functions because grass.lib is generated and has no tests
+directory of its own.
+
 This file is meant to be executed also standalone (pytest with this file as
 the only argument), including against an installation moved away from the
 prefix it was configured with: the tests provide any needed environment
@@ -31,14 +35,23 @@ def test_grass_lib_load_failure_raises_import_error(tmp_path):
         grass.lib._load_libraries(lib_path)
 
 
-def test_grass_lib_loading_without_grass_libraries_is_noop(tmp_path):
+def test_grass_lib_loading_without_grass_libraries_is_noop(tmp_path, monkeypatch):
     """Check that loading does nothing without the core library files"""
     import grass.lib
 
+    calls = []
+
+    def record_call(lib_path):
+        calls.append(lib_path)
+        # The replaced function returns the list of load failures.
+        return []
+
+    monkeypatch.setattr("grass.app.runtime.preload_dynamic_libraries", record_call)
     lib_path = tmp_path / "lib"
     lib_path.mkdir()
     (lib_path / "libgrass_notalibrary.so").write_text("This is not a shared library.")
     grass.lib._load_libraries(lib_path)
+    assert not calls
 
 
 def test_preload_reports_libraries_which_cannot_be_loaded(tmp_path):

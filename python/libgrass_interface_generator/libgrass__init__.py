@@ -47,7 +47,6 @@ def _find_lib_path():
     return None
 
 
-
 def _load_libraries(lib_path):
     """Load the GRASS libraries unless they already find each other.
 
