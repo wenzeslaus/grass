@@ -10,7 +10,6 @@ This is not a stable part of the API. Use at your own risk.
 """
 
 import collections
-import ctypes
 import os
 import shutil
 import subprocess
@@ -393,6 +392,10 @@ def preload_dynamic_libraries(lib_path):
     """
     if WINDOWS:
         return []
+    # Imported here because ctypes adds to the import time of this module,
+    # which every session setup uses, while the loading is rarely needed.
+    import ctypes
+
     lib_path = Path(lib_path)
     # The glob patterns match both the versioned files and the unversioned
     # symlinks pointing to them, so resolve the paths and load each file once.
