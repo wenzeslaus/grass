@@ -391,8 +391,9 @@ PERMANENT
 
   <dt>OMP_NUM_THREADS</dt>
   <dd>[OpenMP]<br>
-    If OpenMP support is enabled this limits the number of threads.
-    The default is set to the number of CPUs on the system.
+    If OpenMP support is enabled, this is the number of threads tools use
+    when their <b>nprocs</b> option is 0 (the default). Without it, tools
+    use the number of physical CPU cores.
     Setting to '1' effectively disables parallel processing.</dd>
 
   <dt>TMPDIR, TEMP, TMP</dt>

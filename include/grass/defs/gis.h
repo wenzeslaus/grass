@@ -291,6 +291,9 @@ void G_initialize_done(int *);
 void G_init_counter(struct Counter *, int);
 int G_counter_next(struct Counter *);
 
+/* cpu_cores.c */
+int G_available_cores(void);
+
 /* date.c */
 const char *G_date(void);
 

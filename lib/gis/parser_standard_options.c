@@ -796,8 +796,9 @@ struct Option *G_define_standard_option(int opt)
             Opt->answer = memstr;
         /* end dynamic answer */
         Opt->label = _("Number of threads for parallel computing");
-        Opt->description = _("0: use OpenMP default; >0: use nprocs; "
-                             "<0: use MAX-nprocs");
+        Opt->description =
+            _("0: number of physical cores (or OMP_NUM_THREADS); "
+              ">0: use nprocs; <0: that number + nprocs");
         break;
 
     case G_OPT_M_SEED:

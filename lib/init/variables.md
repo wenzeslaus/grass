@@ -375,9 +375,10 @@ Set to any value to disable the use of GLX Pixmaps.
 
 OMP_NUM_THREADS  
 \[OpenMP\]  
-If OpenMP support is enabled this limits the number of threads. The
-default is set to the number of CPUs on the system. Setting to '1'
-effectively disables parallel processing.
+If OpenMP support is enabled, this is the number of threads tools use
+when their **nprocs** option is 0 (the default). Without it, tools use
+the number of physical CPU cores. Setting to '1' effectively disables
+parallel processing.
 
 TMPDIR, TEMP, TMP  
 \[Various GRASS commands and wxGUI\]  
