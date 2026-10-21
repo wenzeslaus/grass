@@ -4,7 +4,7 @@ from .ctypes_loader import add_library_search_dirs
 
 
 def _core_libraries(lib_path):
-    """Get the real paths of the core library files in a directory"""
+    """Get the real paths of the core shared library files in a directory"""
     try:
         names = os.listdir(lib_path)
     except OSError:
@@ -14,6 +14,7 @@ def _core_libraries(lib_path):
             os.path.realpath(os.path.join(lib_path, name))
             for name in names
             if name.startswith(("libgrass_gis.", "grass_gis."))
+            and (name.endswith((".so", ".dylib", ".dll")) or ".so." in name)
         }
     )
 
@@ -29,6 +30,10 @@ def _find_lib_path():
     GISBASE is used as a fallback for other layouts.
     """
     path = os.path.dirname(os.path.realpath(__file__))
+    # Four levels up from grass/lib is the installation in the traditional
+    # layout (lib, grass, python, etc) and the library directory in the FHS
+    # layout (lib, grass, site-packages, python3.X). For a shallower path, the
+    # climb stops at the filesystem root, where no candidate matches.
     for _ in range(4):
         path = os.path.dirname(path)
     candidates = [os.path.join(path, "lib"), path]
