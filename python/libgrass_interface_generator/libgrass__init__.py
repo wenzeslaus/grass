@@ -174,11 +174,13 @@ def sync_environment(env=None):
     GRASS_ variable, so that the C libraries see the change, including
     removed variables.
 
-    With *env*, the variables are copied from that environment instead of
-    os.environ, e.g., from a session set up with init(..., env=env), on all
-    platforms. The C libraries then see that session while os.environ stays
-    unchanged; processes started without an explicit environment inherit
-    what the C libraries see.
+    With *env*, the variables are copied from that environment instead,
+    e.g., to use grass.lib with a session from init(..., env=env). The C
+    libraries have one environment per process, so this session then also
+    applies to processes started without an explicit environment, while
+    os.environ is not changed. Use it when the process works with one
+    session at a time, and call it again after switching or ending the
+    session.
 
     Copied are GISRC, GISBASE, GIS_LOCK, and all variables starting with
     GRASS_. Without *env*, the function does nothing outside of Windows and
