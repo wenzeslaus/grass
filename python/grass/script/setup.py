@@ -440,7 +440,7 @@ def init(
     )
     if env is os.environ and "grass.lib" in sys.modules:
         # The C libraries may keep their own copy of the environment.
-        sys.modules["grass.lib"]._sync_environment()
+        sys.modules["grass.lib"].sync_environment()
     return SessionHandle(env=env, locked=lock)
 
 

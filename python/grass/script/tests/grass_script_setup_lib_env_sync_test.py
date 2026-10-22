@@ -4,9 +4,10 @@
 """Tests of the C libraries (grass.lib) seeing a session set up in their process
 
 On Windows, the C libraries may keep their own copy of the environment, so
-grass.lib copies the session variables into it when it is imported and init
-copies them again when grass.lib is already imported. On other platforms,
-the environment is shared and the tests check the same behavior without the
+grass.lib copies the session variables into it when it is imported, init
+copies them again when grass.lib is already imported, and
+grass.lib.sync_environment copies them on request. On other platforms, the
+environment is shared and the tests check the same behavior without the
 copying.
 """
 
@@ -95,3 +96,46 @@ def test_grass_variables_reach_c_libraries(
         run_code_in_environment(code, env=clean_subprocess_environment)["verbosity"]
         == 3
     )
+
+
+@pytest.mark.usefixtures("mock_no_session")
+def test_explicit_sync_updates_and_removes_variables(
+    tmp_path, run_code_in_environment, clean_subprocess_environment
+):
+    """Check that sync_environment passes on changed and removed variables
+
+    GISBASE is used because libgis reads it directly from the environment
+    of its C runtime on every call.
+    """
+    project = tmp_path / "test"
+    code = f"""
+        import json
+        import os
+
+        import grass.lib
+        import grass.lib.gis as libgis
+        import grass.script as gs
+
+
+        def seen_by_c():
+            value = libgis.G_getenv_nofatal(b"GISBASE")
+            return None if value is None else os.fsdecode(value)
+
+
+        gs.create_project(r"{project}")
+        with gs.setup.init(r"{project}"):
+            gisbase = os.environ["GISBASE"]
+            os.environ["GISBASE"] = "changed"
+            grass.lib.sync_environment()
+            after_change = seen_by_c()
+            del os.environ["GISBASE"]
+            grass.lib.sync_environment()
+            after_removal = seen_by_c()
+            os.environ["GISBASE"] = gisbase
+            grass.lib.sync_environment()
+        print(json.dumps({{"after_change": after_change, "after_removal": after_removal}}))
+    """
+    assert run_code_in_environment(code, env=clean_subprocess_environment) == {
+        "after_change": "changed",
+        "after_removal": None,
+    }

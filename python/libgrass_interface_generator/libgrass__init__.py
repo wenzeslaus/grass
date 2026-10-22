@@ -129,6 +129,7 @@ def _load_libraries(lib_path):
 
 _SESSION_VARIABLE_NAMES = ("GISRC", "GISBASE", "GIS_LOCK")
 _environment_shared = None
+_copied_names = set()
 
 
 def _core_library():
@@ -163,12 +164,20 @@ def _is_environment_shared(library):
     return seen == probe.encode()
 
 
-def _sync_environment():
+def sync_environment():
     """Copy the session variables into the environment of the C libraries.
 
     On Windows, the C libraries may keep their own copy of the environment,
-    so variables set in the running process, e.g., by init, are not visible
-    to them unless copied.
+    so variables set in the running process are not visible to them unless
+    copied. The copy is done when grass.lib is imported and by
+    grass.script.setup.init. Call this function after changing the
+    variables in any other way, e.g., after ending a session or setting a
+    GRASS_ variable, so that the C libraries see the change, including
+    removed variables.
+
+    Copied are GISRC, GISBASE, GIS_LOCK, and all variables starting with
+    GRASS_. Elsewhere, and when the environment turns out to be shared, the
+    function does nothing.
     """
     global _environment_shared
     if not sys.platform.startswith("win"):
@@ -180,10 +189,19 @@ def _sync_environment():
         _environment_shared = _is_environment_shared(library)
     if _environment_shared:
         return
-    for name, value in os.environ.items():
-        if name in _SESSION_VARIABLE_NAMES or name.startswith("GRASS_"):
-            # The C runtime of the libraries uses the ANSI code page.
-            library.G_putenv(name.encode("mbcs"), value.encode("mbcs"))
+    names = {
+        name
+        for name in os.environ
+        if name in _SESSION_VARIABLE_NAMES or name.startswith("GRASS_")
+    }
+    # The C runtime of the libraries uses the ANSI code page.
+    for name in names:
+        library.G_putenv(name.encode("mbcs"), os.environ[name].encode("mbcs"))
+    for name in _copied_names - names:
+        # An empty value removes the variable in the C runtime on Windows.
+        library.G_putenv(name.encode("mbcs"), b"")
+    _copied_names.clear()
+    _copied_names.update(names)
 
 
 _lib_path = _find_lib_path()
@@ -197,7 +215,7 @@ if _lib_path:
         # here and from the directory of the loaded DLL itself.
         os.add_dll_directory(_lib_path)
     _load_libraries(_lib_path)
-    _sync_environment()
+    sync_environment()
 
 __all__ = [
     'arraystats',
