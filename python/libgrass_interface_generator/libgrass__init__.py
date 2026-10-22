@@ -126,7 +126,6 @@ def _load_libraries(lib_path):
             raise ImportError(msg)
 
 
-
 _SESSION_VARIABLE_NAMES = ("GISRC", "GISBASE", "GIS_LOCK")
 _environment_shared = None
 _copied_names = set()
@@ -164,7 +163,7 @@ def _is_environment_shared(library):
     return seen == probe.encode()
 
 
-def sync_environment():
+def sync_environment(env=None):
     """Copy the session variables into the environment of the C libraries.
 
     On Windows, the C libraries may keep their own copy of the environment,
@@ -175,33 +174,55 @@ def sync_environment():
     GRASS_ variable, so that the C libraries see the change, including
     removed variables.
 
+    With *env*, the variables are copied from that environment instead of
+    os.environ, e.g., from a session set up with init(..., env=env), on all
+    platforms. The C libraries then see that session while os.environ stays
+    unchanged; processes started without an explicit environment inherit
+    what the C libraries see.
+
     Copied are GISRC, GISBASE, GIS_LOCK, and all variables starting with
-    GRASS_. Elsewhere, and when the environment turns out to be shared, the
-    function does nothing.
+    GRASS_. Without *env*, the function does nothing outside of Windows and
+    when the environment turns out to be shared.
     """
     global _environment_shared
-    if not sys.platform.startswith("win"):
+    if env is None:
+        env = os.environ
+    windows = sys.platform.startswith("win")
+    if env is os.environ and not windows:
         return
     library = _core_library()
     if library is None:
         return
-    if _environment_shared is None:
-        _environment_shared = _is_environment_shared(library)
-    if _environment_shared:
-        return
+    if env is os.environ:
+        if _environment_shared is None:
+            _environment_shared = _is_environment_shared(library)
+        if _environment_shared:
+            return
     names = {
         name
-        for name in os.environ
+        for name in env
         if name in _SESSION_VARIABLE_NAMES or name.startswith("GRASS_")
     }
-    # The C runtime of the libraries uses the ANSI code page.
     for name in names:
-        library.G_putenv(name.encode("mbcs"), os.environ[name].encode("mbcs"))
+        _set_c_variable(library, name, env[name], windows=windows)
     for name in _copied_names - names:
-        # An empty value removes the variable in the C runtime on Windows.
-        library.G_putenv(name.encode("mbcs"), b"")
+        _set_c_variable(library, name, None, windows=windows)
     _copied_names.clear()
     _copied_names.update(names)
+
+
+def _set_c_variable(library, name, value, *, windows):
+    """Set or, with value None, remove a variable as seen by the C libraries"""
+    if windows:
+        # The C runtime of the libraries uses the ANSI code page, and an empty
+        # value removes the variable.
+        library.G_putenv(name.encode("mbcs"), (value or "").encode("mbcs"))
+    elif value is None:
+        # The C libraries share the environment of the process with Python,
+        # and these change it without changing os.environ.
+        os.unsetenv(name)
+    else:
+        os.putenv(name, value)
 
 
 _lib_path = _find_lib_path()
