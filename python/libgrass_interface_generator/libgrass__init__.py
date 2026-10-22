@@ -1,5 +1,6 @@
 import ctypes
 import os
+import sys
 
 from .ctypes_loader import add_library_search_dirs
 
@@ -125,6 +126,66 @@ def _load_libraries(lib_path):
             raise ImportError(msg)
 
 
+
+_SESSION_VARIABLE_NAMES = ("GISRC", "GISBASE", "GIS_LOCK")
+_environment_shared = None
+
+
+def _core_library():
+    """Get the loaded core library with the environment functions set up"""
+    core_libraries = _core_libraries(_lib_path) if _lib_path else []
+    if not core_libraries:
+        return None
+    library = ctypes.CDLL(core_libraries[0])
+    library.G_getenv_nofatal.restype = ctypes.c_char_p
+    library.G_getenv_nofatal.argtypes = [ctypes.c_char_p]
+    library.G_putenv.restype = None
+    library.G_putenv.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    return library
+
+
+def _is_environment_shared(library):
+    """Check whether the C libraries see variables set in this process.
+
+    GISBASE is the variable which libgis reads directly from the environment
+    of its C runtime, so it is set to a probe value and read back.
+    """
+    original = os.environ.get("GISBASE")
+    probe = f"environment-probe-{os.getpid()}"
+    os.environ["GISBASE"] = probe
+    try:
+        seen = library.G_getenv_nofatal(b"GISBASE")
+    finally:
+        if original is None:
+            del os.environ["GISBASE"]
+        else:
+            os.environ["GISBASE"] = original
+    return seen == probe.encode()
+
+
+def _sync_environment():
+    """Copy the session variables into the environment of the C libraries.
+
+    On Windows, the C libraries may keep their own copy of the environment,
+    so variables set in the running process, e.g., by init, are not visible
+    to them unless copied.
+    """
+    global _environment_shared
+    if not sys.platform.startswith("win"):
+        return
+    library = _core_library()
+    if library is None:
+        return
+    if _environment_shared is None:
+        _environment_shared = _is_environment_shared(library)
+    if _environment_shared:
+        return
+    for name, value in os.environ.items():
+        if name in _SESSION_VARIABLE_NAMES or name.startswith("GRASS_"):
+            # The C runtime of the libraries uses the ANSI code page.
+            library.G_putenv(name.encode("mbcs"), value.encode("mbcs"))
+
+
 _lib_path = _find_lib_path()
 if _lib_path:
     # Registering the directory makes the wrapper modules resolve the
@@ -136,6 +197,7 @@ if _lib_path:
         # here and from the directory of the loaded DLL itself.
         os.add_dll_directory(_lib_path)
     _load_libraries(_lib_path)
+    _sync_environment()
 
 __all__ = [
     'arraystats',

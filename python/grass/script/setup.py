@@ -438,6 +438,9 @@ def init(
     env["GISRC"] = write_gisrc(
         mapset_path.directory, mapset_path.location, mapset_path.mapset
     )
+    if env is os.environ and "grass.lib" in sys.modules:
+        # The C libraries may keep their own copy of the environment.
+        sys.modules["grass.lib"]._sync_environment()
     return SessionHandle(env=env, locked=lock)
 
 
