@@ -316,6 +316,59 @@ def set_paths(install_path, grass_config_dir):
     addon_base = os.getenv("GRASS_ADDON_BASE")
     set_man_path(install_path=install_path, addon_base=addon_base, env=os.environ)
     set_isis()
+    set_proj_data_for_conda(install_path=install_path, env=os.environ)
+
+
+def find_conda_prefix(install_path):
+    """Return the prefix of the conda environment GRASS is installed in
+
+    :param install_path: GRASS installation path (GISBASE)
+    :returns: path to the environment as Path, or None when the
+        installation is not in a conda environment
+    """
+    install_path = Path(install_path).resolve()
+    for path in (install_path, *install_path.parents):
+        if (path / "conda-meta").is_dir():
+            return path
+    return None
+
+
+def set_proj_data_for_conda(install_path, env):
+    """Set PROJ_DATA as conda activation does when GRASS is in conda
+
+    PROJ finds its database (proj.db) through the PROJ_DATA environment
+    variable, a path relative to the PROJ library, or a path compiled into
+    the library. In a conda environment, PROJ_DATA is set by the activation
+    script of the environment, and the other two methods may fail because
+    the environment was relocated. When GRASS is used from an environment
+    which was not activated, e.g., in a notebook kernel or a hosted service
+    like Google Colab, GRASS tools then fail with "Cannot find proj.db" or
+    "Open of ... failed".
+
+    This sets PROJ_DATA to the directory the activation script would use,
+    but only when GRASS is installed in a conda environment, neither
+    PROJ_DATA nor PROJ_LIB is set, and the directory contains proj.db.
+    Other installations are not affected.
+
+    When *env* is os.environ, the variable applies to the whole process,
+    so a PROJ copy from another package used later in the same process,
+    e.g., a wheel which prefers PROJ_DATA over its bundled data, uses the
+    database from the environment, too. This is what activation of the
+    environment would do as well.
+
+    :param install_path: GRASS installation path (GISBASE)
+    :param env: environment to modify (e.g., os.environ)
+    """
+    if env.get("PROJ_DATA") or env.get("PROJ_LIB"):
+        return
+    prefix = find_conda_prefix(install_path)
+    if not prefix:
+        return
+    # The same directories as in the activation script of the conda package
+    for proj_data in (prefix / "share" / "proj", prefix / "Library" / "share" / "proj"):
+        if (proj_data / "proj.db").is_file():
+            env["PROJ_DATA"] = os.fspath(proj_data)
+            return
 
 
 def set_man_path(install_path, addon_base, env):

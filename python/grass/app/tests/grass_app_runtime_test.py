@@ -10,8 +10,12 @@ from pathlib import Path
 import pytest
 
 from grass.app import resource_paths
-from grass.app.runtime import RuntimePaths
-from grass.script.setup import get_install_path
+from grass.app.runtime import (
+    RuntimePaths,
+    find_conda_prefix,
+    set_proj_data_for_conda,
+)
+from grass.script.setup import get_install_path, setup_runtime_env
 
 
 def return_as_is(x):
@@ -255,3 +259,105 @@ def test_passing_non_existent_path(path_type):
     This is a non-FHS oriented test.
     """
     assert get_install_path(path_type("/does/not/exist")) == get_install_path()
+
+
+# Fixed because the build-time value can be empty (autotools build)
+CONDA_GISBASE = os.path.join("lib", "grass86")
+
+
+def make_conda_env(path, windows=False, proj_db=True):
+    """Create a minimal conda environment layout with GRASS in it
+
+    Returns the GRASS installation path and the PROJ data directory.
+    """
+    (path / "conda-meta").mkdir(parents=True)
+    if windows:
+        install_path = path / "Library" / CONDA_GISBASE
+        proj_data = path / "Library" / "share" / "proj"
+    else:
+        install_path = path / CONDA_GISBASE
+        proj_data = path / "share" / "proj"
+    install_path.mkdir(parents=True, exist_ok=True)
+    proj_data.mkdir(parents=True)
+    if proj_db:
+        (proj_data / "proj.db").write_bytes(b"")
+    return install_path, proj_data
+
+
+def test_find_conda_prefix(tmp_path):
+    """The environment prefix is found above the installation path"""
+    install_path, _ = make_conda_env(tmp_path / "env")
+    assert find_conda_prefix(install_path) == (tmp_path / "env").resolve()
+
+
+def test_find_conda_prefix_at_install_path(tmp_path):
+    """The installation path itself can be the environment prefix"""
+    (tmp_path / "conda-meta").mkdir()
+    assert find_conda_prefix(tmp_path) == tmp_path.resolve()
+
+
+def test_find_conda_prefix_outside_conda(tmp_path):
+    """An installation outside of conda has no prefix"""
+    install_path = tmp_path / CONDA_GISBASE
+    install_path.mkdir(parents=True)
+    assert find_conda_prefix(install_path) is None
+
+
+@pytest.mark.parametrize("windows", [False, True])
+def test_proj_data_set_in_conda(tmp_path, windows):
+    """PROJ_DATA is set to the PROJ directory of the environment"""
+    install_path, proj_data = make_conda_env(tmp_path / "env", windows=windows)
+    env = {}
+    set_proj_data_for_conda(install_path, env=env)
+    assert env == {"PROJ_DATA": str(proj_data.resolve())}
+
+
+def test_proj_data_set_in_conda_str(tmp_path):
+    """The installation path is accepted as a string, too"""
+    install_path, proj_data = make_conda_env(tmp_path / "env")
+    env = {}
+    set_proj_data_for_conda(str(install_path), env=env)
+    assert env == {"PROJ_DATA": str(proj_data.resolve())}
+
+
+@pytest.mark.parametrize("variable", ["PROJ_DATA", "PROJ_LIB"])
+def test_proj_data_existing_value_is_respected(tmp_path, variable):
+    """A PROJ variable set by the user or the activation script is kept"""
+    install_path, _ = make_conda_env(tmp_path / "env")
+    env = {variable: "/elsewhere"}
+    set_proj_data_for_conda(install_path, env=env)
+    assert env == {variable: "/elsewhere"}
+
+
+def test_proj_data_not_set_without_proj_db(tmp_path):
+    """A PROJ directory without proj.db is not used"""
+    install_path, _ = make_conda_env(tmp_path / "env", proj_db=False)
+    env = {}
+    set_proj_data_for_conda(install_path, env=env)
+    assert env == {}
+
+
+def test_proj_data_not_set_outside_conda(tmp_path):
+    """Installations outside of conda are not affected"""
+    install_path = tmp_path / CONDA_GISBASE
+    install_path.mkdir(parents=True)
+    proj_data = tmp_path / "share" / "proj"
+    proj_data.mkdir(parents=True)
+    (proj_data / "proj.db").write_bytes(b"")
+    env = {}
+    set_proj_data_for_conda(install_path, env=env)
+    assert env == {}
+
+
+def test_setup_runtime_env_sets_proj_data_in_conda(tmp_path, monkeypatch):
+    """Runtime setup for a GRASS in conda sets PROJ_DATA"""
+    # The runtime setup derives the prefix by removing the build-time
+    # GISBASE from the end of the given path.
+    monkeypatch.setattr(resource_paths, "GISBASE", CONDA_GISBASE)
+    install_path, proj_data = make_conda_env(tmp_path / "env")
+    env = os.environ.copy()
+    # GISBASE from the environment would take precedence over the path.
+    for variable in ("GISBASE", "PROJ_DATA", "PROJ_LIB"):
+        env.pop(variable, None)
+    setup_runtime_env(install_path, env=env)
+    assert env["PROJ_DATA"] == str(proj_data.resolve())
