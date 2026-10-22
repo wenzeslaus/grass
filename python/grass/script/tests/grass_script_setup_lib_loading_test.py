@@ -15,8 +15,6 @@ from textwrap import dedent
 
 import pytest
 
-WINDOWS = sys.platform.startswith("win")
-
 
 @pytest.mark.usefixtures("mock_no_session")
 def test_grass_lib_importable_with_init(
@@ -38,13 +36,6 @@ def test_grass_lib_importable_with_init(
     assert run_code_in_environment(code, env=clean_subprocess_environment)["imported"]
 
 
-@pytest.mark.xfail(
-    WINDOWS,
-    strict=True,
-    reason="On Windows, the C libraries (built with a different C runtime than"
-    " Python) do not see the environment variables set by init in the running"
-    " process, so they do not see the session",
-)
 @pytest.mark.usefixtures("mock_no_session")
 def test_grass_lib_usable_after_init(
     tmp_path, run_code_in_environment, clean_subprocess_environment
@@ -79,8 +70,7 @@ def test_grass_lib_usable_in_subprocess_of_init(
     """Check that grass.lib works in a process started from a session of init
 
     The session exists in the environment of the started process from its
-    start, so the C libraries see it on all platforms, including Windows,
-    where they do not see a session set up in their own process.
+    start, so the C libraries see it on all platforms without any copying.
     """
     project = tmp_path / "test"
     child_file = tmp_path / "child.py"

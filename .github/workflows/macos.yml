@@ -140,6 +140,7 @@ jobs:
           pytest \
             python/grass/script/tests/grass_script_setup_lib_loading_test.py \
             python/grass/app/tests/grass_app_runtime_lib_loading_test.py \
+            python/grass/script/tests/grass_script_setup_lib_env_sync_test.py \
             --junitxml=pytest.lib_loading.junit.xml
       - name: Run pytest for the grass.lib loading tests with a relocated installation
         shell: micromamba-shell {0}
@@ -158,6 +159,7 @@ jobs:
           pytest \
             python/grass/script/tests/grass_script_setup_lib_loading_test.py \
             python/grass/app/tests/grass_app_runtime_lib_loading_test.py \
+            python/grass/script/tests/grass_script_setup_lib_env_sync_test.py \
             --junitxml=pytest.lib_loading_relocated.junit.xml
 
       - name: Upload test results to Codecov
