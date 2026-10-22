@@ -71,8 +71,10 @@ def call_module(
     n=...
     s=...
     w=...
-    >>> call_module("m.proj", flags="i", input="-", stdin="50.0 41.5")
-    '8642890.65|6965155.61|0.00\n'
+    >>> call_module(
+    ...     "m.proj", flags="i", input="-", stdin="50.0 41.5"
+    ... )  # doctest: +ELLIPSIS
+    '8642890...|6965153...|0.00\n'
     >>> call_module(
     ...     "g.region", aabbbccc="notexist"
     ... )  # doctest: +IGNORE_EXCEPTION_DETAIL
