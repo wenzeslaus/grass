@@ -596,6 +596,10 @@ int G_name_is_fully_qualified(const char *, char *, char *);
 char *G_fully_qualified_name(const char *, const char *);
 int G_unqualified_name(const char *, const char *, char *, char *);
 
+/* nprocs_option.c */
+int G_resolve_nprocs(int);
+int G_nprocs_from_option(const struct Option *);
+
 /* omp_threads.c */
 int G_set_omp_num_threads(struct Option *);
 
