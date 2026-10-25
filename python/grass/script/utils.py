@@ -22,6 +22,7 @@ import shutil
 import locale
 import shlex
 import re
+import subprocess
 import time
 import platform
 import uuid
@@ -106,23 +107,79 @@ def available_cpus() -> int:
     return os.cpu_count() or 1
 
 
+def available_cores() -> int:
+    """Number of physical CPU cores this process may use.
+
+    Mirrors ``G_available_cores()`` in ``lib/gis/cpu_cores.c``. Logical CPUs
+    of one core (SMT, Hyper-Threading) count once. On Linux, the logical
+    CPUs in the affinity mask are grouped by their core using the CPU
+    topology in sysfs. On macOS, the count is the ``hw.physicalcpu`` value.
+    Elsewhere, and when the topology is unknown, it is the number of
+    logical CPUs from :func:`available_cpus`.
+
+    .. versionadded:: 8.6
+    """
+    if hasattr(os, "sched_getaffinity"):
+        cores = set()
+        try:
+            for cpu in os.sched_getaffinity(0):
+                topology = Path(f"/sys/devices/system/cpu/cpu{cpu}/topology")
+                core = (
+                    int((topology / "physical_package_id").read_text()),
+                    int((topology / "core_id").read_text()),
+                )
+                if min(core) < 0:
+                    cores = set()
+                    break
+                cores.add(core)
+        except (OSError, ValueError):
+            cores = set()
+        if cores:
+            return len(cores)
+    elif platform.system() == "Darwin":
+        try:
+            return int(
+                subprocess.run(
+                    ["sysctl", "-n", "hw.physicalcpu"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout
+            )
+        except (OSError, ValueError, subprocess.CalledProcessError):
+            pass
+    return available_cpus()
+
+
+def _default_nprocs() -> int:
+    """Number of workers used for nprocs 0, the default.
+
+    Mirrors ``G_set_omp_num_threads()`` in ``lib/gis/omp_threads.c``: the
+    first value of the OMP_NUM_THREADS environment variable when it is set
+    to a positive number, otherwise :func:`available_cores`.
+    """
+    value = os.environ.get("OMP_NUM_THREADS", "").split(",")[0].strip()
+    if value.isdigit() and int(value) > 0:
+        return int(value)
+    return available_cores()
+
+
 def resolve_nprocs(nprocs: int | str) -> int:
     """Resolve G_OPT_M_NPROCS into a worker count.
 
     Mirrors the semantics of ``G_set_omp_num_threads()`` in
-    ``lib/gis/omp_threads.c``: 0 means use all available cores, a positive
-    number is used as-is, a negative number means cpu_count + nprocs
-    (clamped to at least 1).
+    ``lib/gis/omp_threads.c``: 0 means the default, which is the value of
+    OMP_NUM_THREADS when it is set and the number of physical cores from
+    :func:`available_cores` otherwise, a positive number is used as-is,
+    and a negative number means the default plus nprocs (clamped to at
+    least 1).
 
     .. versionadded:: 8.6
     """
     n = int(nprocs)
     if n > 0:
         return n
-    available = available_cpus()
-    if n == 0:
-        return available
-    return max(1, available + n)
+    return max(1, _default_nprocs() + n)
 
 
 def diff_files(
