@@ -153,6 +153,53 @@ def scenario_grass_region_variable(path):
     return {"expected_rows_cols": [2, 2], "rows": read_rows(), **region_seen()}
 
 
+def scenario_late_import_grass_region_variable(path):
+    """Import pygrass only after setting the variable"""
+    import grass.script as gs
+
+    start(path)
+    os.environ["GRASS_REGION"] = gs.region_env(n=20, s=0, e=20, w=0, res=10)
+    return {"expected_rows_cols": [2, 2], "rows": read_rows(), **region_seen()}
+
+
+def scenario_grass_region_variable_with_sync(path):
+    import grass.lib
+    import grass.script as gs
+
+    start(path)
+    os.environ["GRASS_REGION"] = gs.region_env(n=20, s=0, e=20, w=0, res=10)
+    grass.lib.sync_environment()
+    return {"expected_rows_cols": [2, 2], "rows": read_rows(), **region_seen()}
+
+
+def scenario_use_temp_region_with_sync(path):
+    """WIND_OVERRIDE is not among the copied variables"""
+    import grass.lib
+    import grass.script as gs
+
+    start(path)
+    gs.use_temp_region()
+    gs.run_command("g.region", n=20, s=0, e=20, w=0, res=10)
+    grass.lib.sync_environment()
+    return {"expected_rows_cols": [2, 2], "rows": read_rows(), **region_seen()}
+
+
+def scenario_mask_manager_with_sync(path):
+    import grass.lib
+    import grass.script as gs
+
+    start(path)
+    gs.mapcalc("mask_source = if(row() == 1, 1, null())")
+    with gs.MaskManager():
+        gs.run_command("r.mask", raster="mask_source")
+        grass.lib.sync_environment()
+        return {
+            "expected": "only the first row has values",
+            "rows": read_rows(),
+            "tool_univar_n": int(gs.parse_command("r.univar", map="m", flags="g")["n"]),
+        }
+
+
 def scenario_mask_manager(path):
     import grass.script as gs
 
@@ -288,6 +335,11 @@ SCENARIOS = {
 
 
 def run_scenario(name):
+    if not name.startswith("late_import_"):
+        # Import before the session starts as a script would at its top.
+        # The import copies the environment, so importing later would copy
+        # the variables set before the import.
+        import grass.pygrass.vector  # noqa: F401
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         result = SCENARIOS[name](Path(tmp))
         print("RESULT " + json.dumps(result))
