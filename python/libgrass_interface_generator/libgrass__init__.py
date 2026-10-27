@@ -178,9 +178,10 @@ def sync_environment(env=None):
     e.g., to use grass.lib with a session from init(..., env=env). The C
     libraries have one environment per process, so this session then also
     applies to processes started without an explicit environment, while
-    os.environ is not changed. Use it when the process works with one
-    session at a time, and call it again after switching or ending the
-    session.
+    os.environ is not changed. Use it when the process works with only one
+    session, and call it again after ending the session. The C libraries
+    keep the first session they read, so switching to another session in
+    the same process is not supported on any platform.
 
     Copied are GISRC, GISBASE, GIS_LOCK, and all variables starting with
     GRASS_. Without *env*, the function does nothing outside of Windows and
