@@ -1,5 +1,6 @@
 import ctypes
 import os
+import sys
 
 from .ctypes_loader import add_library_search_dirs
 
@@ -125,6 +126,108 @@ def _load_libraries(lib_path):
             raise ImportError(msg)
 
 
+_SESSION_VARIABLE_NAMES = ("GISRC", "GISBASE", "GIS_LOCK")
+_environment_shared = None
+_copied_names = set()
+
+
+def _core_library():
+    """Get the loaded core library with the environment functions set up"""
+    core_libraries = _core_libraries(_lib_path) if _lib_path else []
+    if not core_libraries:
+        return None
+    library = ctypes.CDLL(core_libraries[0])
+    library.G_getenv_nofatal.restype = ctypes.c_char_p
+    library.G_getenv_nofatal.argtypes = [ctypes.c_char_p]
+    library.G_putenv.restype = None
+    library.G_putenv.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    return library
+
+
+def _is_environment_shared(library):
+    """Check whether the C libraries see variables set in this process.
+
+    GISBASE is the variable which libgis reads directly from the environment
+    of its C runtime, so it is set to a probe value and read back.
+    """
+    original = os.environ.get("GISBASE")
+    probe = f"environment-probe-{os.getpid()}"
+    os.environ["GISBASE"] = probe
+    try:
+        seen = library.G_getenv_nofatal(b"GISBASE")
+    finally:
+        if original is None:
+            del os.environ["GISBASE"]
+        else:
+            os.environ["GISBASE"] = original
+    return seen == probe.encode()
+
+
+def sync_environment(env=None):
+    """Copy the session variables into the environment of the C libraries.
+
+    On Windows, the C libraries may keep their own copy of the environment,
+    so variables set in the running process are not visible to them unless
+    copied. The copy is done when grass.lib is imported and by
+    grass.script.setup.init. Call this function after changing the
+    variables in any other way, e.g., after ending a session or setting a
+    GRASS_ variable, so that the C libraries see the change, including
+    removed variables.
+
+    With *env*, the variables are copied from that environment instead,
+    e.g., to use grass.lib with a session from init(..., env=env). The C
+    libraries have one environment per process, so this session then also
+    applies to processes started without an explicit environment, while
+    os.environ is not changed. Use it when the process works with only one
+    session, and call it again after ending the session. The C libraries
+    keep the first session they read, so switching to another session in
+    the same process is not supported on any platform.
+
+    Copied are GISRC, GISBASE, GIS_LOCK, and all variables starting with
+    GRASS_. Without *env*, the function does nothing outside of Windows and
+    when the environment turns out to be shared.
+    """
+    global _environment_shared
+    if env is None:
+        env = os.environ
+    windows = sys.platform.startswith("win")
+    if env is os.environ and not windows:
+        return
+    library = _core_library()
+    if library is None:
+        return
+    if env is os.environ:
+        if _environment_shared is None:
+            _environment_shared = _is_environment_shared(library)
+        if _environment_shared:
+            return
+    names = {
+        name
+        for name in env
+        if name in _SESSION_VARIABLE_NAMES or name.startswith("GRASS_")
+    }
+    for name in names:
+        _set_c_variable(library, name, env[name], windows=windows)
+    for name in _copied_names - names:
+        _set_c_variable(library, name, None, windows=windows)
+    _copied_names.clear()
+    _copied_names.update(names)
+
+
+def _set_c_variable(library, name, value, *, windows):
+    """Set or, with value None, remove a variable as seen by the C libraries"""
+    if windows:
+        # The C runtime of the libraries uses the ANSI code page, and an empty
+        # value removes the variable.
+        library.G_putenv(name.encode("mbcs"), (value or "").encode("mbcs"))
+    elif value is None:
+        # The C libraries share the environment of the process with Python,
+        # and these change it without changing os.environ.
+        os.unsetenv(name)
+    else:
+        os.putenv(name, value)
+
+
 _lib_path = _find_lib_path()
 if _lib_path:
     # Registering the directory makes the wrapper modules resolve the
@@ -136,6 +239,7 @@ if _lib_path:
         # here and from the directory of the loaded DLL itself.
         os.add_dll_directory(_lib_path)
     _load_libraries(_lib_path)
+    sync_environment()
 
 __all__ = [
     'arraystats',
