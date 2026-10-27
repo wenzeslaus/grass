@@ -142,6 +142,34 @@ jobs:
           python -u .github\workflows\diagnose_pygrass_environment.py
         # Obfuscated usage of GitHub Actions features, Windows CMD shell limits analysis
         shell: cmd /D /E:ON /V:OFF /S /C "CALL C:/OSGeo4W/OSGeo4W.bat "{0}"" # zizmor: ignore[misfeature]
+      - name: Check which Windows xfails come from the environment (temporary diagnostics)
+        continue-on-error: true
+        timeout-minutes: 40
+        run: |
+          call %OSGEO4W_ROOT%\opt\grass\etc\env.bat
+          set PYTHONPATH=%GISBASE%\etc\python;%PYTHONPATH%
+          set grass=%OSGEO4W_ROOT%\opt\grass\grass86.bat
+          call %grass% --tmp-project XY --exec g.download.project ^
+            url=https://grass.osgeo.org/sampledata/north_carolina/nc_spm_full_v2beta1.tar.gz ^
+            path=%RUNNER_TEMP%
+          python -u .github\workflows\diagnose_xfail_windows.py %grass% %RUNNER_TEMP%\nc_spm_full_v2beta1 ^
+            python\grass\pygrass\raster\testsuite\test_raster_region.py ^
+            python\grass\pygrass\raster\testsuite\test_raster_img.py ^
+            python\grass\pygrass\raster\testsuite\test_numpy.py ^
+            python\grass\pygrass\raster\testsuite\test_category.py ^
+            python\grass\temporal\testsuite\unittests_temporal_raster_algebra_equal_ts.py ^
+            temporal\t.rast.series\testsuite\test_series.py ^
+            raster\r.report\testsuite\test_r_report.py ^
+            scripts\g.search.modules\testsuite\test_g_search_modules.py ^
+            scripts\r.tileset\testsuite\test_r_tileset.py ^
+            vector\v.univar\testsuite\test_v_univar.py ^
+            python\grass\script\testsuite\test_utils.py ^
+            python\grass\script\testsuite\test_start_command_functions.py ^
+            lib\imagery\testsuite\test_imagery_signature_management.py ^
+            lib\gis\testsuite\test_parser_json.py ^
+            python\grass\gunittest\testsuite\test_assertions.py
+        # Obfuscated usage of GitHub Actions features, Windows CMD shell limits analysis
+        shell: cmd /D /E:ON /V:OFF /S /C "CALL C:/OSGeo4W/OSGeo4W.bat "{0}"" # zizmor: ignore[misfeature]
       - name: Run pytest with multiple workers in parallel
         run: |
           call %OSGEO4W_ROOT%\opt\grass\etc\env.bat

@@ -137,6 +137,29 @@ def scenario_region_manager_pygrass_write(path):
     }
 
 
+def scenario_use_temp_region_pygrass_write(path):
+    """Write the region with pygrass after use_temp_region (v.rast.bufferstats)"""
+    import grass.script as gs
+    from grass.pygrass.gis.region import Region
+
+    start(path)
+    gs.use_temp_region()
+    region = Region()
+    region.north = 10
+    region.south = 0
+    region.east = 10
+    region.west = 0
+    region.adjust()
+    region.write()
+    inside = region_seen()
+    gs.del_temp_region()
+    return {
+        "expected_wind_after": [4, 4],
+        "inside": inside,
+        "wind_after": wind_file_rows_cols(),
+    }
+
+
 def scenario_region_manager_env(path):
     import grass.script as gs
 
