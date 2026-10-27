@@ -8,7 +8,7 @@ because the C libraries do not see variables set in the running process.
 
 Usage:
 
-    python -u diagnose_xfail_windows.py <grass command> <project> <file>...
+    python -u diagnose_xfail_windows.py <mode,...> <grass command> <project> <file>...
     python -u diagnose_xfail_windows.py --run <mode> <file>
 """
 
@@ -21,8 +21,11 @@ import time
 from pathlib import Path
 
 
-def share_environment():
-    """Copy each later change of os.environ into the C libraries"""
+def share_environment(names=None):
+    """Copy each later change of os.environ into the C libraries
+
+    With *names*, only changes of these variables are copied.
+    """
     import grass.lib.gis as libgis
 
     original_putenv = os.putenv
@@ -35,11 +38,13 @@ def share_environment():
 
     def putenv(name, value):
         original_putenv(name, value)
-        libgis.G_putenv(encode(name), encode(value))
+        if names is None or name in names:
+            libgis.G_putenv(encode(name), encode(value))
 
     def unsetenv(name):
         original_unsetenv(name)
-        libgis.G_putenv(encode(name), b"")
+        if names is None or name in names:
+            libgis.G_putenv(encode(name), b"")
 
     # os.environ calls these module functions on each change.
     os.putenv = putenv
@@ -49,16 +54,18 @@ def share_environment():
 def run_test_file(mode, path):
     if mode == "shared":
         share_environment()
+    elif mode == "wind-override":
+        share_environment({"WIND_OVERRIDE"})
     faulthandler.dump_traceback_later(150, exit=True)
     sys.argv = [path]
     sys.path.insert(0, str(Path(path).parent))
     runpy.run_path(path, run_name="__main__")
 
 
-def main(grass, project, paths):
+def main(modes, grass, project, paths):
     for path in paths:
         path = Path(path).resolve()
-        for mode in ("as-is", "shared"):
+        for mode in modes:
             start = time.monotonic()
             try:
                 process = subprocess.run(
@@ -103,4 +110,4 @@ if __name__ == "__main__":
     if sys.argv[1] == "--run":
         run_test_file(sys.argv[2], sys.argv[3])
     else:
-        main(sys.argv[1], sys.argv[2], sys.argv[3:])
+        main(sys.argv[1].split(","), sys.argv[2], sys.argv[3], sys.argv[4:])
