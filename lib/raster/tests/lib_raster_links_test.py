@@ -36,10 +36,7 @@ def read(session, name):
 
 def write_geotiff(tools, tmp_path, factor):
     """Write the values of factor to a new GeoTIFF file and return its path"""
-    tools.r_mapcalc(
-        expression=f"source_{factor} = {factor} * (row() * 100 + col())",
-        overwrite=True,
-    )
+    tools.r_mapcalc(expression=f"source_{factor} = {factor} * (row() * 100 + col())")
     path = tmp_path / f"source_{factor}.tif"
     tools.r_out_gdal(input=f"source_{factor}", output=path, type="Float64")
     return path
@@ -83,7 +80,6 @@ def test_write_through_external_out(session, tmp_path, output_format, function):
     tools.r_external_out(directory=directory, format=output_format, extension="tif")
     value = f"{function}(3 * (row() * 100 + col()))"
     tools.r_mapcalc(expression=f"written = if(row() == col(), null(), {value})")
-    tools.r_external_out(flags="r")
     assert (directory / "written.tif").exists()
     row, col = np.mgrid[1 : ROWS + 1, 1 : COLS + 1]
     expected = np.where(row == col, np.nan, values(3))
@@ -96,7 +92,6 @@ def test_overwrite_through_external_out(session, tmp_path):
     tools.r_external_out(directory=tmp_path, format="GTiff", extension="tif")
     tools.r_mapcalc(expression="written = row() * 100 + col()")
     tools.r_mapcalc(expression="written = 4 * (row() * 100 + col())", overwrite=True)
-    tools.r_external_out(flags="r")
     assert np.array_equal(read(session, "written"), values(4))
     assert np.array_equal(
         file_values(tools, session, tmp_path / "written.tif"), values(4)
@@ -109,7 +104,6 @@ def test_native_map_through_external_out(session, tmp_path):
     tools.r_mapcalc(expression="map = row() * 100 + col()")
     tools.r_external_out(directory=tmp_path, format="GTiff", extension="tif")
     tools.r_mapcalc(expression="map = 5 * (row() * 100 + col())", overwrite=True)
-    tools.r_external_out(flags="r")
     assert np.array_equal(read(session, "map"), values(5))
     assert np.array_equal(file_values(tools, session, tmp_path / "map.tif"), values(5))
 
@@ -120,7 +114,7 @@ def test_read_virtual_raster(session):
     tools.g_region(n=ROWS, s=ROWS // 2, w=0, e=COLS, res=1)
     tools.r_mapcalc(expression="north = row() * 100 + col()")
     tools.g_region(n=ROWS // 2, s=0, w=0, e=COLS, res=1)
-    tools.r_mapcalc(expression="south = (row() + 15) * 100 + col()")
+    tools.r_mapcalc(expression=f"south = (row() + {ROWS // 2}) * 100 + col()")
     tools.g_region(n=ROWS, s=0, w=0, e=COLS, res=1)
     tools.r_buildvrt(input="north,south", output="mosaic")
     assert np.array_equal(read(session, "mosaic"), values(1))
