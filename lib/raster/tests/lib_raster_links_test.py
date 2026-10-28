@@ -6,13 +6,9 @@ native maps. The tests write and overwrite such maps and check the values
 read back, computed with NumPy from the expressions which created them.
 """
 
-import os
-
 import numpy as np
 import pytest
 
-import grass.script as gs
-from grass.experimental import TemporaryMapsetSession
 from grass.script import array as garray
 from grass.tools import Tools
 
@@ -26,21 +22,11 @@ def values(factor):
     return factor * (row * 100.0 + col)
 
 
-@pytest.fixture(scope="module")
-def project_session(tmp_path_factory):
-    """Session in a project with a CRS"""
-    project = tmp_path_factory.mktemp("raster_links") / "project"
-    gs.create_project(project, epsg=3358)
-    with gs.setup.init(project, env=os.environ.copy()) as session:
-        yield session
-
-
 @pytest.fixture
-def session(project_session):
-    """A session in its own temporary mapset, with the region of the maps"""
-    with TemporaryMapsetSession(env=project_session.env) as mapset_session:
-        Tools(session=mapset_session).g_region(n=ROWS, s=0, w=0, e=COLS, res=1)
-        yield mapset_session
+def session(crs_session):
+    """A session in a project with a CRS, with the region of the maps"""
+    Tools(session=crs_session).g_region(n=ROWS, s=0, w=0, e=COLS, res=1)
+    return crs_session
 
 
 def read(session, name):

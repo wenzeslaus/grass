@@ -25,3 +25,23 @@ def session(session_for_module):
     """A session in a temporary mapset"""
     with TemporaryMapsetSession(env=session_for_module.env) as session:
         yield session
+
+
+@pytest.fixture(scope="module")
+def crs_session_for_module(tmp_path_factory):
+    """Module-scoped session in a project with a CRS (EPSG:3358)
+
+    GDAL output and links need a project with a CRS. Each test module sets
+    the region it needs in the mapsets it uses.
+    """
+    project = tmp_path_factory.mktemp("crs") / "project"
+    gs.create_project(project, epsg=3358)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        yield session
+
+
+@pytest.fixture
+def crs_session(crs_session_for_module):
+    """A session in a temporary mapset of the project with a CRS"""
+    with TemporaryMapsetSession(env=crs_session_for_module.env) as session:
+        yield session
