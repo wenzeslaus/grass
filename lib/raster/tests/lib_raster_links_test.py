@@ -44,6 +44,12 @@ def write_geotiff(tools, tmp_path, factor):
     return path
 
 
+def file_values(tools, session, path):
+    """Values of the GeoTIFF file at path, read through a new link"""
+    tools.r_external(input=path, output="file_check")
+    return read(session, "file_check")
+
+
 def test_read_linked(session, tmp_path):
     """A map linked with r.external has the values of the file"""
     tools = Tools(session=session)
@@ -75,23 +81,27 @@ def test_write_through_external_out(session, tmp_path, output_format):
 
 
 def test_overwrite_through_external_out(session, tmp_path):
-    """A map written again through r.external.out has the new values"""
+    """A map written again through r.external.out has the new values in the file"""
     tools = Tools(session=session)
     tools.r_external_out(directory=tmp_path, format="GTiff", extension="tif")
     tools.r_mapcalc(expression="written = row() * 100 + col()")
     tools.r_mapcalc(expression="written = 4 * (row() * 100 + col())", overwrite=True)
     tools.r_external_out(flags="r")
     assert np.array_equal(read(session, "written"), values(4))
+    assert np.array_equal(
+        file_values(tools, session, tmp_path / "written.tif"), values(4)
+    )
 
 
 def test_native_map_through_external_out(session, tmp_path):
-    """A native map overwritten through r.external.out has the new values"""
+    """A native map overwritten through r.external.out is written to the file"""
     tools = Tools(session=session)
     tools.r_mapcalc(expression="map = row() * 100 + col()")
     tools.r_external_out(directory=tmp_path, format="GTiff", extension="tif")
     tools.r_mapcalc(expression="map = 5 * (row() * 100 + col())", overwrite=True)
     tools.r_external_out(flags="r")
     assert np.array_equal(read(session, "map"), values(5))
+    assert np.array_equal(file_values(tools, session, tmp_path / "map.tif"), values(5))
 
 
 def test_read_virtual_raster(session):
