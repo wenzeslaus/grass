@@ -30,7 +30,8 @@ def session(crs_session):
 
 
 def read(session, name):
-    return np.array(garray.array(name, env=session.env))
+    """Values of a map as float64 with NaN for nulls"""
+    return np.array(garray.array(name, null=np.nan, dtype=np.float64, env=session.env))
 
 
 def write_geotiff(tools, tmp_path, factor):
@@ -67,17 +68,26 @@ def test_relink(session, tmp_path):
     assert np.array_equal(read(session, "linked"), values(2))
 
 
-@pytest.mark.parametrize("output_format", ["GTiff", "COG"])
-def test_write_through_external_out(session, tmp_path, output_format):
-    """A map written through r.external.out has the values written"""
+@pytest.mark.parametrize(
+    ("output_format", "function"), [("GTiff", "float"), ("COG", "double")]
+)
+def test_write_through_external_out(session, tmp_path, output_format, function):
+    """A floating point map with nulls is written through r.external.out
+
+    GTiff is created directly, while COG is written to a GDAL memory
+    dataset first and copied to the file when the map is closed.
+    """
     tools = Tools(session=session)
     directory = tmp_path / "out"
     directory.mkdir()
     tools.r_external_out(directory=directory, format=output_format, extension="tif")
-    tools.r_mapcalc(expression="written = 3 * (row() * 100 + col())")
+    value = f"{function}(3 * (row() * 100 + col()))"
+    tools.r_mapcalc(expression=f"written = if(row() == col(), null(), {value})")
     tools.r_external_out(flags="r")
     assert (directory / "written.tif").exists()
-    assert np.array_equal(read(session, "written"), values(3))
+    row, col = np.mgrid[1 : ROWS + 1, 1 : COLS + 1]
+    expected = np.where(row == col, np.nan, values(3))
+    assert np.array_equal(read(session, "written"), expected, equal_nan=True)
 
 
 def test_overwrite_through_external_out(session, tmp_path):
