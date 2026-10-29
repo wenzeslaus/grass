@@ -2,16 +2,96 @@
 SPDX-FileCopyrightText: 2026 GRASS Development Team
 SPDX-License-Identifier: GPL-2.0-or-later
 
-Unit tests for grass.pygrass.vector.basic (Ilist, BoxList, Bbox)
+Unit tests for grass.pygrass.vector.basic (Ilist, BoxList, Bbox, Cats, CatsList)
 """
 
+import ctypes
+import json
+import os
+import sys
+import time
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 import grass.lib.vector as libvect
+import grass.script as gs
 from grass.pygrass.errors import GrassError
-from grass.pygrass.vector.basic import Bbox, BoxList, Ilist
+from grass.pygrass.vector.basic import Bbox, BoxList, Cats, CatsList, Ilist
+
+
+# Temporary diagnostics for the category list tests on Windows, not meant
+# for upstream. With GRASS_TEST_DIAGNOSTICS_DIR set, each probe appends one
+# JSON line to a per-process file, written immediately so that the record
+# survives a fatal error in the C libraries which ends the process.
+DIAGNOSTICS_DIR = os.environ.get("GRASS_TEST_DIAGNOSTICS_DIR")
+DIAGNOSED_VARIABLES = ("GISRC", "GISBASE", "GRASS_TEST_DIAGNOSTICS_MARKER")
+WINDOWS = sys.platform.startswith("win")
+
+
+def c_runtime_getenv():
+    """Return what the C runtimes in this process see for the variables"""
+    result = {}
+    if WINDOWS:
+        kernel32 = ctypes.WinDLL("kernel32")
+        kernel32.GetModuleHandleW.restype = ctypes.c_void_p
+        # Checked before loading the runtimes below, which would load them.
+        for name in ("msvcrt", "ucrtbase"):
+            result[f"{name} loaded"] = bool(kernel32.GetModuleHandleW(f"{name}.dll"))
+        libraries = {name: ctypes.CDLL(name) for name in ("msvcrt", "ucrtbase")}
+    else:
+        libraries = {"libc": ctypes.CDLL(None)}
+    for name, library in libraries.items():
+        library.getenv.restype = ctypes.c_char_p
+        library.getenv.argtypes = [ctypes.c_char_p]
+        for variable in DIAGNOSED_VARIABLES:
+            value = library.getenv(variable.encode())
+            result[f"{name} {variable}"] = value.decode() if value else None
+    return result
+
+
+def record_diagnostics(point, **extra):
+    """Append a diagnostic record when the diagnostics directory is set"""
+    if not DIAGNOSTICS_DIR:
+        return
+    # A variable set now shows whether the C runtimes see a change made by
+    # Python at this point of the process lifetime.
+    marker = f"{point} {time.monotonic()}"
+    os.environ["GRASS_TEST_DIAGNOSTICS_MARKER"] = marker
+    record = {
+        "point": point,
+        "pid": os.getpid(),
+        "worker": os.environ.get("PYTEST_XDIST_WORKER"),
+        "test": os.environ.get("PYTEST_CURRENT_TEST"),
+        "python": {name: os.environ.get(name) for name in DIAGNOSED_VARIABLES},
+        "c": c_runtime_getenv(),
+        **extra,
+    }
+    directory = Path(DIAGNOSTICS_DIR)
+    directory.mkdir(parents=True, exist_ok=True)
+    with (directory / f"{os.getpid()}.jsonl").open("a", encoding="utf-8") as file:
+        file.write(json.dumps(record) + "\n")
+        file.flush()
+        os.fsync(file.fileno())
+
+
+def libgis_session():
+    """Return the session libgis uses (call only after libgis read GISRC)"""
+    import grass.lib.gis as libgis
+
+    def text(value):
+        if value is None:
+            return None
+        return value.decode() if isinstance(value, bytes) else str(value)
+
+    return {
+        name: text(libgis.G_getenv_nofatal(name.encode()))
+        for name in ("GISDBASE", "LOCATION_NAME", "MAPSET")
+    }
+
+
+record_diagnostics("module import")
 
 
 def test_init_empty():
@@ -499,3 +579,116 @@ def test_boxlist_repr():
     """Test BoxList __repr__."""
     boxlist = BoxList([Bbox(1, 2, 3, 4)])
     assert repr(boxlist) == "Boxlist([Bbox(1.0, 2.0, 3.0, 4.0)])"
+
+
+def test_cats_delete_cat_zero():
+    """Deleting category 0 removes only that category."""
+    cats = Cats()
+    for cat in (0, 1, 2):
+        cats.set(cat, layer=1)
+    cats.delete(0, layer=1)
+    assert cats.cat == [1, 2]
+    assert cats.n_del == 1
+
+
+def test_cats_delete_missing_cat_zero():
+    """Deleting a category 0 which is not present raises and keeps the others."""
+    cats = Cats()
+    cats.set(1, layer=1)
+    with pytest.raises(ValueError, match="category\\(0\\) number does not exist"):
+        cats.delete(0, layer=1)
+    assert cats.cat == [1]
+
+
+def test_cats_delete_layer():
+    """Deleting without a category removes all categories of the layer."""
+    cats = Cats()
+    cats.set(1, layer=1)
+    cats.set(2, layer=1)
+    cats.set(3, layer=2)
+    cats.delete(layer=1)
+    assert cats.cat == [3]
+    assert cats.layer == [2]
+
+
+@pytest.fixture
+def xy_session(tmp_path):
+    """Active session in an XY project (the C category list functions need one)"""
+    project = tmp_path / "xy_test"
+    gs.create_project(project)
+    record_diagnostics("fixture before init")
+    with gs.setup.init(project) as session:
+        record_diagnostics("fixture after init", session_gisrc=session.env["GISRC"])
+        yield session
+    record_diagnostics("fixture after finish")
+
+
+def test_cats_list_from_array(xy_session):
+    """Ordered integers are converted into category ranges."""
+    cats_list = CatsList()
+    record_diagnostics("before from_array")
+    cats_list.from_array([1, 2, 3, 5, 7, 8])
+    record_diagnostics("after from_array", libgis=libgis_session())
+    assert cats_list.n_ranges == 3
+    assert cats_list.min == [1, 5, 7]
+    assert cats_list.max == [3, 5, 8]
+    assert 2 in cats_list
+    assert 6 not in cats_list
+
+
+def test_cats_list_from_array_empty(xy_session):
+    """An empty array gives an empty category list."""
+    cats_list = CatsList()
+    record_diagnostics("before empty from_array")
+    cats_list.from_array([])
+    record_diagnostics("after empty from_array", libgis=libgis_session())
+    assert cats_list.n_ranges == 0
+
+
+@pytest.fixture
+def xy_session_env(tmp_path):
+    """Provide a session in an XY project only in a separate environment."""
+    project = tmp_path / "xy_test"
+    gs.create_project(project)
+    with gs.setup.init(project, env=os.environ.copy()) as session:
+        yield session
+
+
+def test_cats_list_from_array_in_subprocess(xy_session_env, run_code_in_environment):
+    """Ordered integers are converted into category ranges in a subprocess."""
+    code = """
+        import json
+        from grass.pygrass.vector.basic import CatsList
+
+        cats_list = CatsList()
+        cats_list.from_array([1, 2, 3, 5, 7, 8])
+        print(json.dumps({
+            "n_ranges": cats_list.n_ranges,
+            "min": cats_list.min,
+            "max": cats_list.max,
+            "contains": [2 in cats_list, 6 in cats_list],
+        }))
+    """
+    result = run_code_in_environment(code, env=xy_session_env.env)
+    assert result == {
+        "n_ranges": 3,
+        "min": [1, 5, 7],
+        "max": [3, 5, 8],
+        "contains": [True, False],
+    }
+
+
+def test_cats_list_from_array_empty_in_subprocess(
+    xy_session_env, run_code_in_environment
+):
+    """An empty array gives an empty category list in a subprocess."""
+    code = """
+        import json
+        from grass.pygrass.vector.basic import CatsList
+
+        cats_list = CatsList()
+        cats_list.from_array([])
+        print(json.dumps({"n_ranges": cats_list.n_ranges}))
+    """
+    result = run_code_in_environment(code, env=xy_session_env.env)
+    assert result == {"n_ranges": 0}

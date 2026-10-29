@@ -115,6 +115,15 @@ jobs:
         shell: msys2 {0}
         run: .github/workflows/print_versions.sh
 
+      - name: Show the C runtime of the GRASS core library (temporary diagnostics)
+        if: always()
+        shell: msys2 {0}
+        run: |
+          for library in /c/OSGeo4W/opt/grass/lib/*grass_gis*.dll; do
+            echo "== ${library}"
+            objdump -p "${library}" | grep "DLL Name"
+          done
+
       - name: Test executing of the grass command
         run: .github/workflows/test_simple.bat '%O4WROOT%\opt\grass\grass86.bat'
         env:
@@ -133,6 +142,51 @@ jobs:
             pytest-randomly
         # Obfuscated usage of GitHub Actions features, Windows CMD shell limits analysis
         shell: cmd /D /E:ON /V:OFF /S /C "CALL C:/OSGeo4W/OSGeo4W.bat "{0}"" # zizmor: ignore[misfeature]
+      - name: Run the category list tests first in a fresh process (temporary diagnostics)
+        continue-on-error: true
+        run: |
+          call %OSGEO4W_ROOT%\opt\grass\etc\env.bat
+          set PYTHONPATH=%GISBASE%\etc\python;%PYTHONPATH%
+          path %GISBASE%\lib;%GISBASE%\bin;%PATH%
+          pytest ^
+            -p no:randomly ^
+            -p no:xdist ^
+            -v ^
+            python/grass/pygrass/vector/tests/test_basic.py ^
+            -k "cats_list"
+        env:
+          GRASS_TEST_DIAGNOSTICS_DIR: ${{ github.workspace }}\pytest-diagnostics\fresh
+        # Obfuscated usage of GitHub Actions features, Windows CMD shell limits analysis
+        shell: cmd /D /E:ON /V:OFF /S /C "CALL C:/OSGeo4W/OSGeo4W.bat "{0}"" # zizmor: ignore[misfeature]
+      - name: Run the category list tests without GISRC at the start (temporary diagnostics)
+        continue-on-error: true
+        run: |
+          call %OSGEO4W_ROOT%\opt\grass\etc\env.bat
+          set PYTHONPATH=%GISBASE%\etc\python;%PYTHONPATH%
+          path %GISBASE%\lib;%GISBASE%\bin;%PATH%
+          echo GISRC after env.bat: "%GISRC%"
+          if exist %GISBASE%\etc\fontcap (echo fontcap exists) else (echo fontcap is missing)
+          set GISRC=
+          REM A fatal error in the C libraries ends the whole pytest process,
+          REM so the in-process and the subprocess tests run separately.
+          pytest ^
+            -p no:randomly ^
+            -p no:xdist ^
+            -v ^
+            python/grass/pygrass/vector/tests/test_basic.py ^
+            -k "cats_list and not subprocess"
+          echo pytest exit code for the in-process tests: %ERRORLEVEL%
+          pytest ^
+            -p no:randomly ^
+            -p no:xdist ^
+            -v ^
+            python/grass/pygrass/vector/tests/test_basic.py ^
+            -k "cats_list and subprocess"
+          echo pytest exit code for the subprocess tests: %ERRORLEVEL%
+        env:
+          GRASS_TEST_DIAGNOSTICS_DIR: ${{ github.workspace }}\pytest-diagnostics\without-gisrc
+        # Obfuscated usage of GitHub Actions features, Windows CMD shell limits analysis
+        shell: cmd /D /E:ON /V:OFF /S /C "CALL C:/OSGeo4W/OSGeo4W.bat "{0}"" # zizmor: ignore[misfeature]
       - name: Run pytest with multiple workers in parallel
         run: |
           call %OSGEO4W_ROOT%\opt\grass\etc\env.bat
@@ -145,8 +199,17 @@ jobs:
             -k "not testsuite"
         env:
           OMP_NUM_THREADS: 1
+          GRASS_TEST_DIAGNOSTICS_DIR: ${{ github.workspace }}\pytest-diagnostics\parallel
         # Obfuscated usage of GitHub Actions features, Windows CMD shell limits analysis
         shell: cmd /D /E:ON /V:OFF /S /C "CALL C:/OSGeo4W/OSGeo4W.bat "{0}"" # zizmor: ignore[misfeature]
+      - name: Print the category list test diagnostics (temporary diagnostics)
+        if: always()
+        shell: msys2 {0}
+        run: |
+          for file in pytest-diagnostics/*/*.jsonl; do
+            echo "== ${file}"
+            cat "${file}"
+          done
       - name: Run pytest with a single worker (for tests marked with needs_solo_run)
         run: |
           call %OSGEO4W_ROOT%\opt\grass\etc\env.bat
