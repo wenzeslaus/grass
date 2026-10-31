@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-24 18:21+0000\n"
+"POT-Creation-Date: 2026-10-31 19:33+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5375,7 +5375,7 @@ msgstr ""
 #: ../scripts/r.buffer.lowmem/r.buffer.lowmem.py:83
 #: ../scripts/r.fillnulls/r.fillnulls.py:149 ../scripts/r.grow/r.grow.py:122
 #: ../scripts/r.mask/r.mask.py:148 ../scripts/r.pack/r.pack.py:71
-#: ../scripts/r.reclass.area/r.reclass.area.py:372 ../scripts/r.rgb/r.rgb.py:53
+#: ../scripts/r.reclass.area/r.reclass.area.py:405 ../scripts/r.rgb/r.rgb.py:53
 #: ../scripts/v.rast.stats/v.rast.stats.py:151 ../vector/v.colors/main.c:314
 #: ../vector/v.vol.rst/main.c:605
 #, c-format, python-format
@@ -14588,7 +14588,7 @@ msgid "Generate clumps including diagonal neighbors"
 msgstr ""
 
 #: ../locale/scriptstrings/r.reclass.area_to_translate.c:17
-msgid "Invert filter (remove clumps larger than lower and smaller than upper)"
+msgid "Invert filter (remove clumps larger than lower and smaller than upper, only for method 'reclass')"
 msgstr ""
 
 #: ../locale/scriptstrings/r.reclass.area_to_translate.c:18
@@ -35023,82 +35023,116 @@ msgstr ""
 msgid "azimuth must be between 0 and 360"
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:148
+#: ../scripts/r.reclass.area/r.reclass.area.py:149
 msgid ""
 "xy-locations are not supported\n"
 "Need projected data with grids in meters"
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:154
+#: ../scripts/r.reclass.area/r.reclass.area.py:155
 msgid "Latitude-longitude locations are not supported"
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:156
+#: ../scripts/r.reclass.area/r.reclass.area.py:157
 msgid "xy-locations are not supported"
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:176
+#: ../scripts/r.reclass.area/r.reclass.area.py:177
 #, python-brace-format
 msgid "Generating a clumped raster file including diagonal neighbors with minimum {pixel_count} pixels"
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:180
+#: ../scripts/r.reclass.area/r.reclass.area.py:181
 msgid "Generating a clumped raster file including diagonal neighbors"
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:183
+#: ../scripts/r.reclass.area/r.reclass.area.py:184
 #, python-brace-format
 msgid "Generating a clumped raster file with minimum {pixel_count} pixels"
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:186
+#: ../scripts/r.reclass.area/r.reclass.area.py:187
 msgid "Generating a clumped raster file"
-msgstr ""
-
-#: ../scripts/r.reclass.area/r.reclass.area.py:214
-#, python-brace-format
-msgid "Generating a reclass map with area size larger than or equal to {lower} hectares and smaller than or equal to {upper} hectares..."
 msgstr ""
 
 #: ../scripts/r.reclass.area/r.reclass.area.py:218
 #, python-brace-format
-msgid "No areas of size larger than or equal to {lower} hectares and smaller than or equal to {upper} hectares"
+msgid "Generating a reclass map with area size smaller than {lower} hectares or larger than {upper} hectares..."
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:223
+#: ../scripts/r.reclass.area/r.reclass.area.py:222
 #, python-brace-format
-msgid "Generating a reclass map with area size larger than or equal to {lower} hectares..."
+msgid "No areas of size smaller than {lower} hectares or larger than {upper} hectares"
 msgstr ""
 
 #: ../scripts/r.reclass.area/r.reclass.area.py:227
 #, python-brace-format
-msgid "No areas of size larger than or equal to {lower} hectares"
+msgid "Generating a reclass map with area size larger than or equal to {lower} hectares and smaller than or equal to {upper} hectares..."
 msgstr ""
 
 #: ../scripts/r.reclass.area/r.reclass.area.py:231
 #, python-brace-format
+msgid "No areas of size larger than or equal to {lower} hectares and smaller than or equal to {upper} hectares"
+msgstr ""
+
+#: ../scripts/r.reclass.area/r.reclass.area.py:237
+#, python-brace-format
+msgid "Generating a reclass map with area size smaller than {lower} hectares..."
+msgstr ""
+
+#: ../scripts/r.reclass.area/r.reclass.area.py:240
+#, python-brace-format
+msgid "No areas of size smaller than {lower} hectares"
+msgstr ""
+
+#: ../scripts/r.reclass.area/r.reclass.area.py:245
+#, python-brace-format
+msgid "Generating a reclass map with area size larger than or equal to {lower} hectares..."
+msgstr ""
+
+#: ../scripts/r.reclass.area/r.reclass.area.py:249
+#, python-brace-format
+msgid "No areas of size larger than or equal to {lower} hectares"
+msgstr ""
+
+#: ../scripts/r.reclass.area/r.reclass.area.py:254
+#, python-brace-format
+msgid "Generating a reclass map with area size larger than {upper} hectares..."
+msgstr ""
+
+#: ../scripts/r.reclass.area/r.reclass.area.py:257
+#, python-brace-format
+msgid "No areas of size larger than {upper} hectares"
+msgstr ""
+
+#: ../scripts/r.reclass.area/r.reclass.area.py:262
+#, python-brace-format
 msgid "Generating a reclass map with area size smaller than or equal to {upper} hectares..."
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:235
+#: ../scripts/r.reclass.area/r.reclass.area.py:266
 #, python-brace-format
 msgid "No areas of size smaller than or equal to {upper} hectares"
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:239
+#: ../scripts/r.reclass.area/r.reclass.area.py:270
 msgid "Generating a reclass map without area size limits..."
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:240
+#: ../scripts/r.reclass.area/r.reclass.area.py:271
 msgid "No areas found"
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:300
+#: ../scripts/r.reclass.area/r.reclass.area.py:333
 #, python-format
 msgid "Raster map <%s> is not of type 'CELL'. Results may not be as expected."
 msgstr ""
 
-#: ../scripts/r.reclass.area/r.reclass.area.py:381
+#: ../scripts/r.reclass.area/r.reclass.area.py:408
+msgid "Flag -i is not supported with method='rmarea'"
+msgstr ""
+
+#: ../scripts/r.reclass.area/r.reclass.area.py:417
 msgid "Options <mode> and <value> are deprecated. Use 'lower' and/or 'upper'."
 msgstr ""
 
