@@ -1,3 +1,7 @@
+# Author: Vaclav Petras
+# Copyright (C) 2026 by the GRASS Development Team
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 """Tests of linked and virtual raster maps
 
 Maps linked with r.external, maps written through r.external.out, and
