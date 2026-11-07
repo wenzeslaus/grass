@@ -274,11 +274,33 @@ miss.
   but Unicode is more acceptable.
 - Inline comments in code examples must be separated from code by exactly
   two spaces (e.g., `x = 1  # comment`).
+- Describe the code as it is now. Put earlier behavior, PR and issue
+  numbers, and the measurements behind a chosen value in the commit message
+  or PR description.
+- Do not define common or domain terms, repeat a nearby comment, or explain
+  behavior the reader expects. Keep comments brief but readable.
+- When a comment, docstring, or test relies on a property of the current
+  implementation rather than of the documented contract (e.g., the order of
+  output rows), say so.
+- Tables, equations, and diagrams in docstrings and Doxygen comments must
+  render in the generated documentation; avoid ASCII art.
 
 ### Tests
 
 - Module-level globals in test files do not need a leading underscore; test
   modules are not public APIs.
+- New files, including tests, start with the SPDX copyright lines (see
+  "Copyright header" in the style guide).
+- Test runtime matters. Before adding a tool run, check whether an existing
+  test can assert the new case too. Report the added runtime in the PR.
+- Assert what the implementation and documentation promise, not that a
+  feature merely runs, and not stronger properties that happen to hold for
+  the chosen data.
+- Remove skip markers that the change resolves.
+- With `grass.tools`, check that a tool fails using
+  `pytest.raises(ToolError)`, not a generic exception.
+- Use short numbers in realistic units in test data (e.g., `105.5` for an
+  elevation in meters, not `105.48731`).
 
 ### Python
 
@@ -302,6 +324,13 @@ miss.
   (`grass/gis.h`, etc.), then local headers; groups alphabetically sorted,
   separated by blank lines
 - Snake case for function names (GNU naming convention)
+- Include `<stdint.h>` or `<inttypes.h>` directly when the code uses
+  fixed-width types; do not rely on transitive includes through `gis.h`.
+- Document public library functions with Doxygen comments in the `.c` file,
+  not in the header.
+- Write each user message as one translatable sentence, not assembled from
+  parts written in different functions (see "Translations" in the style
+  guide).
 
 ### Documentation (tool doc files)
 
@@ -319,6 +348,16 @@ Markup conventions:
 - Flags and parameter names in bold: `**-f**`, `**input**`
 - Values, paths, commands in backticks
 - `SEE ALSO` section alphabetized
+
+Content conventions:
+
+- Describe what the user sees and controls: inputs, outputs, and how
+  results behave. Leave implementation details to the code and the
+  changes from earlier versions to the commit message and release notes.
+- Do not repeat in a tool's documentation what applies to many tools
+  and is documented elsewhere; link to it if the reader needs it.
+- State the general behavior first, and put exceptions and caveats after
+  it or in parentheses.
 
 ### Tool Interface
 
@@ -340,6 +379,15 @@ parameters accept `np.ndarray`, `io.StringIO`, etc., use
 `grass run <tool> --md-description` and look at the "Python (grass.tools)"
 section. For full structured detail in XML, use
 `grass run <tool> --interface-description`.
+
+## Scope of a Change
+
+- Keep a PR to one change. Put unrelated fixes, refactoring, and changes to
+  separate tools in separate PRs, and do not tidy code the change does not
+  need.
+- Before writing a helper, look for an existing library function that does
+  it, and do not leave two code paths that do the same check.
+- After a refactor, remove declarations and code it left unused.
 
 ## Commit Messages
 
