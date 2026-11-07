@@ -60,23 +60,21 @@ def test_relink(session, tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("output_format", "function"), [("GTiff", "float"), ("COG", "double")]
+    ("output_format", "cast"), [("GTiff", "float"), ("COG", "double")]
 )
-def test_write_through_external_out(session, tmp_path, output_format, function):
+def test_write_through_external_out(session, tmp_path, output_format, cast):
     """A floating point map with nulls is written through r.external.out
 
     GTiff is created directly, while COG is written to a GDAL memory
     dataset first and copied to the file when the map is closed.
     """
     tools = Tools(session=session)
-    directory = tmp_path / "out"
-    directory.mkdir()
-    tools.r_external_out(directory=directory, format=output_format, extension="tif")
-    value = f"{function}(3 * (row() * 100 + col()))"
+    tools.r_external_out(directory=tmp_path, format=output_format, extension="tif")
+    value = f"{cast}(3 * (row() * 100 + col()))"
     tools.r_mapcalc(expression=f"written = if(row() == col(), null(), {value})")
-    assert (directory / "written.tif").exists()
-    row, col = np.mgrid[1 : ROWS + 1, 1 : COLS + 1]
-    expected = np.where(row == col, np.nan, values(3))
+    assert (tmp_path / "written.tif").exists()
+    expected = values(3)
+    np.fill_diagonal(expected, np.nan)
     assert np.array_equal(read(session, "written"), expected, equal_nan=True)
 
 
