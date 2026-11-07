@@ -1,6 +1,6 @@
-"""Tests of raster maps which are links: GDAL links and virtual rasters
+"""Tests of linked and virtual raster maps
 
-Maps linked with r.external, maps written through r.external.out and
+Maps linked with r.external, maps written through r.external.out, and
 virtual rasters from r.buildvrt are read through the raster library like
 native maps. The tests write and overwrite such maps and check the values
 read back, computed with NumPy from the expressions which created them.
@@ -35,7 +35,7 @@ def read(session, name):
 
 
 def write_geotiff(tools, tmp_path, factor):
-    """Write the values of factor to a new GeoTIFF file and return its path"""
+    """Write values(factor) to a new GeoTIFF file and return its path"""
     tools.r_mapcalc(expression=f"source_{factor} = {factor} * (row() * 100 + col())")
     path = tmp_path / f"source_{factor}.tif"
     tools.r_out_gdal(input=f"source_{factor}", output=path, type="Float64")

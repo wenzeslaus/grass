@@ -29,10 +29,9 @@ def session(session_for_module):
 
 @pytest.fixture(scope="module")
 def crs_session_for_module(tmp_path_factory):
-    """Module-scoped session in a project with a CRS (EPSG:3358)
+    """Module-scoped session in a project with EPSG:3358
 
-    GDAL output and links need a project with a CRS. Each test module sets
-    the region it needs in the mapsets it uses.
+    Linking a file with r.external needs a project with a CRS.
     """
     project = tmp_path_factory.mktemp("crs") / "project"
     gs.create_project(project, epsg=3358)
