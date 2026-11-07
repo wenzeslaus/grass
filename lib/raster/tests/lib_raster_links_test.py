@@ -48,17 +48,11 @@ def file_values(tools, session, path):
     return read(session, "file_check")
 
 
-def test_read_linked(session, tmp_path):
-    """A map linked with r.external has the values of the file"""
+def test_relink(session, tmp_path):
+    """A map linked with r.external and linked again with --overwrite has the values of the file"""
     tools = Tools(session=session)
     tools.r_external(input=write_geotiff(tools, tmp_path, 1), output="linked")
     assert np.array_equal(read(session, "linked"), values(1))
-
-
-def test_relink(session, tmp_path):
-    """A map linked again with --overwrite has the values of the new file"""
-    tools = Tools(session=session)
-    tools.r_external(input=write_geotiff(tools, tmp_path, 1), output="linked")
     tools.r_external(
         input=write_geotiff(tools, tmp_path, 2), output="linked", overwrite=True
     )
