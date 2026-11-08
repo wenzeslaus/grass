@@ -70,17 +70,16 @@ static int read_int(int cpu, const char *name)
 }
 
 /* Count distinct (package, core) pairs among the CPUs this process may
- * run on, so that a CPU affinity mask (taskset, cgroup cpusets, batch
- * schedulers) limits the count like it limits the logical CPUs. */
+ * run on, so that a CPU affinity mask limits the count like it limits
+ * the logical CPUs. */
 static int linux_cores(void)
 {
     cpu_set_t set;
-    int *keys;
+    int keys[2 * CPU_SETSIZE];
     int n = 0;
 
     if (sched_getaffinity(0, sizeof(set), &set) != 0)
         return 0;
-    keys = G_malloc(2 * CPU_SETSIZE * sizeof(int));
     for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
         int package, core, i;
 
@@ -101,7 +100,6 @@ static int linux_cores(void)
             n++;
         }
     }
-    G_free(keys);
     return n;
 }
 #endif

@@ -122,7 +122,12 @@ def test_default_is_available_cores(univar_session):
     [(None, -1), ("6,2", 0), ("0", 0), ("x", -1), ("3x", 0)],
 )
 def test_threads_same_as_python(univar_session, monkeypatch, omp_num_threads, nprocs):
-    """C tools and resolve_nprocs() in Python give the same number"""
+    """C tools and resolve_nprocs() in Python give the same number
+
+    Pins the C and Python implementations to each other. The variable is
+    set in os.environ for resolve_nprocs() and passed to thread_count() for
+    the tool, which gets a copy of the session environment.
+    """
     if omp_num_threads is None:
         monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
     else:

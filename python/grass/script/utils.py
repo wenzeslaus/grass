@@ -110,13 +110,13 @@ def available_cpus() -> int:
 def available_cores() -> int:
     """Number of physical CPU cores this process may use.
 
-    Follows ``G_available_cores()`` in ``lib/gis/cpu_cores.c`` except on
-    Windows, where the C library counts cores. Logical CPUs of one core
-    (SMT, Hyper-Threading) count once. On Linux, the logical CPUs in the
-    affinity mask are grouped by their core using the CPU topology in sysfs.
-    On macOS, the count is the ``hw.physicalcpu`` value. Elsewhere,
-    including Windows, and when the topology is unknown, it is the number
-    of logical CPUs from :func:`available_cpus`.
+    Python counterpart of ``G_available_cores()`` in ``lib/gis/cpu_cores.c``.
+    Logical CPUs of one core (SMT, Hyper-Threading) count once. On Linux,
+    the logical CPUs in the affinity mask are grouped by their core using
+    the CPU topology in sysfs. On macOS, the count is the ``hw.physicalcpu``
+    value. Elsewhere, including Windows (where the C library does count
+    cores), and when the topology is unknown, it is the number of logical
+    CPUs from :func:`available_cpus`.
 
     .. versionadded:: 8.6
     """
@@ -160,7 +160,9 @@ def _default_nprocs() -> int:
     to a positive number, otherwise :func:`available_cores`.
     """
     value = os.environ.get("OMP_NUM_THREADS", "").split(",")[0].strip()
-    if value.isdigit() and int(value) > 0:
+    # Only ASCII digits, like isdigit() in C. str.isdigit() and
+    # str.isdecimal() also accept other Unicode digits.
+    if value.isascii() and value.isdigit() and int(value) > 0:
         return int(value)
     return available_cores()
 
@@ -169,11 +171,10 @@ def resolve_nprocs(nprocs: int | str) -> int:
     """Resolve G_OPT_M_NPROCS into a worker count.
 
     Mirrors the semantics of ``G_set_omp_num_threads()`` in
-    ``lib/gis/omp_threads.c``: 0 means the default, which is the value of
-    OMP_NUM_THREADS when it is set and the number of physical cores from
-    :func:`available_cores` otherwise, a positive number is used as-is,
-    and a negative number means the default plus nprocs (clamped to at
-    least 1).
+    ``lib/gis/omp_threads.c``. 0 means the default, which is OMP_NUM_THREADS
+    when set to a positive number and the number of physical cores from
+    :func:`available_cores` otherwise. A positive number is used as is.
+    A negative number means the default plus nprocs, at least 1.
 
     .. versionadded:: 8.6
     """
