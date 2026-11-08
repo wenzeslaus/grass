@@ -11,9 +11,9 @@
 #include <grass/glocale.h>
 
 #if defined(_OPENMP)
-/* Whether the first value of OMP_NUM_THREADS is a positive number, the
- * same check as resolve_nprocs() in grass.script makes. OpenMP ignores
- * a zero or invalid value. */
+/* Whether the first value of OMP_NUM_THREADS is a positive number.
+ * OpenMP ignores a zero or invalid OMP_NUM_THREADS, so such a value does
+ * not replace the core count. */
 static int omp_num_threads_is_set(void)
 {
     const char *env = getenv("OMP_NUM_THREADS");
@@ -42,14 +42,16 @@ static int omp_num_threads_is_set(void)
     positive number, otherwise the number of physical CPU cores available
     to the process (see G_available_cores()).
     If \em nprocs is a positive number, specified number of threads is used.
-    If \em nprocs is a negative number, then <em>default - number</em>
-    threads are used, at least one (e.g. to keep \em number of cores free
-    for other use).
+    If \em nprocs is a negative number, the default minus \em number
+    threads are used, at least one, which keeps \em number cores free for
+    other work.
 
     \param opt A nprocs Option struct to specify the number of threads
     \return the number of threads set up for OpenMP parallel computing
 
     \since version 8.5
+    \since version 8.6 the default and negative values count physical cores
+    rather than logical CPUs
 */
 int G_set_omp_num_threads(struct Option *opt)
 {

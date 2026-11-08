@@ -70,8 +70,8 @@ static int read_int(int cpu, const char *name)
 }
 
 /* Count distinct (package, core) pairs among the CPUs this process may
- * run on, so that a CPU affinity mask (taskset, cgroup cpusets, batch
- * schedulers) limits the count like it limits the logical CPUs. */
+ * run on, so that a CPU affinity mask limits the count like it limits
+ * the logical CPUs. */
 static int linux_cores(void)
 {
     cpu_set_t set;
