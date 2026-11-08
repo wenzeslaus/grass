@@ -160,7 +160,9 @@ def _default_nprocs() -> int:
     to a positive number, otherwise :func:`available_cores`.
     """
     value = os.environ.get("OMP_NUM_THREADS", "").split(",")[0].strip()
-    if value.isdigit() and int(value) > 0:
+    # Only ASCII digits, like isdigit() in C. str.isdigit() and
+    # str.isdecimal() also accept other Unicode digits.
+    if value.isascii() and value.isdigit() and int(value) > 0:
         return int(value)
     return available_cores()
 

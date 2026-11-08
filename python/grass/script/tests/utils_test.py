@@ -71,10 +71,15 @@ def test_resolve_nprocs(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    ("value", "expected"), [("6", 6), ("6,2", 6), ("", 8), ("0", 8), ("x", 8)]
+    ("value", "expected"),
+    [("6", 6), ("6,2", 6), ("", 8), ("0", 8), ("x", 8), ("\u00b2", 8), ("\u0663", 8)],
 )
 def test_resolve_nprocs_omp_num_threads(monkeypatch, value, expected):
-    """OMP_NUM_THREADS, when set to a positive number, replaces the cores"""
+    """OMP_NUM_THREADS, when set to a positive number, replaces the cores
+
+    Non-ASCII digits (superscript two, Arabic-Indic three) do not count as
+    a number, like in the C library.
+    """
     monkeypatch.setattr(gutils, "available_cores", lambda: 8)
     monkeypatch.setenv("OMP_NUM_THREADS", value)
     assert gs.resolve_nprocs(0) == expected
