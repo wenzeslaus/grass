@@ -4,7 +4,7 @@
  * \brief GIS Library - Number of threads from the nprocs option of a tool
  *
  * SPDX-FileCopyrightText: 2026 Vaclav Petras
- * SPDX-FileCopyrightText: 2026 GRASS Development Team
+ * SPDX-FileCopyrightText: GRASS Development Team
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include <grass/gis.h>
 #include <grass/glocale.h>
@@ -54,7 +53,7 @@ static int default_threads(void)
  * The Python function grass.script.resolve_nprocs() follows the same
  * rules.
  *
- * \param nprocs value of an nprocs option or of the NPROCS variable
+ * \param nprocs value of an nprocs option
  *
  * \return the number of threads, at least 1
  */
@@ -71,9 +70,8 @@ int G_resolve_nprocs(int nprocs)
 /*!
  * \brief Read the number of threads from an nprocs option
  *
- * Call after G_parser() with the G_OPT_M_NPROCS option or one like it. The
- * answer is resolved with G_resolve_nprocs(). An answer which is not an
- * integer is a fatal error naming the option.
+ * Call after G_parser(). The answer is resolved with G_resolve_nprocs().
+ * An answer which is not an integer is a fatal error naming the option.
  *
  * Unlike G_set_omp_num_threads(), this does not depend on OpenMP and does
  * not set up any threads, so tools can use it for the threads of other

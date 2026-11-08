@@ -13,8 +13,8 @@
     The intended usage is at the beginning of a C tool when parameters are
     processed, namely the G_OPT_M_NPROCS standard option.
 
-    The number of threads is read from \em opt with G_nprocs_from_option(),
-    see G_resolve_nprocs() for the rules.
+    The number of threads is read from \em opt with G_nprocs_from_option().
+    See G_resolve_nprocs() for the rules.
 
     \param opt A nprocs Option struct to specify the number of threads
     \return the number of threads set up for OpenMP parallel computing
