@@ -377,8 +377,9 @@ OMP_NUM_THREADS
 \[OpenMP\]  
 If OpenMP support is enabled, this is the number of threads tools use
 when their **nprocs** option is 0 (the default). Without it, tools use
-the number of physical CPU cores. Setting to '1' effectively disables
-parallel processing.
+the number of physical CPU cores. Negative **nprocs** values are
+subtracted from it, and Python tools use it for the number of parallel
+processes. Setting to '1' effectively disables parallel processing.
 
 TMPDIR, TEMP, TMP  
 \[Various GRASS commands and wxGUI\]  

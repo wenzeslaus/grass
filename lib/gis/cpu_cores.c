@@ -3,12 +3,15 @@
  *
  * \brief GIS Library - Number of physical CPU cores.
  *
- * SPDX-FileCopyrightText: 2026 GRASS Development Team
+ * SPDX-FileCopyrightText: 2026 Vaclav Petras
+ * SPDX-FileCopyrightText: GRASS Development Team
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #if defined(__linux__)
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE /* sched_getaffinity, CPU_ISSET */
+#endif
 #include <sched.h>
 #endif
 #include <stdio.h>
@@ -104,8 +107,8 @@ static int linux_cores(void)
 #endif
 
 #if defined(_WIN32)
-/* Not tested. Counts the cores of the current processor group only
- * (at most 64 logical processors), and ignores the affinity mask. */
+/* Counts the cores of the current processor group only (at most 64
+ * logical processors) and ignores the affinity mask. */
 static int windows_cores(void)
 {
     SYSTEM_LOGICAL_PROCESSOR_INFORMATION *info;
@@ -131,11 +134,7 @@ static int windows_cores(void)
 /*!
    \brief Get the number of physical CPU cores available to this process
 
-   Simultaneous multithreading (SMT, Hyper-Threading) makes one physical
-   core appear as two or more logical CPUs. Compute-bound threads on
-   sibling logical CPUs share the execution units of their core, so
-   the number of physical cores is a better default for the number of
-   threads than the number of logical CPUs.
+   Logical CPUs of one core (SMT, Hyper-Threading) count once.
 
    On Linux, the count is limited to the CPUs in the affinity mask of the
    process. On macOS, it is the hw.physicalcpu sysctl value. On Windows,

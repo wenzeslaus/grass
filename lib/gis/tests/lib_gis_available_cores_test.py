@@ -1,13 +1,20 @@
-"""Tests of G_available_cores()"""
+# SPDX-FileCopyrightText: 2026 Vaclav Petras
+# SPDX-FileCopyrightText: GRASS Development Team
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+"""Tests of G_available_cores() and of the threads G_set_omp_num_threads() sets"""
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
+import grass.script as gs
 from grass.lib.gis import G_available_cores
+from grass.tools import Tools
 
 
 def available_logical_cpus():
@@ -59,11 +66,67 @@ def test_follows_affinity_mask():
 @needs_affinity
 def test_counts_smt_siblings_once():
     """The logical CPUs of one core count as one core"""
-    cpu = min(os.sched_getaffinity(0))
+    allowed = os.sched_getaffinity(0)
     try:
-        cpus = siblings(cpu) & os.sched_getaffinity(0)
+        groups = [siblings(cpu) & allowed for cpu in sorted(allowed)]
     except OSError:
         pytest.skip("no CPU topology in sysfs")
-    if len(cpus) < 2:
+    cpus = next((group for group in groups if len(group) > 1), None)
+    if not cpus:
         pytest.skip("no SMT siblings available")
     assert cores_with_affinity(cpus) == 1
+
+
+def thread_count(session, nprocs, omp_num_threads=None):
+    """Threads r.univar sets up with nprocs and OMP_NUM_THREADS (None: unset)
+
+    Returns None when the message about threads is missing, which is the
+    case without OpenMP.
+    """
+    env = session.env.copy()
+    env.pop("OMP_NUM_THREADS", None)
+    if omp_num_threads is not None:
+        env["OMP_NUM_THREADS"] = omp_num_threads
+    tools = Tools(env=env, verbose=True)
+    stderr = tools.r_univar(map="one", flags="g", nprocs=nprocs).stderr
+    if "One thread is set up" in stderr:
+        return 1
+    match = re.search(r"(\d+) threads are set up", stderr)
+    return int(match.group(1)) if match else None
+
+
+@pytest.fixture(scope="module")
+def univar_session(xy_session_for_module):
+    """Session with a 1x1 raster, skipping the tests without OpenMP"""
+    session = xy_session_for_module
+    tools = Tools(session=session)
+    tools.g_region(rows=1, cols=1)
+    tools.r_mapcalc(expression="one = 1")
+    if thread_count(session, nprocs=2) is None:
+        pytest.skip("GRASS is built without OpenMP")
+    return session
+
+
+def test_negative_nprocs_counts_from_omp_num_threads(univar_session):
+    """With OMP_NUM_THREADS=3, nprocs=-1 gives 2 threads"""
+    assert thread_count(univar_session, nprocs=-1, omp_num_threads="3") == 2
+
+
+def test_default_is_available_cores(univar_session):
+    """Without OMP_NUM_THREADS, nprocs=0 gives one thread per core"""
+    assert thread_count(univar_session, nprocs=0) == G_available_cores()
+
+
+@pytest.mark.parametrize(
+    ("omp_num_threads", "nprocs"),
+    [(None, -1), ("6,2", 0), ("0", 0), ("x", -1), ("3x", 0)],
+)
+def test_threads_same_as_python(univar_session, monkeypatch, omp_num_threads, nprocs):
+    """C tools and resolve_nprocs() in Python give the same number"""
+    if omp_num_threads is None:
+        monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
+    else:
+        monkeypatch.setenv("OMP_NUM_THREADS", omp_num_threads)
+    assert thread_count(univar_session, nprocs, omp_num_threads) == (
+        gs.resolve_nprocs(nprocs)
+    )
