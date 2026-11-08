@@ -33,12 +33,6 @@ print(G_nprocs_from_option(option))
 
 
 @pytest.fixture
-def session(xy_session_for_module):
-    """Session in which G_gisinit() can run"""
-    return xy_session_for_module
-
-
-@pytest.fixture
 def no_omp_num_threads(monkeypatch):
     """Unset OMP_NUM_THREADS for the in-process calls"""
     monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
@@ -58,22 +52,22 @@ def nprocs_from_option(session, answer):
     return result.returncode, result.stdout.strip(), result.stderr
 
 
-def test_option_answer(session):
+def test_option_answer(xy_session_for_module):
     """The answer of the option is parsed and resolved"""
-    assert nprocs_from_option(session, "3")[:2] == (0, "3")
+    assert nprocs_from_option(xy_session_for_module, "3")[:2] == (0, "3")
 
 
 @pytest.mark.parametrize("answer", ["", "two", "2x", "99999999999"])
-def test_invalid(session, answer):
+def test_invalid(xy_session_for_module, answer):
     """Answers which are not integers are errors naming the option"""
-    returncode, _, stderr = nprocs_from_option(session, answer)
+    returncode, _, stderr = nprocs_from_option(xy_session_for_module, answer)
     assert returncode != 0
     assert "nprocs=" in stderr
 
 
-def test_tool_refuses_trailing_text(session):
+def test_tool_refuses_trailing_text(xy_session_for_module):
     """A tool refuses 2x although the parser lets it through"""
-    tools = Tools(session=session)
+    tools = Tools(session=xy_session_for_module)
     tools.g_region(rows=1, cols=1)
     tools.r_mapcalc(expression="one = 1")
     with pytest.raises(ToolError) as error:
