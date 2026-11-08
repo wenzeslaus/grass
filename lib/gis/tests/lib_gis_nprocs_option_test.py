@@ -1,11 +1,17 @@
-"""Tests of G_nprocs_from_option()"""
+# SPDX-FileCopyrightText: 2026 Vaclav Petras
+# SPDX-FileCopyrightText: GRASS Development Team
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+"""Tests of G_nprocs_from_option() and G_resolve_nprocs()"""
 
 import subprocess
 import sys
 
 import pytest
 
-from grass.lib.gis import G_available_cores
+import grass.script as gs
+from grass.lib.gis import G_available_cores, G_resolve_nprocs
+from grass.tools import ToolError, Tools
 
 # Parses the answer of an nprocs option given on the command line.
 SCRIPT = """
@@ -32,12 +38,16 @@ def session(xy_session_for_module):
     return xy_session_for_module
 
 
-def nprocs(session, answer, omp_num_threads=None):
+@pytest.fixture
+def no_omp_num_threads(monkeypatch):
+    """Unset OMP_NUM_THREADS for the in-process calls"""
+    monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
+
+
+def nprocs_from_option(session, answer):
     """Return code, result of G_nprocs_from_option() and stderr for an answer"""
     env = session.env.copy()
     env.pop("OMP_NUM_THREADS", None)
-    if omp_num_threads is not None:
-        env["OMP_NUM_THREADS"] = omp_num_threads
     result = subprocess.run(
         [sys.executable, "-c", SCRIPT, answer],
         env=env,
@@ -48,41 +58,60 @@ def nprocs(session, answer, omp_num_threads=None):
     return result.returncode, result.stdout.strip(), result.stderr
 
 
-@pytest.mark.parametrize("answer", ["1", "3", "200"])
-def test_positive(session, answer):
-    """Positive numbers are used as given"""
-    assert nprocs(session, answer)[:2] == (0, answer)
-
-
-def test_default_is_physical_cores(session):
-    """0 is the number of physical cores without OMP_NUM_THREADS"""
-    assert nprocs(session, "0")[:2] == (0, str(G_available_cores()))
-
-
-def test_negative_from_cores(session):
-    """Negative numbers are that many fewer than the cores, at least 1"""
-    cores = G_available_cores()
-    assert nprocs(session, "-1")[:2] == (0, str(max(1, cores - 1)))
-    assert nprocs(session, str(-cores - 5))[:2] == (0, "1")
-
-
-@pytest.mark.parametrize(
-    ("omp_num_threads", "expected"), [("6", 6), ("6,2", 6), ("0", None), ("x", None)]
-)
-def test_omp_num_threads(session, omp_num_threads, expected):
-    """A positive OMP_NUM_THREADS replaces the cores as the default"""
-    default = expected or G_available_cores()
-    assert nprocs(session, "0", omp_num_threads)[:2] == (0, str(default))
-    assert nprocs(session, "-2", omp_num_threads)[:2] == (0, str(max(1, default - 2)))
-    assert nprocs(session, "3", omp_num_threads)[:2] == (0, "3")
+def test_option_answer(session):
+    """The answer of the option is parsed and resolved"""
+    assert nprocs_from_option(session, "3")[:2] == (0, "3")
 
 
 @pytest.mark.parametrize("answer", ["", "two", "2x", "99999999999"])
 def test_invalid(session, answer):
     """Answers which are not integers are errors naming the option"""
-    returncode, unused, stderr = nprocs(session, answer)
+    returncode, _, stderr = nprocs_from_option(session, answer)
     assert returncode != 0
     assert "nprocs=" in stderr
+
+
+def test_tool_refuses_trailing_text(session):
+    """A tool refuses 2x although the parser lets it through"""
+    tools = Tools(session=session)
+    tools.g_region(rows=1, cols=1)
+    tools.r_mapcalc(expression="one = 1")
+    with pytest.raises(ToolError) as error:
+        tools.r_univar(map="one", flags="g", nprocs="2x")
+    assert "nprocs=" in error.value.stderr
+
+
+@pytest.mark.usefixtures("no_omp_num_threads")
+@pytest.mark.parametrize("value", [1, 3, 200])
+def test_positive(value):
+    """Positive numbers are used as given"""
+    assert G_resolve_nprocs(value) == value
+
+
+@pytest.mark.usefixtures("no_omp_num_threads")
+def test_default_is_physical_cores():
+    """0 is the number of physical cores without OMP_NUM_THREADS"""
+    assert G_resolve_nprocs(0) == G_available_cores()
+
+
+@pytest.mark.usefixtures("no_omp_num_threads")
+def test_negative_from_cores():
+    """Negative numbers are that many fewer than the cores, at least 1"""
+    cores = G_available_cores()
+    assert G_resolve_nprocs(-1) == max(1, cores - 1)
+    assert G_resolve_nprocs(-cores - 5) == 1
+
+
+@pytest.mark.parametrize(
+    ("omp_num_threads", "expected"), [("6", 6), ("6,2", 6), ("0", None), ("x", None)]
+)
+def test_omp_num_threads(monkeypatch, omp_num_threads, expected):
+    """A positive OMP_NUM_THREADS replaces the cores as the default"""
+    monkeypatch.setenv("OMP_NUM_THREADS", omp_num_threads)
+    default = expected or G_available_cores()
+    assert G_resolve_nprocs(0) == default
+    assert G_resolve_nprocs(-2) == max(1, default - 2)
+    assert G_resolve_nprocs(3) == 3
 
 
 @pytest.mark.parametrize(
@@ -90,9 +119,6 @@ def test_invalid(session, answer):
 )
 def test_resolve_nprocs_same_as_python(monkeypatch, omp_num_threads):
     """G_resolve_nprocs() follows the same rules as grass.script"""
-    import grass.script as gs
-    from grass.lib.gis import G_resolve_nprocs
-
     if omp_num_threads is None:
         monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
     else:
