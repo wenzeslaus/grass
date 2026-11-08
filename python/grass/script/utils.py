@@ -110,12 +110,13 @@ def available_cpus() -> int:
 def available_cores() -> int:
     """Number of physical CPU cores this process may use.
 
-    Mirrors ``G_available_cores()`` in ``lib/gis/cpu_cores.c``. Logical CPUs
-    of one core (SMT, Hyper-Threading) count once. On Linux, the logical
-    CPUs in the affinity mask are grouped by their core using the CPU
-    topology in sysfs. On macOS, the count is the ``hw.physicalcpu`` value.
-    Elsewhere, and when the topology is unknown, it is the number of
-    logical CPUs from :func:`available_cpus`.
+    Follows ``G_available_cores()`` in ``lib/gis/cpu_cores.c`` except on
+    Windows, where the C library counts cores. Logical CPUs of one core
+    (SMT, Hyper-Threading) count once. On Linux, the logical CPUs in the
+    affinity mask are grouped by their core using the CPU topology in sysfs.
+    On macOS, the count is the ``hw.physicalcpu`` value. Elsewhere,
+    including Windows, and when the topology is unknown, it is the number
+    of logical CPUs from :func:`available_cpus`.
 
     .. versionadded:: 8.6
     """
