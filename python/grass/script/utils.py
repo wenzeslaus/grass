@@ -155,7 +155,7 @@ def available_cores() -> int:
 def _default_nprocs() -> int:
     """Number of workers used for nprocs 0, the default.
 
-    Mirrors ``G_set_omp_num_threads()`` in ``lib/gis/omp_threads.c``: the
+    Mirrors ``G_resolve_nprocs()`` in ``lib/gis/nprocs_option.c``: the
     first value of the OMP_NUM_THREADS environment variable when it is set
     to a positive number, otherwise :func:`available_cores`.
     """
@@ -170,8 +170,8 @@ def _default_nprocs() -> int:
 def resolve_nprocs(nprocs: int | str) -> int:
     """Resolve G_OPT_M_NPROCS into a worker count.
 
-    Mirrors the semantics of ``G_set_omp_num_threads()`` in
-    ``lib/gis/omp_threads.c``. 0 means the default, which is OMP_NUM_THREADS
+    Mirrors the semantics of ``G_resolve_nprocs()`` in
+    ``lib/gis/nprocs_option.c``. 0 means the default, which is OMP_NUM_THREADS
     when set to a positive number and the number of physical cores from
     :func:`available_cores` otherwise. A positive number is used as is.
     A negative number means the default plus nprocs, at least 1.
