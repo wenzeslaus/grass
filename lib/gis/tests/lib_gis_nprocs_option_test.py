@@ -85,11 +85,17 @@ def test_invalid(session, answer):
     assert "nprocs=" in stderr
 
 
-def test_resolve_nprocs_same_as_python(monkeypatch):
+@pytest.mark.parametrize(
+    "omp_num_threads", [None, "6", "6,2", " 6 ", "+6", "0", "x", "3x"]
+)
+def test_resolve_nprocs_same_as_python(monkeypatch, omp_num_threads):
     """G_resolve_nprocs() follows the same rules as grass.script"""
     import grass.script as gs
     from grass.lib.gis import G_resolve_nprocs
 
-    monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
+    if omp_num_threads is None:
+        monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
+    else:
+        monkeypatch.setenv("OMP_NUM_THREADS", omp_num_threads)
     for value in [-100, -3, -1, 0, 1, 7]:
         assert G_resolve_nprocs(value) == gs.resolve_nprocs(value)

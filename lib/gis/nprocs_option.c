@@ -7,6 +7,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
+#include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -16,22 +17,28 @@
 #include <grass/glocale.h>
 
 /* The default number of threads: the first value of OMP_NUM_THREADS when
- * it is a positive number, as OpenMP reads it, otherwise the number of
- * physical cores */
+ * it is a positive number, otherwise the number of physical cores. Spaces
+ * around the value are allowed and a sign is not, the same as
+ * resolve_nprocs() in grass.script accepts. */
 static int default_threads(void)
 {
     const char *env = getenv("OMP_NUM_THREADS");
     long value;
     char *end;
 
-    if (env) {
-        errno = 0;
-        value = strtol(env, &end, 10);
-        if (!errno && end != env && (*end == '\0' || *end == ',') &&
-            value > 0 && value <= INT_MAX)
-            return (int)value;
-    }
-    return G_available_cores();
+    if (!env)
+        return G_available_cores();
+    while (isspace((unsigned char)*env))
+        env++;
+    if (!isdigit((unsigned char)*env))
+        return G_available_cores();
+    errno = 0;
+    value = strtol(env, &end, 10);
+    while (isspace((unsigned char)*end))
+        end++;
+    if (errno || value < 1 || value > INT_MAX || (*end != '\0' && *end != ','))
+        return G_available_cores();
+    return (int)value;
 }
 
 /*!
