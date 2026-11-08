@@ -23,7 +23,7 @@
 static int default_threads(void)
 {
     const char *env = getenv("OMP_NUM_THREADS");
-    long value;
+    long long value;
     char *end;
 
     if (!env)
@@ -33,7 +33,7 @@ static int default_threads(void)
     if (!isdigit((unsigned char)*env))
         return G_available_cores();
     errno = 0;
-    value = strtol(env, &end, 10);
+    value = strtoll(env, &end, 10);
     while (isspace((unsigned char)*end))
         end++;
     if (errno || value < 1 || value > INT_MAX || (*end != '\0' && *end != ','))
@@ -83,13 +83,13 @@ int G_resolve_nprocs(int nprocs)
  */
 int G_nprocs_from_option(const struct Option *nprocs)
 {
-    long value;
+    long long value;
     char *end;
 
     if (!nprocs->answer)
         G_fatal_error(_("%s= is required"), nprocs->key);
     errno = 0;
-    value = strtol(nprocs->answer, &end, 10);
+    value = strtoll(nprocs->answer, &end, 10);
     if (errno || end == nprocs->answer || *end != '\0' || value > INT_MAX ||
         value < INT_MIN)
         G_fatal_error(_("Invalid number of threads <%s> for %s="),
