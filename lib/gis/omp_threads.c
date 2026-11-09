@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #if defined(_OPENMP)
@@ -30,7 +31,8 @@ int G_set_omp_num_threads(struct Option *opt)
                          threads),
                       threads);
 #else
-    if (threads != 1) {
+    /* The default (0) is not a request for more than one thread. */
+    if (threads != 1 && atoi(opt->answer) != 0) {
         G_warning(_("GRASS is not compiled with OpenMP support, parallel "
                     "computation is disabled. Only one thread will be used."));
     }
