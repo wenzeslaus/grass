@@ -16,7 +16,8 @@
     If \em nprocs is 0, the default number of threads is used, which is
     the number of physical CPU cores available to the process (see
     G_available_cores()), or the OpenMP default when the OMP_NUM_THREADS
-    environment variable is set. The default is read on the first call.
+    environment variable is set. The default is determined once per
+    process, on the first call.
     If \em nprocs is positive, that many threads are used.
     If \em nprocs is negative, it is added to the default (at least one
     thread is used), which keeps that many cores free for other work.
@@ -36,18 +37,18 @@ int G_set_omp_num_threads(struct Option *opt)
 
     int threads = atoi(opt->answer);
 #if defined(_OPENMP)
+    /* Read once, before omp_set_num_threads() below changes what OpenMP
+     * reports, so that every call in the process uses the same default. */
+    static int base = 0;
+
+    if (base < 1) {
+        const char *env = getenv("OMP_NUM_THREADS");
+
+        base = env && *env ? 0 : G_available_cores();
+        if (base < 1)
+            base = omp_get_max_threads();
+    }
     if (threads < 1) {
-        /* Read once, so that a second call in the same process adds to
-         * the same default and not to the threads set by the first. */
-        static int base = 0;
-
-        if (base < 1) {
-            const char *env = getenv("OMP_NUM_THREADS");
-
-            base = env && *env ? 0 : G_available_cores();
-            if (base < 1)
-                base = omp_get_max_threads();
-        }
         threads += base;
         threads = (threads < 1) ? 1 : threads;
     }
