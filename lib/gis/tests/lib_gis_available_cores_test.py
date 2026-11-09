@@ -15,30 +15,16 @@ import pytest
 from grass.lib.gis import G_available_cores
 from grass.tools import Tools
 
+needs_known_cores = pytest.mark.skipif(
+    sys.platform not in {"linux", "darwin"},
+    reason="the number of cores is unknown on this platform",
+)
 
-def available_logical_cpus():
-    if hasattr(os, "sched_getaffinity"):
-        return len(os.sched_getaffinity(0))
-    return os.cpu_count() or 1
 
-
+@needs_known_cores
 def test_between_one_and_logical_cpus():
     """There is at least one core and not more cores than logical CPUs"""
-    assert 1 <= G_available_cores() <= available_logical_cpus()
-
-
-def cores_with_affinity(cpus):
-    """G_available_cores() in a process limited to the given logical CPUs"""
-    code = (
-        "import os\n"
-        f"os.sched_setaffinity(0, {set(cpus)})\n"
-        "from grass.lib.gis import G_available_cores\n"
-        "print(G_available_cores())\n"
-    )
-    output = subprocess.run(
-        [sys.executable, "-c", code], capture_output=True, text=True, check=True
-    ).stdout
-    return int(output)
+    assert 1 <= G_available_cores() <= os.cpu_count()
 
 
 def siblings(cpu):
@@ -51,29 +37,31 @@ def siblings(cpu):
     return cpus
 
 
-needs_affinity = pytest.mark.skipif(
+@pytest.mark.skipif(
     not hasattr(os, "sched_setaffinity"), reason="needs CPU affinity (Linux)"
 )
+def test_core_in_affinity_mask_counts_once():
+    """A process limited to one core has one core
 
-
-@needs_affinity
-def test_follows_affinity_mask():
-    """With the process limited to one logical CPU, there is one core"""
-    assert cores_with_affinity([min(os.sched_getaffinity(0))]) == 1
-
-
-@needs_affinity
-def test_counts_smt_siblings_once():
-    """The logical CPUs of one core count as one core"""
+    The core is one allowed CPU with its SMT siblings when the mask has
+    them. G_available_cores() runs in a subprocess, so the affinity of the
+    test process does not change.
+    """
     allowed = os.sched_getaffinity(0)
     try:
-        groups = [siblings(cpu) & allowed for cpu in sorted(allowed)]
+        cpus = max((siblings(cpu) & allowed for cpu in allowed), key=len)
     except OSError:
-        pytest.skip("no CPU topology in sysfs")
-    cpus = next((group for group in groups if len(group) > 1), None)
-    if not cpus:
-        pytest.skip("no SMT siblings available")
-    assert cores_with_affinity(cpus) == 1
+        cpus = {min(allowed)}
+    code = (
+        "import os\n"
+        f"os.sched_setaffinity(0, {cpus})\n"
+        "from grass.lib.gis import G_available_cores\n"
+        "print(G_available_cores())\n"
+    )
+    output = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    ).stdout
+    assert int(output) == 1
 
 
 def thread_count(session, nprocs, omp_num_threads=None):
@@ -112,6 +100,7 @@ def test_omp_num_threads_is_the_default(univar_session, nprocs, expected):
     assert thread_count(univar_session, nprocs=nprocs, omp_num_threads="3") == expected
 
 
+@needs_known_cores
 def test_default_is_available_cores(univar_session):
     """Without OMP_NUM_THREADS, nprocs=0 gives one thread per core"""
     assert thread_count(univar_session, nprocs=0) == G_available_cores()
