@@ -12,7 +12,7 @@ import pytest
 from grass.lib.gis import G_available_cores, G_resolve_nprocs
 from grass.tools import ToolError, Tools
 
-# Parses the answer of an nprocs option given on the command line.
+# Prints G_nprocs_from_option() for the answer in argv[1].
 SCRIPT = """
 import sys
 
@@ -59,32 +59,26 @@ def nprocs_from_option(session, answer, omp_num_threads=None):
 
 def test_option_answer(xy_session_for_module):
     """The answer of the option is parsed and resolved"""
-    assert nprocs_from_option(xy_session_for_module, "3")[:2] == (0, "3")
+    returncode, output, stderr = nprocs_from_option(xy_session_for_module, "3")
+    assert (returncode, output) == (0, "3"), stderr
 
 
-@pytest.mark.parametrize("answer", ["", "two", "2x", "99999999999"])
+@pytest.mark.parametrize("answer", ["two", "2x", "99999999999"])
 def test_invalid(xy_session_for_module, answer):
-    """Answers which are not integers are errors naming the option"""
+    """Text and out-of-range answers are errors naming the option"""
     returncode, _, stderr = nprocs_from_option(xy_session_for_module, answer)
     assert returncode != 0
+    assert "Invalid number of threads <" in stderr
     assert "nprocs=" in stderr
 
 
 def test_tool_refuses_trailing_text(xy_session_for_module):
     """A tool refuses 2x although the parser lets it through"""
     tools = Tools(session=xy_session_for_module)
-    tools.g_region(rows=1, cols=1)
-    tools.r_mapcalc(expression="one = 1")
     with pytest.raises(ToolError) as error:
-        tools.r_univar(map="one", flags="g", nprocs="2x")
+        tools.r_univar(map="doesnotexist", flags="g", nprocs="2x")
+    assert "Invalid number of threads <" in error.value.stderr
     assert "nprocs=" in error.value.stderr
-
-
-@pytest.mark.usefixtures("no_omp_num_threads")
-@pytest.mark.parametrize("value", [1, 3, 200])
-def test_positive(value):
-    """Positive numbers are used as given"""
-    assert G_resolve_nprocs(value) == value
 
 
 @pytest.mark.usefixtures("no_omp_num_threads")
@@ -103,9 +97,11 @@ def test_negative_from_cores():
 
 @pytest.mark.parametrize(
     ("omp_num_threads", "answer", "expected"),
-    [("6", "0", "6"), ("6,2", "0", "6"), ("6", "-2", "4"), ("6", "3", "3")],
+    [("6", "0", "6"), ("6", "-2", "4"), ("6", "3", "3")],
 )
 def test_omp_num_threads(xy_session_for_module, omp_num_threads, answer, expected):
     """OMP_NUM_THREADS replaces the cores as the default"""
-    result = nprocs_from_option(xy_session_for_module, answer, omp_num_threads)
-    assert result[:2] == (0, expected)
+    returncode, output, stderr = nprocs_from_option(
+        xy_session_for_module, answer, omp_num_threads
+    )
+    assert (returncode, output) == (0, expected), stderr

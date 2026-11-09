@@ -120,17 +120,22 @@ def test_default_is_available_cores(univar_session):
 def test_default_is_read_once():
     """A second call with nprocs=-1 counts from the default, not from the first result
 
-    Calls G_set_omp_num_threads() three times in one process through ctypes.
+    Calls G_set_omp_num_threads() three times in one process through ctypes,
+    with G_resolve_nprocs(-1) before and after.
     """
     code = (
         "from ctypes import byref\n"
-        "from grass.lib.gis import G_gisinit, G_set_omp_num_threads, Option, String\n"
+        "from grass.lib.gis import (\n"
+        "    G_gisinit, G_resolve_nprocs, G_set_omp_num_threads, Option, String\n"
+        ")\n"
         "G_gisinit(b'test')\n"
+        "print(G_resolve_nprocs(-1))\n"
         "option = Option()\n"
         "option.key = String(b'nprocs')\n"
         "for answer in (b'3', b'-1', b'-1'):\n"
         "    option.answer = String(answer)\n"
         "    print(G_set_omp_num_threads(byref(option)))\n"
+        "print(G_resolve_nprocs(-1))\n"
     )
     env = os.environ | {"OMP_NUM_THREADS": "3"}
     output = subprocess.run(
@@ -141,6 +146,6 @@ def test_default_is_read_once():
         env=env,
     ).stdout
     threads = [int(line) for line in output.split()]
-    if threads[0] == 1:
+    if threads[1] == 1:
         pytest.skip("GRASS is built without OpenMP")
-    assert threads == [3, 2, 2]
+    assert threads == [2, 3, 2, 2, 2]
