@@ -1,7 +1,5 @@
 """Test functions in grass.script.utils"""
 
-from pathlib import Path
-
 import pytest
 
 import grass.script as gs
@@ -57,9 +55,8 @@ def test_KeyValue_values():
 
 
 def test_resolve_nprocs(monkeypatch):
-    """Check G_OPT_M_NPROCS resolution: positive as-is, 0 = cores, negative reserves."""
-    monkeypatch.setattr(gutils, "available_cores", lambda: 8)
-    monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
+    """Check G_OPT_M_NPROCS resolution: positive as-is, 0 = all, negative reserves."""
+    monkeypatch.setattr(gutils, "available_cpus", lambda: 8)
     assert gs.resolve_nprocs(1) == 1
     assert gs.resolve_nprocs(4) == 4
     assert gs.resolve_nprocs("3") == 3
@@ -68,36 +65,3 @@ def test_resolve_nprocs(monkeypatch):
     assert gs.resolve_nprocs(-10) == 1
     with pytest.raises(ValueError, match="invalid literal for int"):
         gs.resolve_nprocs("not-a-number")
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [("6", 6), ("6,2", 6), ("", 8), ("0", 8), ("x", 8), ("\u00b2", 8), ("\u0663", 8)],
-)
-def test_resolve_nprocs_omp_num_threads(monkeypatch, value, expected):
-    """OMP_NUM_THREADS, when set to a positive number, replaces the cores
-
-    Non-ASCII digits (superscript two, Arabic-Indic three) do not count as
-    a number, like in the C library.
-    """
-    monkeypatch.setattr(gutils, "available_cores", lambda: 8)
-    monkeypatch.setenv("OMP_NUM_THREADS", value)
-    assert gs.resolve_nprocs(0) == expected
-    assert gs.resolve_nprocs(-2) == expected - 2
-    assert gs.resolve_nprocs(3) == 3
-
-
-def test_available_cores():
-    """There is at least one core and not more cores than logical CPUs"""
-    assert 1 <= gs.available_cores() <= gs.available_cpus()
-
-
-@pytest.mark.skipif(
-    not Path("/sys/devices/system/cpu/cpu0/topology/core_id").exists(),
-    reason="needs CPU topology in sysfs (Linux)",
-)
-def test_available_cores_same_as_library():
-    """The Python count is the same as the one of the C library"""
-    from grass.lib.gis import G_available_cores
-
-    assert gs.available_cores() == G_available_cores()
