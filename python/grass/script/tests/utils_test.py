@@ -75,12 +75,21 @@ def test_resolve_nprocs(monkeypatch):
 
 @pytest.mark.parametrize(
     ("value", "expected"),
-    [("6", 6), ("6,2", 6), ("", 8), ("0", 8), ("x", 8), ("\u00b2", 8)],
+    [
+        ("6", 6),
+        ("6,2", 6),
+        ("", 8),
+        ("0", 8),
+        ("x", 8),
+        ("\u00b2", 8),
+        ("9" * 5000, 8),
+    ],
 )
 def test_resolve_nprocs_omp_num_threads(monkeypatch, value, expected):
     """OMP_NUM_THREADS replaces the cores only when its first value is a number
 
-    A non-ASCII digit (here superscript two) is not a number, like in C.
+    A non-ASCII digit (here superscript two) is not a number, as in C, and a
+    value too long to be a thread count is ignored rather than an error.
     """
     monkeypatch.setattr(gutils, "available_cores", lambda: 8)
     monkeypatch.setenv("OMP_NUM_THREADS", value)

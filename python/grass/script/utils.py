@@ -151,8 +151,7 @@ def resolve_nprocs(nprocs: int | str) -> int:
     A positive number is used as is. 0 means the default, which is the
     first value of OMP_NUM_THREADS when that is a positive number and
     :func:`available_cores` otherwise. A negative number means the default
-    plus nprocs, at least 1. The rule is the same as the one of
-    ``G_set_omp_num_threads()`` in lib/gis.
+    plus nprocs, at least 1.
 
     .. versionadded:: 8.6
     """
@@ -161,9 +160,17 @@ def resolve_nprocs(nprocs: int | str) -> int:
         return n
     threads = os.environ.get("OMP_NUM_THREADS", "").split(",")[0].strip()
     # ASCII digits only, like isdigit() in C (str.isdigit() accepts more).
-    if threads.isascii() and threads.isdigit() and int(threads) > 0:
-        return max(1, int(threads) + n)
-    return max(1, available_cores() + n)
+    # The length limit keeps int() from raising on an absurdly long value.
+    if (
+        threads.isascii()
+        and threads.isdigit()
+        and len(threads) <= 9
+        and int(threads) > 0
+    ):
+        default = int(threads)
+    else:
+        default = available_cores()
+    return max(1, default + n)
 
 
 def diff_files(
