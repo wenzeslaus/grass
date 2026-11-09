@@ -59,13 +59,9 @@ static int read_cpu_list(int cpu, const char *name, cpu_set_t *cpus)
     return found;
 }
 
-/* Count the cores among the CPUs this process may run on, so that a CPU
- * affinity mask limits the count like it limits the logical CPUs. A core
- * is the set of CPUs sharing it (its SMT siblings) and is counted at its
- * lowest CPU in the mask. The sets come from core_cpus_list, or from
- * thread_siblings_list on kernels before 5.3. Without a readable topology
- * (sysfs hidden in a container), every CPU counts as a core. The result
- * is 0 when the mask cannot be read (more than CPU_SETSIZE CPUs). */
+/* A core is the set of CPUs sharing it (its SMT siblings), counted at its
+ * lowest CPU in the affinity mask. core_cpus_list is missing on kernels
+ * before 5.3, which have thread_siblings_list. */
 static int linux_cores(void)
 {
     cpu_set_t set, core;
