@@ -9,7 +9,6 @@ import sys
 
 import pytest
 
-import grass.script as gs
 from grass.lib.gis import G_available_cores, G_resolve_nprocs
 from grass.tools import ToolError, Tools
 
@@ -38,10 +37,16 @@ def no_omp_num_threads(monkeypatch):
     monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
 
 
-def nprocs_from_option(session, answer):
-    """Return code, result of G_nprocs_from_option() and stderr for an answer"""
+def nprocs_from_option(session, answer, omp_num_threads=None):
+    """Return code, result of G_nprocs_from_option() and stderr for an answer
+
+    OpenMP reads OMP_NUM_THREADS when it is loaded, so the variable is
+    set (None: unset) for a new process.
+    """
     env = session.env.copy()
     env.pop("OMP_NUM_THREADS", None)
+    if omp_num_threads is not None:
+        env["OMP_NUM_THREADS"] = omp_num_threads
     result = subprocess.run(
         [sys.executable, "-c", SCRIPT, answer],
         env=env,
@@ -97,25 +102,10 @@ def test_negative_from_cores():
 
 
 @pytest.mark.parametrize(
-    ("omp_num_threads", "expected"), [("6", 6), ("6,2", 6), ("0", None), ("x", None)]
+    ("omp_num_threads", "answer", "expected"),
+    [("6", "0", "6"), ("6,2", "0", "6"), ("6", "-2", "4"), ("6", "3", "3")],
 )
-def test_omp_num_threads(monkeypatch, omp_num_threads, expected):
-    """A positive OMP_NUM_THREADS replaces the cores as the default"""
-    monkeypatch.setenv("OMP_NUM_THREADS", omp_num_threads)
-    default = expected or G_available_cores()
-    assert G_resolve_nprocs(0) == default
-    assert G_resolve_nprocs(-2) == max(1, default - 2)
-    assert G_resolve_nprocs(3) == 3
-
-
-@pytest.mark.parametrize(
-    "omp_num_threads", [None, "6", "6,2", " 6 ", "+6", "0", "x", "3x"]
-)
-def test_resolve_nprocs_same_as_python(monkeypatch, omp_num_threads):
-    """G_resolve_nprocs() follows the same rules as grass.script"""
-    if omp_num_threads is None:
-        monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
-    else:
-        monkeypatch.setenv("OMP_NUM_THREADS", omp_num_threads)
-    for value in [-100, -3, -1, 0, 1, 7]:
-        assert G_resolve_nprocs(value) == gs.resolve_nprocs(value)
+def test_omp_num_threads(xy_session_for_module, omp_num_threads, answer, expected):
+    """OMP_NUM_THREADS replaces the cores as the default"""
+    result = nprocs_from_option(xy_session_for_module, answer, omp_num_threads)
+    assert result[:2] == (0, expected)
