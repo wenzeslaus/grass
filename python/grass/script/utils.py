@@ -22,7 +22,6 @@ import shutil
 import locale
 import shlex
 import re
-import subprocess
 import time
 import platform
 import uuid
@@ -121,9 +120,9 @@ def available_cores() -> int:
 
     Logical CPUs of one core (SMT, Hyper-Threading) count once. On Linux,
     a CPU in the affinity mask counts when it is the lowest-numbered of
-    its thread siblings in the mask, using the topology in sysfs. On
-    macOS, the count is ``hw.physicalcpu``. Elsewhere, and when the
-    topology is unknown, it is :func:`available_cpus`.
+    its thread siblings in the mask, using the topology in sysfs.
+    Elsewhere, including macOS, and when the topology is unknown, it is
+    :func:`available_cpus`.
 
     .. versionadded:: 8.6
     """
@@ -143,18 +142,6 @@ def available_cores() -> int:
             cores = 0
         if cores:
             return cores
-    elif platform.system() == "Darwin":
-        try:
-            return int(
-                subprocess.run(
-                    ["sysctl", "-n", "hw.physicalcpu"],
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                ).stdout
-            )
-        except (OSError, ValueError, subprocess.CalledProcessError):
-            pass
     return available_cpus()
 
 
