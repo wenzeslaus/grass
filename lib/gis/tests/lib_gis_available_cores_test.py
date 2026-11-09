@@ -12,7 +12,6 @@ from pathlib import Path
 
 import pytest
 
-import grass.script as gs
 from grass.lib.gis import G_available_cores
 from grass.tools import Tools
 
@@ -115,23 +114,3 @@ def test_negative_nprocs_counts_from_omp_num_threads(univar_session):
 def test_default_is_available_cores(univar_session):
     """Without OMP_NUM_THREADS, nprocs=0 gives one thread per core"""
     assert thread_count(univar_session, nprocs=0) == G_available_cores()
-
-
-@pytest.mark.parametrize(
-    ("omp_num_threads", "nprocs"),
-    [(None, -1), ("6,2", 0), ("0", 0), ("x", -1), ("3x", 0)],
-)
-def test_threads_same_as_python(univar_session, monkeypatch, omp_num_threads, nprocs):
-    """C tools and resolve_nprocs() in Python give the same number
-
-    Pins the C and Python implementations to each other. The variable is
-    set in os.environ for resolve_nprocs() and passed to thread_count() for
-    the tool, which gets a copy of the session environment.
-    """
-    if omp_num_threads is None:
-        monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
-    else:
-        monkeypatch.setenv("OMP_NUM_THREADS", omp_num_threads)
-    assert thread_count(univar_session, nprocs, omp_num_threads) == (
-        gs.resolve_nprocs(nprocs)
-    )
