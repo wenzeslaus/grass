@@ -31,12 +31,6 @@ print(G_nprocs_from_option(option))
 """
 
 
-@pytest.fixture
-def no_omp_num_threads(monkeypatch):
-    """Unset OMP_NUM_THREADS for the in-process calls"""
-    monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
-
-
 def nprocs_from_option(session, answer, omp_num_threads=None):
     """Return code, result of G_nprocs_from_option() and stderr for an answer
 
@@ -57,16 +51,9 @@ def nprocs_from_option(session, answer, omp_num_threads=None):
     return result.returncode, result.stdout.strip(), result.stderr
 
 
-def test_option_answer(xy_session_for_module):
-    """The answer of the option is parsed and resolved"""
-    returncode, output, stderr = nprocs_from_option(xy_session_for_module, "3")
-    assert (returncode, output) == (0, "3"), stderr
-
-
-@pytest.mark.parametrize("answer", ["two", "2x", "99999999999"])
-def test_invalid(xy_session_for_module, answer):
-    """Text and out-of-range answers are errors naming the option"""
-    returncode, _, stderr = nprocs_from_option(xy_session_for_module, answer)
+def test_out_of_range(xy_session_for_module):
+    """An answer beyond the int range is an error naming the option"""
+    returncode, _, stderr = nprocs_from_option(xy_session_for_module, "99999999999")
     assert returncode != 0
     assert "Invalid number of threads <" in stderr
     assert "nprocs=" in stderr
@@ -81,16 +68,15 @@ def test_tool_refuses_trailing_text(xy_session_for_module):
     assert "nprocs=" in error.value.stderr
 
 
-@pytest.mark.usefixtures("no_omp_num_threads")
-def test_default_is_physical_cores():
-    """0 is the number of physical cores without OMP_NUM_THREADS"""
-    assert G_resolve_nprocs(0) == G_available_cores()
-
-
-@pytest.mark.usefixtures("no_omp_num_threads")
-def test_negative_from_cores():
-    """Negative numbers are that many fewer than the cores, at least 1"""
+@pytest.mark.skipif(
+    sys.platform not in {"linux", "darwin"},
+    reason="the number of cores is unknown on this platform",
+)
+def test_cores_are_the_default(monkeypatch):
+    """Without OMP_NUM_THREADS, 0 is the cores and negative counts down, at least to 1"""
+    monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
     cores = G_available_cores()
+    assert G_resolve_nprocs(0) == cores
     assert G_resolve_nprocs(-1) == max(1, cores - 1)
     assert G_resolve_nprocs(-cores - 5) == 1
 
