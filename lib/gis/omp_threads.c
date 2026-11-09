@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,37 +9,14 @@
 #include <grass/gis.h>
 #include <grass/glocale.h>
 
-#if defined(_OPENMP)
-/* Whether the first value of OMP_NUM_THREADS is a positive number.
- * OpenMP ignores a zero or invalid OMP_NUM_THREADS, so such a value does
- * not replace the core count. */
-static int omp_num_threads_is_set(void)
-{
-    const char *env = getenv("OMP_NUM_THREADS");
-    char *end;
-    long value;
-
-    if (!env)
-        return 0;
-    while (isspace((unsigned char)*env))
-        env++;
-    if (!isdigit((unsigned char)*env))
-        return 0;
-    value = strtol(env, &end, 10);
-    while (isspace((unsigned char)*end))
-        end++;
-    return value > 0 && (*end == '\0' || *end == ',');
-}
-#endif
-
 /*! \brief Set the number of threads for OpenMP
     The intended usage is at the beginning of a C tool when parameters are
     processed, namely the G_OPT_M_NPROCS standard option.
 
     If \em nprocs is set to 0, the default number of threads is used: the
-    value of the OMP_NUM_THREADS environment variable if it is set to a
-    positive number, otherwise the number of physical CPU cores available
-    to the process (see G_available_cores()).
+    OpenMP default when the OMP_NUM_THREADS environment variable is set,
+    otherwise the number of physical CPU cores available to the process
+    (see G_available_cores()).
     If \em nprocs is a positive number, specified number of threads is used.
     If \em nprocs is a negative number, the default minus \em number
     threads are used, at least one, which keeps \em number cores free for
@@ -64,10 +40,9 @@ int G_set_omp_num_threads(struct Option *opt)
     int threads = atoi(opt->answer);
 #if defined(_OPENMP)
     if (threads < 1) {
-        int default_threads = omp_num_threads_is_set() ? omp_get_max_threads()
-                                                       : G_available_cores();
+        const char *env = getenv("OMP_NUM_THREADS");
 
-        threads += default_threads;
+        threads += env && *env ? omp_get_max_threads() : G_available_cores();
         threads = (threads < 1) ? 1 : threads;
     }
     omp_set_num_threads(threads);
