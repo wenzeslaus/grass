@@ -107,31 +107,42 @@ def available_cpus() -> int:
     return os.cpu_count() or 1
 
 
+def _cpu_list(text: str) -> set[int]:
+    """Parse a sysfs CPU list such as "0-3,8,10-11" into a set of CPU numbers."""
+    cpus = set()
+    for part in text.split(","):
+        first, _, last = part.strip().partition("-")
+        cpus.update(range(int(first), int(last or first) + 1))
+    return cpus
+
+
 def available_cores() -> int:
     """Number of physical CPU cores this process may use.
 
     Logical CPUs of one core (SMT, Hyper-Threading) count once. On Linux,
-    the CPUs in the affinity mask are grouped by core using the topology
-    in sysfs. On macOS, the count is ``hw.physicalcpu``. Elsewhere, and
-    when the topology is unknown, it is :func:`available_cpus`.
+    a CPU in the affinity mask counts when it is the lowest-numbered of
+    its thread siblings in the mask, using the topology in sysfs. On
+    macOS, the count is ``hw.physicalcpu``. Elsewhere, and when the
+    topology is unknown, it is :func:`available_cpus`.
 
     .. versionadded:: 8.6
     """
     if hasattr(os, "sched_getaffinity"):  # Linux
-        cores = set()
+        affinity = os.sched_getaffinity(0)
+        cores = 0
         try:
-            for cpu in os.sched_getaffinity(0):
-                topology = Path(f"/sys/devices/system/cpu/cpu{cpu}/topology")
-                package = int((topology / "physical_package_id").read_text())
-                core = int((topology / "core_id").read_text())
-                if package < 0 or core < 0:  # -1 when the kernel does not know
-                    cores = set()
-                    break
-                cores.add((package, core))
+            for cpu in affinity:
+                siblings = _cpu_list(
+                    Path(
+                        f"/sys/devices/system/cpu/cpu{cpu}/topology/thread_siblings_list"
+                    ).read_text()
+                )
+                if cpu == min(siblings & affinity):
+                    cores += 1
         except (OSError, ValueError):
-            cores = set()
+            cores = 0
         if cores:
-            return len(cores)
+            return cores
     elif platform.system() == "Darwin":
         try:
             return int(

@@ -1,5 +1,10 @@
 """Test functions in grass.script.utils"""
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
 import grass.script as gs
@@ -84,6 +89,43 @@ def test_resolve_nprocs_omp_num_threads(monkeypatch, value, expected):
     assert gs.resolve_nprocs(3) == 3
 
 
+def test_cpu_list():
+    """Single CPUs and ranges in a sysfs CPU list are expanded"""
+    assert gutils._cpu_list("0-3,8,10-11\n") == {0, 1, 2, 3, 8, 10, 11}
+
+
 def test_available_cores():
     """There is at least one core and not more cores than logical CPUs"""
-    assert 1 <= gs.available_cores() <= gs.available_cpus()
+    assert 1 <= gutils.available_cores() <= gs.available_cpus()
+
+
+@pytest.mark.skipif(
+    not hasattr(os, "sched_setaffinity"), reason="needs CPU affinity (Linux)"
+)
+def test_available_cores_counts_smt_siblings_once():
+    """A core and its SMT siblings in the affinity mask count as one core
+
+    The count is taken in a subprocess limited to the thread siblings of one
+    allowed CPU, so the affinity of the test process does not change.
+    """
+    cpus = os.sched_getaffinity(0)
+    siblings = set()
+    for cpu in cpus:
+        path = Path(f"/sys/devices/system/cpu/cpu{cpu}/topology/thread_siblings_list")
+        if not path.exists():
+            pytest.skip("needs the CPU topology in sysfs")
+        siblings = gutils._cpu_list(path.read_text(encoding="ascii")) & cpus
+        if len(siblings) > 1:
+            break
+    else:
+        pytest.skip("needs an allowed CPU with an allowed SMT sibling")
+    code = (
+        "import os, sys\n"
+        "from grass.script import utils\n"
+        f"os.sched_setaffinity(0, {sorted(siblings)})\n"
+        "sys.stdout.write(str(utils.available_cores()))\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    )
+    assert result.stdout == "1"
