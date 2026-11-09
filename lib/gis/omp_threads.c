@@ -13,21 +13,21 @@
     The intended usage is at the beginning of a C tool when parameters are
     processed, namely the G_OPT_M_NPROCS standard option.
 
-    If \em nprocs is set to 0, the default number of threads is used: the
-    OpenMP default when the OMP_NUM_THREADS environment variable is set,
-    otherwise the number of physical CPU cores available to the process
-    (see G_available_cores()).
-    If \em nprocs is a positive number, specified number of threads is used.
-    If \em nprocs is a negative number, the default minus \em number
-    threads are used, at least one, which keeps \em number cores free for
-    other work.
+    If \em nprocs is 0, the default number of threads is used, which is
+    the number of physical CPU cores available to the process (see
+    G_available_cores()), or the OpenMP default when the OMP_NUM_THREADS
+    environment variable is set. The default is read on the first call.
+    If \em nprocs is positive, that many threads are used.
+    If \em nprocs is negative, it is added to the default (at least one
+    thread is used), which keeps that many cores free for other work.
 
     \param opt A nprocs Option struct to specify the number of threads
     \return the number of threads set up for OpenMP parallel computing
 
+    \note Since version 8.6, the default and negative values count physical
+    cores instead of logical CPUs.
+
     \since version 8.5
-    \since version 8.6 the default and negative values count physical cores
-    rather than logical CPUs
 */
 int G_set_omp_num_threads(struct Option *opt)
 {
