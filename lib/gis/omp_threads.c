@@ -40,12 +40,17 @@ int G_set_omp_num_threads(struct Option *opt)
     int threads = atoi(opt->answer);
 #if defined(_OPENMP)
     if (threads < 1) {
-        const char *env = getenv("OMP_NUM_THREADS");
+        /* Read once, so that a second call in the same process adds to
+         * the same default and not to the threads set by the first. */
+        static int base = 0;
 
-        int base = env && *env ? 0 : G_available_cores();
+        if (base < 1) {
+            const char *env = getenv("OMP_NUM_THREADS");
 
-        if (base < 1)
-            base = omp_get_max_threads();
+            base = env && *env ? 0 : G_available_cores();
+            if (base < 1)
+                base = omp_get_max_threads();
+        }
         threads += base;
         threads = (threads < 1) ? 1 : threads;
     }
