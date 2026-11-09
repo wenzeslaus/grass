@@ -12,7 +12,8 @@ import pytest
 from grass.lib.gis import G_available_cores, G_resolve_nprocs
 from grass.tools import ToolError, Tools
 
-# Prints G_nprocs_from_option() for the answer in argv[1].
+# Prints G_nprocs_from_option() and G_set_omp_num_threads() for the answer
+# in argv[1].
 SCRIPT = """
 import sys
 
@@ -22,17 +23,18 @@ from grass.lib.gis import (
     G_define_standard_option,
     G_gisinit,
     G_nprocs_from_option,
+    G_set_omp_num_threads,
 )
 
 G_gisinit("lib_gis_nprocs_option_test")
 option = G_define_standard_option(G_OPT_M_NPROCS)
 option.contents.answer = String(sys.argv[1].encode())
-print(G_nprocs_from_option(option))
+print(G_nprocs_from_option(option), G_set_omp_num_threads(option))
 """
 
 
 def nprocs_from_option(session, answer, omp_num_threads=None):
-    """Return code, result of G_nprocs_from_option() and stderr for an answer
+    """Return code, output of SCRIPT and stderr for an answer
 
     OpenMP reads OMP_NUM_THREADS when it is loaded, so the variable is
     set (None: unset) for a new process.
@@ -83,11 +85,13 @@ def test_cores_are_the_default(monkeypatch):
 
 @pytest.mark.parametrize(
     ("omp_num_threads", "answer", "expected"),
-    [("6", "0", "6"), ("6", "-2", "4"), ("6", "3", "3")],
+    [("6", "0", "6 6"), ("6", "-2", "4 4"), ("6", "3", "3 3")],
 )
 def test_omp_num_threads(xy_session_for_module, omp_num_threads, answer, expected):
-    """OMP_NUM_THREADS replaces the cores as the default"""
+    """OMP_NUM_THREADS replaces the cores as the default, and OpenMP gets the result"""
     returncode, output, stderr = nprocs_from_option(
         xy_session_for_module, answer, omp_num_threads
     )
+    if output.endswith(" 1"):
+        pytest.skip("GRASS is built without OpenMP")
     assert (returncode, output) == (0, expected), stderr
