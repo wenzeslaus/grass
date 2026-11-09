@@ -20,23 +20,30 @@
 #include <grass/glocale.h>
 
 /* The default number of threads: the OpenMP default when OMP_NUM_THREADS
- * is set, otherwise the number of physical cores. Without OpenMP, the
- * first value of OMP_NUM_THREADS is used when it is positive. */
+ * is set or the cores are unknown, otherwise the number of physical cores.
+ * Without OpenMP, the first value of OMP_NUM_THREADS is used when it is
+ * positive. Read once, so that a second call in the same process adds to
+ * the same default and not to the threads set by the first. */
 static int default_threads(void)
 {
-    const char *env = getenv("OMP_NUM_THREADS");
+    static int threads = 0;
 
-    if (env && *env) {
+    if (threads < 1) {
+        const char *env = getenv("OMP_NUM_THREADS");
+
 #if defined(_OPENMP)
-        return omp_get_max_threads();
+        threads = env && *env ? 0 : G_available_cores();
+        if (threads < 1)
+            threads = omp_get_max_threads();
 #else
-        int value = atoi(env);
-
-        if (value > 0)
-            return value;
+        threads = env && *env ? atoi(env) : 0;
+        if (threads < 1)
+            threads = G_available_cores();
+        if (threads < 1)
+            threads = 1;
 #endif
     }
-    return G_available_cores();
+    return threads;
 }
 
 /*!

@@ -796,8 +796,9 @@ struct Option *G_define_standard_option(int opt)
             Opt->answer = memstr;
         /* end dynamic answer */
         Opt->label = _("Number of threads for parallel computing");
-        Opt->description = _("0: one per physical core or OMP_NUM_THREADS; "
-                             ">0: this many; <0: this many fewer than for 0");
+        Opt->description = _("0: one per physical core, or OMP_NUM_THREADS; "
+                             ">0: that many threads; "
+                             "<0: that many fewer than the default");
         break;
 
     case G_OPT_M_SEED:
