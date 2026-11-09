@@ -24,8 +24,8 @@
 #include <grass/gis.h>
 
 #if defined(__linux__)
-/* Read a sysfs CPU list ("0,2-3") of the topology of a CPU into a set.
- * Returns 0 when the file is missing or holds no CPU number. */
+/* Read a topology file of a CPU, a sysfs CPU list such as "0,2-3", into
+ * cpus. Returns 0 when the file is missing or holds no CPU number. */
 static int read_cpu_list(int cpu, const char *name, cpu_set_t *cpus)
 {
     char path[128];
@@ -60,8 +60,8 @@ static int read_cpu_list(int cpu, const char *name, cpu_set_t *cpus)
 }
 
 /* A core is the set of CPUs sharing it (its SMT siblings), counted at its
- * lowest CPU in the affinity mask. core_cpus_list is missing on kernels
- * before 5.3, which have thread_siblings_list. */
+ * lowest CPU in the affinity mask. Older kernels have only
+ * thread_siblings_list. */
 static int linux_cores(void)
 {
     cpu_set_t set, core;
