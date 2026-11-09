@@ -45,12 +45,15 @@ static int default_threads(void)
  * A positive value is the number of threads. 0 means the default number:
  * the OpenMP default when the OMP_NUM_THREADS environment variable is
  * set, otherwise the number of physical cores available to the process
- * (see G_available_cores()). A negative value is that many threads fewer
- * than the default, at least one.
+ * (see G_available_cores()). Without OpenMP, the default is the number
+ * of physical cores. The default is read on the first call. A negative
+ * value is that many threads fewer than the default, at least one.
  *
  * \param nprocs value of an nprocs option
  *
  * \return the number of threads, at least 1
+ *
+ * \since version 8.6
  */
 int G_resolve_nprocs(int nprocs)
 {
@@ -67,14 +70,14 @@ int G_resolve_nprocs(int nprocs)
  *
  * Call after G_parser(). The answer is resolved with G_resolve_nprocs().
  * An answer which is not an integer is a fatal error naming the option.
+ * The function does not set up OpenMP threads, so the number can be
+ * passed to any library.
  *
- * Unlike G_set_omp_num_threads(), this does not depend on OpenMP and does
- * not set up any threads, so tools can use it for the threads of other
- * libraries, such as GDAL.
- *
- * \param nprocs the nprocs option, usually G_OPT_M_NPROCS, whatever its key
+ * \param nprocs an nprocs option, usually G_OPT_M_NPROCS
  *
  * \return the number of threads, at least 1
+ *
+ * \since version 8.6
  */
 int G_nprocs_from_option(const struct Option *nprocs)
 {
