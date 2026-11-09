@@ -8,50 +8,45 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-#include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 
+#if defined(_OPENMP)
+#include <omp.h>
+#endif
+
 #include <grass/gis.h>
 #include <grass/glocale.h>
 
-/* The default number of threads: the first value of OMP_NUM_THREADS when
- * it is a positive number, otherwise the number of physical cores. Spaces
- * around the value are allowed and a sign is not, the same as
- * resolve_nprocs() in grass.script accepts. */
+/* The default number of threads: the OpenMP default when OMP_NUM_THREADS
+ * is set, otherwise the number of physical cores. Without OpenMP, the
+ * first value of OMP_NUM_THREADS is used when it is positive. */
 static int default_threads(void)
 {
     const char *env = getenv("OMP_NUM_THREADS");
-    long long value;
-    char *end;
 
-    if (!env)
-        return G_available_cores();
-    while (isspace((unsigned char)*env))
-        env++;
-    if (!isdigit((unsigned char)*env))
-        return G_available_cores();
-    errno = 0;
-    value = strtoll(env, &end, 10);
-    while (isspace((unsigned char)*end))
-        end++;
-    if (errno || value < 1 || value > INT_MAX || (*end != '\0' && *end != ','))
-        return G_available_cores();
-    return (int)value;
+    if (env && *env) {
+#if defined(_OPENMP)
+        return omp_get_max_threads();
+#else
+        int value = atoi(env);
+
+        if (value > 0)
+            return value;
+#endif
+    }
+    return G_available_cores();
 }
 
 /*!
  * \brief Resolve a value of nprocs into a number of threads
  *
  * A positive value is the number of threads. 0 means the default number:
- * the first value of the OMP_NUM_THREADS environment variable when it is
- * a positive number, otherwise the number of physical cores available to
- * the process (see G_available_cores()). A negative value is that many
- * threads fewer than the default, at least one.
- *
- * The Python function grass.script.resolve_nprocs() follows the same
- * rules.
+ * the OpenMP default when the OMP_NUM_THREADS environment variable is
+ * set, otherwise the number of physical cores available to the process
+ * (see G_available_cores()). A negative value is that many threads fewer
+ * than the default, at least one.
  *
  * \param nprocs value of an nprocs option
  *
