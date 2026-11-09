@@ -85,6 +85,7 @@ int G_resolve_nprocs(int nprocs)
  */
 int G_nprocs_from_option(const struct Option *nprocs)
 {
+    const char *answer;
     long long value;
     char *end;
 
@@ -92,11 +93,12 @@ int G_nprocs_from_option(const struct Option *nprocs)
         G_fatal_error(_("Option is NULL."));
     else if (nprocs->key == NULL)
         G_fatal_error(_("Option key is NULL."));
+    answer = nprocs->answer ? nprocs->answer : "";
     errno = 0;
-    value = strtoll(nprocs->answer, &end, 10);
-    if (errno || end == nprocs->answer || *end != '\0' || value > INT_MAX ||
+    value = strtoll(answer, &end, 10);
+    if (errno || end == answer || *end != '\0' || value > INT_MAX ||
         value < INT_MIN)
-        G_fatal_error(_("Invalid number of threads <%s> for %s="),
-                      nprocs->answer, nprocs->key);
+        G_fatal_error(_("Invalid number of threads <%s> for %s="), answer,
+                      nprocs->key);
     return G_resolve_nprocs((int)value);
 }
