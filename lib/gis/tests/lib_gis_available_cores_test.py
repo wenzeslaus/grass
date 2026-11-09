@@ -19,7 +19,7 @@ from grass.tools import Tools
 def available_logical_cpus():
     if hasattr(os, "sched_getaffinity"):
         return len(os.sched_getaffinity(0))
-    return os.cpu_count()
+    return os.cpu_count() or 1
 
 
 def test_between_one_and_logical_cpus():
@@ -106,9 +106,10 @@ def univar_session(xy_session_for_module):
     return session
 
 
-def test_negative_nprocs_counts_from_omp_num_threads(univar_session):
-    """With OMP_NUM_THREADS=3, nprocs=-1 gives 2 threads"""
-    assert thread_count(univar_session, nprocs=-1, omp_num_threads="3") == 2
+@pytest.mark.parametrize(("nprocs", "expected"), [(0, 3), (-1, 2)])
+def test_omp_num_threads_is_the_default(univar_session, nprocs, expected):
+    """With OMP_NUM_THREADS=3, nprocs=0 gives 3 threads and nprocs=-1 gives 2"""
+    assert thread_count(univar_session, nprocs=nprocs, omp_num_threads="3") == expected
 
 
 def test_default_is_available_cores(univar_session):
