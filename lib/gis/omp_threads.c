@@ -25,12 +25,6 @@
 */
 int G_set_omp_num_threads(struct Option *opt)
 {
-    /* make sure Option is not null */
-    if (opt == NULL)
-        G_fatal_error(_("Option is NULL."));
-    else if (opt->key == NULL)
-        G_fatal_error(_("Option key is NULL."));
-
     int threads = G_nprocs_from_option(opt);
 #if defined(_OPENMP)
     omp_set_num_threads(threads);

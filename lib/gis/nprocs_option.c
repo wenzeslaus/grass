@@ -81,8 +81,10 @@ int G_nprocs_from_option(const struct Option *nprocs)
     long long value;
     char *end;
 
-    if (!nprocs->answer)
-        G_fatal_error(_("%s= is required"), nprocs->key);
+    if (nprocs == NULL)
+        G_fatal_error(_("Option is NULL."));
+    else if (nprocs->key == NULL)
+        G_fatal_error(_("Option key is NULL."));
     errno = 0;
     value = strtoll(nprocs->answer, &end, 10);
     if (errno || end == nprocs->answer || *end != '\0' || value > INT_MAX ||
