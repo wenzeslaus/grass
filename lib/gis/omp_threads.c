@@ -42,7 +42,11 @@ int G_set_omp_num_threads(struct Option *opt)
     if (threads < 1) {
         const char *env = getenv("OMP_NUM_THREADS");
 
-        threads += env && *env ? omp_get_max_threads() : G_available_cores();
+        int base = env && *env ? 0 : G_available_cores();
+
+        if (base < 1)
+            base = omp_get_max_threads();
+        threads += base;
         threads = (threads < 1) ? 1 : threads;
     }
     omp_set_num_threads(threads);

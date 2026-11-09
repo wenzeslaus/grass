@@ -16,39 +16,12 @@
 #endif
 #include <stdio.h>
 
-#if defined(_WIN32)
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
 #if defined(__APPLE__)
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
 
 #include <grass/gis.h>
-
-static int logical_cpus(void)
-{
-#if defined(__linux__)
-    cpu_set_t set;
-
-    if (sched_getaffinity(0, sizeof(set), &set) == 0)
-        return CPU_COUNT(&set);
-#endif
-#if defined(_WIN32)
-    SYSTEM_INFO info;
-
-    GetSystemInfo(&info);
-    return info.dwNumberOfProcessors;
-#elif defined(_SC_NPROCESSORS_ONLN)
-    long n = sysconf(_SC_NPROCESSORS_ONLN);
-
-    if (n > 0)
-        return (int)n;
-#endif
-    return 1;
-}
 
 #if defined(__linux__)
 /* Read a sysfs CPU list ("0,2-3") of the topology of a CPU into a set.
@@ -90,7 +63,9 @@ static int read_cpu_list(int cpu, const char *name, cpu_set_t *cpus)
  * affinity mask limits the count like it limits the logical CPUs. A core
  * is the set of CPUs sharing it (its SMT siblings) and is counted at its
  * lowest CPU in the mask. The sets come from core_cpus_list, or from
- * thread_siblings_list on kernels before 5.3. */
+ * thread_siblings_list on kernels before 5.3. Without a readable topology
+ * (sysfs hidden in a container), every CPU counts as a core. The result
+ * is 0 when the mask cannot be read (more than CPU_SETSIZE CPUs). */
 static int linux_cores(void)
 {
     cpu_set_t set, core;
@@ -105,7 +80,7 @@ static int linux_cores(void)
             continue;
         if (!read_cpu_list(cpu, "core_cpus_list", &core) &&
             !read_cpu_list(cpu, "thread_siblings_list", &core))
-            return 0;
+            return CPU_COUNT(&set);
         CPU_AND(&core, &core, &set);
         for (first = 0; first < cpu && !CPU_ISSET(first, &core); first++)
             ;
@@ -122,11 +97,11 @@ static int linux_cores(void)
    Logical CPUs of one core (SMT, Hyper-Threading) count once.
 
    On Linux, the count is limited to the CPUs in the affinity mask of the
-   process. On macOS, it is the hw.physicalcpu sysctl value. Elsewhere,
-   and where the topology is unknown, the number of logical CPUs is
-   returned.
+   process, and without a readable CPU topology it is the number of
+   logical CPUs in the mask. On macOS, it is the hw.physicalcpu sysctl
+   value. On other platforms, the number is unknown.
 
-   \return number of physical cores (at least 1)
+   \return number of physical cores, or 0 if unknown
 
    \since version 8.6
  */
@@ -143,7 +118,5 @@ int G_available_cores(void)
     if (sysctlbyname("hw.physicalcpu", &value, &size, NULL, 0) == 0)
         n = value;
 #endif
-    if (n < 1)
-        n = logical_cpus();
-    return n < 1 ? 1 : n;
+    return n < 0 ? 0 : n;
 }
