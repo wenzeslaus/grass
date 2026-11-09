@@ -107,7 +107,7 @@ def test_default_is_available_cores(univar_session):
 
 
 def test_default_is_read_once():
-    """A second call with nprocs=-1 counts from the default, not from the first result
+    """A call with nprocs=-1 counts from the default, not from an earlier result
 
     Calls G_set_omp_num_threads() three times in one process through ctypes.
     """
@@ -117,7 +117,7 @@ def test_default_is_read_once():
         "G_gisinit(b'test')\n"
         "option = Option()\n"
         "option.key = String(b'nprocs')\n"
-        "for answer in (b'3', b'-1', b'-1'):\n"
+        "for answer in (b'4', b'-1', b'-1'):\n"
         "    option.answer = String(answer)\n"
         "    print(G_set_omp_num_threads(byref(option)))\n"
     )
@@ -132,4 +132,4 @@ def test_default_is_read_once():
     threads = [int(line) for line in output.split()]
     if threads[0] == 1:
         pytest.skip("GRASS is built without OpenMP")
-    assert threads == [3, 2, 2]
+    assert threads == [4, 2, 2]
