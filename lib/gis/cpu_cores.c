@@ -51,53 +51,66 @@ static int logical_cpus(void)
 }
 
 #if defined(__linux__)
-static int read_int(int cpu, const char *name)
+/* Read a sysfs CPU list ("0,2-3") of the topology of a CPU into a set.
+ * Returns 0 when the file is missing or holds no CPU number. */
+static int read_cpu_list(int cpu, const char *name, cpu_set_t *cpus)
 {
     char path[128];
     FILE *fp;
-    int value = -1;
+    int first;
+    int found = 0;
 
     snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/topology/%s",
              cpu, name);
+    CPU_ZERO(cpus);
     fp = fopen(path, "r");
     if (!fp)
-        return -1;
-    if (fscanf(fp, "%d", &value) != 1)
-        value = -1;
+        return 0;
+    while (fscanf(fp, "%d", &first) == 1) {
+        int last = first;
+        int c = getc(fp);
+
+        if (c == '-') {
+            if (fscanf(fp, "%d", &last) != 1)
+                break;
+            c = getc(fp);
+        }
+        for (int i = first; i <= last; i++)
+            if (i >= 0 && i < CPU_SETSIZE)
+                CPU_SET(i, cpus);
+        found = 1;
+        if (c != ',')
+            break;
+    }
     fclose(fp);
-    return value;
+    return found;
 }
 
-/* Count distinct (package, core) pairs among the CPUs this process may
- * run on, so that a CPU affinity mask limits the count like it limits
- * the logical CPUs. */
+/* Count the cores among the CPUs this process may run on, so that a CPU
+ * affinity mask limits the count like it limits the logical CPUs. A core
+ * is the set of CPUs sharing it (its SMT siblings) and is counted at its
+ * lowest CPU in the mask. The sets come from core_cpus_list, or from
+ * thread_siblings_list on kernels before 5.3. */
 static int linux_cores(void)
 {
-    cpu_set_t set;
-    int keys[2 * CPU_SETSIZE];
+    cpu_set_t set, core;
     int n = 0;
 
     if (sched_getaffinity(0, sizeof(set), &set) != 0)
         return 0;
     for (int cpu = 0; cpu < CPU_SETSIZE; cpu++) {
-        int package, core, i;
+        int first;
 
         if (!CPU_ISSET(cpu, &set))
             continue;
-        package = read_int(cpu, "physical_package_id");
-        core = read_int(cpu, "core_id");
-        if (package < 0 || core < 0) {
-            n = 0;
-            break;
-        }
-        for (i = 0; i < n; i++)
-            if (keys[2 * i] == package && keys[2 * i + 1] == core)
-                break;
-        if (i == n) {
-            keys[2 * n] = package;
-            keys[2 * n + 1] = core;
+        if (!read_cpu_list(cpu, "core_cpus_list", &core) &&
+            !read_cpu_list(cpu, "thread_siblings_list", &core))
+            return 0;
+        CPU_AND(&core, &core, &set);
+        for (first = 0; first < cpu && !CPU_ISSET(first, &core); first++)
+            ;
+        if (first == cpu)
             n++;
-        }
     }
     return n;
 }
