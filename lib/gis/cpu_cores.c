@@ -104,40 +104,15 @@ static int linux_cores(void)
 }
 #endif
 
-#if defined(_WIN32)
-/* Counts the cores of the current processor group only (at most 64
- * logical processors) and ignores the affinity mask. */
-static int windows_cores(void)
-{
-    SYSTEM_LOGICAL_PROCESSOR_INFORMATION *info;
-    DWORD len = 0;
-    int n = 0;
-
-    GetLogicalProcessorInformation(NULL, &len);
-    if (GetLastError() != ERROR_INSUFFICIENT_BUFFER || len == 0)
-        return 0;
-    info = G_malloc(len);
-    if (GetLogicalProcessorInformation(info, &len)) {
-        DWORD count = len / sizeof(*info);
-
-        for (DWORD i = 0; i < count; i++)
-            if (info[i].Relationship == RelationProcessorCore)
-                n++;
-    }
-    G_free(info);
-    return n;
-}
-#endif
-
 /*!
    \brief Get the number of physical CPU cores available to this process
 
    Logical CPUs of one core (SMT, Hyper-Threading) count once.
 
    On Linux, the count is limited to the CPUs in the affinity mask of the
-   process. On macOS, it is the hw.physicalcpu sysctl value. On Windows,
-   it is the number of cores reported by GetLogicalProcessorInformation.
-   Where the topology is unknown, the number of logical CPUs is returned.
+   process. On macOS, it is the hw.physicalcpu sysctl value. Elsewhere,
+   and where the topology is unknown, the number of logical CPUs is
+   returned.
 
    \return number of physical cores (at least 1)
 
@@ -155,8 +130,6 @@ int G_available_cores(void)
 
     if (sysctlbyname("hw.physicalcpu", &value, &size, NULL, 0) == 0)
         n = value;
-#elif defined(_WIN32)
-    n = windows_cores();
 #endif
     if (n < 1)
         n = logical_cpus();
