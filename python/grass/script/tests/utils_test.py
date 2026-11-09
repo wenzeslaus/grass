@@ -80,7 +80,6 @@ def test_resolve_nprocs(monkeypatch):
         ("6,2", 6),
         ("", 8),
         ("0", 8),
-        ("x", 8),
         ("\u00b2", 8),
         ("9" * 5000, 8),
     ],

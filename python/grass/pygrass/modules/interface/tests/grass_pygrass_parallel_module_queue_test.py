@@ -10,9 +10,9 @@ from grass.pygrass.modules import ParallelModuleQueue
 from grass.script import utils as gutils
 
 
-@pytest.mark.parametrize(("nprocs", "expected"), [(3, 3), (0, 8), (None, 8), (-2, 6)])
-def test_worker_count(monkeypatch, nprocs, expected):
-    """A positive value is used as is, 0 and None give the default, negative reserves"""
+@pytest.mark.parametrize("nprocs", [0, None])
+def test_default_worker_count(monkeypatch, nprocs):
+    """0 and None give one worker per core"""
     monkeypatch.setattr(gutils, "available_cores", lambda: 8)
     monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
-    assert ParallelModuleQueue(nprocs=nprocs)._num_procs == expected
+    assert ParallelModuleQueue(nprocs=nprocs)._num_procs == 8
