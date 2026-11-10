@@ -159,14 +159,8 @@ def resolve_nprocs(nprocs: int | str) -> int:
     if n > 0:
         return n
     threads = os.environ.get("OMP_NUM_THREADS", "").split(",")[0].strip()
-    # ASCII digits only, like isdigit() in C (str.isdigit() accepts more).
-    # The length limit keeps int() from raising on an absurdly long value.
-    if (
-        threads.isascii()
-        and threads.isdigit()
-        and len(threads) <= 9
-        and int(threads) > 0
-    ):
+    # Up to nine ASCII digits fit a C int.
+    if re.fullmatch(r"[0-9]{1,9}", threads) and int(threads) > 0:
         default = int(threads)
     else:
         default = available_cores()
