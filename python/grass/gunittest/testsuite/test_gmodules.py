@@ -41,7 +41,7 @@ class TestCallModuleFunction(TestCase):
             verbose=True,
             merge_stderr=True,
         )
-        self.assertLooksLike(output, "...+proj=longlat +datum=WGS84...")
+        self.assertLooksLike(output, "...Input CRS: 'OGC:CRS84'...")
         self.assertLooksLike(output, "...|...\n")
 
     def test_merge_stderr_with_wrong_stdin_stderr(self):
