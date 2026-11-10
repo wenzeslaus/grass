@@ -13,7 +13,7 @@ from grass.lib.gis import G_available_cores, G_resolve_nprocs
 from grass.tools import ToolError, Tools
 
 # Prints G_nprocs_from_option() and G_set_omp_num_threads() for the answer
-# in argv[1].
+# in argv[1] (empty: an option without an answer).
 SCRIPT = """
 import sys
 from ctypes import byref
@@ -22,7 +22,7 @@ from grass.lib.gis import G_nprocs_from_option, G_set_omp_num_threads, Option, S
 
 option = Option()
 option.key = String(b"nprocs")
-option.answer = String(sys.argv[1].encode())
+option.answer = String(sys.argv[1].encode() or None)
 print(G_nprocs_from_option(byref(option)), G_set_omp_num_threads(byref(option)))
 """
 
@@ -49,7 +49,7 @@ def nprocs_from_option(session, answer, omp_num_threads=None):
 
 @pytest.mark.parametrize("answer", ["99999999999", ""])
 def test_not_an_int(xy_session_for_module, answer):
-    """An answer beyond the int range or empty is an error naming the option"""
+    """An answer beyond the int range or missing is an error naming the option"""
     returncode, _, stderr = nprocs_from_option(xy_session_for_module, answer)
     assert returncode != 0
     assert f"Invalid number of threads <{answer}> for nprocs=" in stderr
