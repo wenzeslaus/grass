@@ -78,14 +78,14 @@ def test_resolve_nprocs(monkeypatch):
         (" 6 ,2", 6),
         ("", 8),
         ("0", 8),
-        ("\u00b2", 8),
+        ("\u0664", 8),
         ("9" * 10, 8),
     ],
 )
 def test_resolve_nprocs_omp_num_threads(monkeypatch, value, expected):
     """OMP_NUM_THREADS is the default only when its first value is a positive number
 
-    A non-ASCII digit (here superscript two) and a value of more than nine
+    A non-ASCII digit (here Arabic-Indic four) and a value of more than nine
     digits are ignored rather than an error.
     """
     monkeypatch.setattr(gutils, "available_cores", lambda: 8)
@@ -111,20 +111,20 @@ def test_available_cores_reads_sysfs():
         }
     except (AttributeError, OSError):
         pytest.skip("needs CPU affinity and the CPU topology in sysfs (Linux)")
-    assert gutils.available_cores() == len(cores)
+    assert gutils.available_cores() == min(len(cores), gs.available_cpus())
 
 
 @pytest.mark.parametrize(
-    ("siblings_of_3", "cpus", "expected"), [("2-3", 3, 2), ("2-3", 1, 1), ("", 3, 3)]
+    ("siblings_of_4", "cpus", "expected"), [("4,5", 3, 2), ("4,5", 1, 1), ("", 3, 3)]
 )
-def test_available_cores_rules(monkeypatch, siblings_of_3, cpus, expected):
+def test_available_cores_rules(monkeypatch, siblings_of_4, cpus, expected):
     """Siblings count once, at their lowest CPU in the mask (CPU 0 is not in it)
 
     The result is at most available_cpus() and, with an unreadable topology,
     equal to it.
     """
-    topology = {"cpu1": "0,1\n", "cpu2": "2-3\n", "cpu3": siblings_of_3}
-    monkeypatch.setattr(os, "sched_getaffinity", lambda pid: {1, 2, 3}, raising=False)
+    topology = {"cpu1": "0-3\n", "cpu2": "0-3\n", "cpu4": siblings_of_4}
+    monkeypatch.setattr(os, "sched_getaffinity", lambda pid: {1, 2, 4}, raising=False)
     monkeypatch.setattr(
         Path, "read_text", lambda self: topology[self.parent.parent.name]
     )
