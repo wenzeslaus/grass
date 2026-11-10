@@ -42,8 +42,8 @@ static int default_threads(void)
 /*!
  * \brief Resolve a value of nprocs into a number of threads
  *
- * A positive value is the number of threads. 0 means the default number:
- * the number of physical cores available to the process (see
+ * A positive value is the number of threads. 0 means the default, which
+ * is the number of physical cores available to the process (see
  * G_available_cores()), or the OpenMP default when the OMP_NUM_THREADS
  * environment variable is set or the number of cores is unknown. Without
  * OpenMP, the default is the number of physical cores, or 1 when that is
