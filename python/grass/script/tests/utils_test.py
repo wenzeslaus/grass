@@ -86,7 +86,7 @@ def test_resolve_nprocs_omp_num_threads(monkeypatch, value, expected):
     """OMP_NUM_THREADS is the default only when its first value is a positive number
 
     A non-ASCII digit (here Arabic-Indic four) and a value of more than nine
-    digits are ignored rather than an error.
+    digits are ignored.
     """
     monkeypatch.setattr(gutils, "available_cores", lambda: 8)
     monkeypatch.setenv("OMP_NUM_THREADS", value)
@@ -115,16 +115,16 @@ def test_available_cores_reads_sysfs():
 
 
 @pytest.mark.parametrize(
-    ("siblings_of_4", "cpus", "expected"), [("4,5", 3, 2), ("4,5", 1, 1), ("", 3, 3)]
+    ("siblings", "cpus", "expected"), [("4,6,8", 3, 2), ("4,6,8", 1, 1), ("", 3, 3)]
 )
-def test_available_cores_rules(monkeypatch, siblings_of_4, cpus, expected):
+def test_available_cores_rules(monkeypatch, siblings, cpus, expected):
     """Siblings count once, at their lowest CPU in the mask (CPU 0 is not in it)
 
     The result is at most available_cpus() and, with an unreadable topology,
     equal to it.
     """
-    topology = {"cpu1": "0-3\n", "cpu2": "0-3\n", "cpu4": siblings_of_4}
-    monkeypatch.setattr(os, "sched_getaffinity", lambda pid: {1, 2, 4}, raising=False)
+    topology = {"cpu1": "0-3\n", "cpu2": "0-3\n", "cpu6": siblings}
+    monkeypatch.setattr(os, "sched_getaffinity", lambda pid: {1, 2, 6}, raising=False)
     monkeypatch.setattr(
         Path, "read_text", lambda self: topology[self.parent.parent.name]
     )
