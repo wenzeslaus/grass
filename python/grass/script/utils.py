@@ -119,8 +119,8 @@ def available_cores() -> int:
     """Number of physical CPU cores this process may use.
 
     Logical CPUs of one core (SMT, Hyper-Threading) count once. On Linux,
-    a CPU in the affinity mask counts when it is the lowest-numbered of
-    its thread siblings in the mask, using the topology in sysfs.
+    these are the cores with a CPU in the affinity mask of the process,
+    according to the topology in sysfs, and at most :func:`available_cpus`.
     Elsewhere, including macOS, and when the topology is unknown, it is
     :func:`available_cpus`.
 
@@ -141,7 +141,7 @@ def available_cores() -> int:
         except (OSError, ValueError):
             cores = 0
         if cores:
-            return cores
+            return min(cores, available_cpus())
     return available_cpus()
 
 
