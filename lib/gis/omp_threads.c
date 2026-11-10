@@ -16,8 +16,8 @@
     If \em nprocs is 0, the default number of threads is used, which is
     the number of physical CPU cores available to the process (see
     G_available_cores()), or the OpenMP default when the OMP_NUM_THREADS
-    environment variable is set. The default is determined once per
-    process, on the first call.
+    environment variable is set or the number of cores is unknown. The
+    default is determined once per process, on the first call.
     If \em nprocs is positive, that many threads are used.
     If \em nprocs is negative, it is added to the default (at least one
     thread is used), which keeps that many cores free for other work.
