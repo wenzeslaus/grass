@@ -235,7 +235,7 @@ class ParallelModuleQueue:
                        run in parallel. A positive value is used as-is,
                        ``0`` or ``None`` means the default of
                        :func:`grass.script.utils.resolve_nprocs`, and
-                       a negative value reduces it by that many (clamped
+                       a negative value reduces it by that amount (clamped
                        to at least 1).
         :type nprocs: int
         """
