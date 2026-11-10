@@ -40,18 +40,23 @@ def siblings(cpu):
 @pytest.mark.skipif(
     not hasattr(os, "sched_setaffinity"), reason="needs CPU affinity (Linux)"
 )
-def test_core_in_affinity_mask_counts_once():
-    """A process limited to one core has one core
+@pytest.mark.parametrize("cores", [1, 2])
+def test_cores_in_affinity_mask_count_once(cores):
+    """A process limited to one or two cores has that many cores
 
-    The core is one allowed CPU with its SMT siblings when the mask has
-    them. G_available_cores() runs in a subprocess, so the affinity of the
-    test process does not change.
+    The first core is one allowed CPU with its SMT siblings when the mask
+    has them, the second one is another allowed CPU. G_available_cores()
+    runs in a subprocess, so the affinity of the test process does not change.
     """
     allowed = os.sched_getaffinity(0)
     try:
         cpus = max((siblings(cpu) & allowed for cpu in allowed), key=len)
     except OSError:
         cpus = {min(allowed)}
+    if cores == 2:
+        if cpus == allowed:
+            pytest.skip("needs two cores in the affinity mask")
+        cpus.add(min(allowed - cpus))
     code = (
         "import os\n"
         f"os.sched_setaffinity(0, {cpus})\n"
@@ -61,7 +66,7 @@ def test_core_in_affinity_mask_counts_once():
     output = subprocess.run(
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     ).stdout
-    assert int(output) == 1
+    assert int(output) == cores
 
 
 def thread_count(session, nprocs, omp_num_threads=None):
@@ -113,8 +118,7 @@ def test_default_is_read_once():
     """
     code = (
         "from ctypes import byref\n"
-        "from grass.lib.gis import G_gisinit, G_set_omp_num_threads, Option, String\n"
-        "G_gisinit(b'test')\n"
+        "from grass.lib.gis import G_set_omp_num_threads, Option, String\n"
         "option = Option()\n"
         "option.key = String(b'nprocs')\n"
         "for answer in (b'4', b'-1', b'-1'):\n"
