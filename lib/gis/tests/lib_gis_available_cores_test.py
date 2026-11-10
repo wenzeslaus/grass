@@ -56,7 +56,7 @@ def test_cores_in_affinity_mask_count_once(cores):
     if cores == 2:
         if cpus == allowed:
             pytest.skip("needs two cores in the affinity mask")
-        cpus.add(min(allowed - cpus))
+        cpus.add(max(allowed - cpus))
     code = (
         "import os\n"
         f"os.sched_setaffinity(0, {cpus})\n"
