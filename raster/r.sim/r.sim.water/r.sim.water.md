@@ -318,10 +318,10 @@ The printed summary:
 The walkers are placed and moved using pseudo-random numbers. The seed
 is given by **seed**; without it, a seed is generated and
 recorded in the history of the output maps and in the run summary as
-`seed`, so that the run can be repeated. With more than one thread, the
-results differ slightly between thread counts and between repeated runs,
-since the order in which the walkers reach a cell depends on the
-threads. Use **nprocs=1** when results must be reproducible.
+`seed`, so that the run can be repeated. The results do not depend on
+**nprocs**, except with infiltration, where the order in which walkers use
+up the infiltration capacity of a cell depends on the threads. Use
+**nprocs=1** when results with infiltration must be reproducible.
 
 ### Performance
 

@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
 #include <grass/gis.h>
 #include <grass/bitmap.h>
 #include <grass/linkm.h>
@@ -26,6 +27,17 @@
  * document use and purpose.
  *
  */
+
+/* Returns the power-of-two unit for summing weights as integers, which,
+ * unlike floating-point sums, do not depend on the order of the additions.
+ * A sum of count values up to max_value stays below 2^62 units. */
+static double fixed_point_unit(double max_value, int count)
+{
+    int exponent;
+
+    frexp(max_value * count, &exponent);
+    return ldexp(1., exponent - 62);
+}
 
 /* **************************************************** */
 /*       create walker representation of si */
@@ -93,9 +105,14 @@ void main_loop(const Setup *setup, const Geometry *geometry,
     for (int lw = 0; lw < sim->max_walkers; lw++)
         G_random_state_for_unit(&sim->w[lw].state, &layout, lw);
 
+    /* Weights added in a step, in units, moved to gama after the step. */
+    int64_t *added =
+        G_calloc((size_t)geometry->my * geometry->mx, sizeof(int64_t));
+
     for (iblock = 1; iblock <= nblock; iblock++) {
         int lw = 0;
         double walkwe = 0.;
+        double max_weight = 0.;
 
         G_message(_("Processing block %d of %d"), iblock, nblock);
 
@@ -111,6 +128,9 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                     double gen = sim->rwalk * grids->si[k][l] / setup->sisum;
                     int mgen = (int)gen;
                     double wei = gen / (double)(mgen + 1);
+
+                    if (wei > max_weight)
+                        max_weight = wei;
 
                     for (int iw = 1; iw <= mgen + 1;
                          iw++) { /* assign walkers */
@@ -169,6 +189,18 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             }
             nwalka = 0;
             sim->nstack = 0;
+
+            /* Weights only decrease in r.sim.water, but sigma can increase
+             * them in r.sim.sediment. */
+            if (inputs->wdepth != NULL) {
+                max_weight = 0.;
+#pragma omp parallel for schedule(static) reduction(max : max_weight)
+                for (int iw = 0; iw < sim->nwalk; iw++) {
+                    if (sim->w[iw].m > max_weight)
+                        max_weight = sim->w[iw].m;
+                }
+            }
+            double unit = fixed_point_unit(addac * max_weight, sim->nwalk);
 
 #pragma omp parallel firstprivate(l, k) reduction(+ : nwalka)
             {
@@ -248,16 +280,15 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                                 continue;
 
                             /* Add walker weight to water depth or
-                             * concentration. The captured sum includes the
-                             * weights added before on any thread. */
-                            double gama;
-#pragma omp atomic capture
-                            {
-                                grids->gama[k][l] += addac * sim->w[lw].m;
-                                gama = grids->gama[k][l];
-                            }
+                             * concentration. */
+                            double weight = addac * sim->w[lw].m;
+#pragma omp atomic update
+                            added[(size_t)k * geometry->mx + l] +=
+                                llrint(weight / unit);
 
-                            double d1 = gama * conn;
+                            /* Depth at the start of the step plus the own
+                             * weight, independent of the order of walkers. */
+                            double d1 = (grids->gama[k][l] + weight) * conn;
                             double gaux, gauy;
                             gasdev(&sim->w[lw].state, &gaux, &gauy);
                             double hhc = pow(d1, 3. / 5.);
@@ -330,6 +361,16 @@ void main_loop(const Setup *setup, const Geometry *geometry,
                         }
                     }
                 } /* lw loop */
+
+#pragma omp for schedule(static)
+                for (k = 0; k < geometry->my; k++) {
+                    for (l = 0; l < geometry->mx; l++) {
+                        size_t cell = (size_t)k * geometry->mx + l;
+
+                        grids->gama[k][l] += added[cell] * unit;
+                        added[cell] = 0;
+                    }
+                }
             }
             /* Total remaining walkers for this iteration */
             sim->nwalka = nwalka;
@@ -478,6 +519,7 @@ void main_loop(const Setup *setup, const Geometry *geometry,
             erod(grids->gama, setup, geometry, grids);
     }
     /*                       ........ end of iblock loop */
+    G_free(added);
 
     // Finalize the err map as the sample standard deviation of the per-block
     // estimators of the final field: sqrt(|E[X^2] - E[X]^2|), where each X
