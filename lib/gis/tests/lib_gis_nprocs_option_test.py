@@ -16,20 +16,14 @@ from grass.tools import ToolError, Tools
 # in argv[1].
 SCRIPT = """
 import sys
+from ctypes import byref
 
-from grass.lib.ctypes_preamble import String
-from grass.lib.gis import (
-    G_OPT_M_NPROCS,
-    G_define_standard_option,
-    G_gisinit,
-    G_nprocs_from_option,
-    G_set_omp_num_threads,
-)
+from grass.lib.gis import G_nprocs_from_option, G_set_omp_num_threads, Option, String
 
-G_gisinit("lib_gis_nprocs_option_test")
-option = G_define_standard_option(G_OPT_M_NPROCS)
-option.contents.answer = String(sys.argv[1].encode())
-print(G_nprocs_from_option(option), G_set_omp_num_threads(option))
+option = Option()
+option.key = String(b"nprocs")
+option.answer = String(sys.argv[1].encode())
+print(G_nprocs_from_option(byref(option)), G_set_omp_num_threads(byref(option)))
 """
 
 
@@ -53,12 +47,12 @@ def nprocs_from_option(session, answer, omp_num_threads=None):
     return result.returncode, result.stdout.strip(), result.stderr
 
 
-def test_out_of_range(xy_session_for_module):
-    """An answer beyond the int range is an error naming the option"""
-    returncode, _, stderr = nprocs_from_option(xy_session_for_module, "99999999999")
+@pytest.mark.parametrize("answer", ["99999999999", ""])
+def test_not_an_int(xy_session_for_module, answer):
+    """An answer beyond the int range or empty is an error naming the option"""
+    returncode, _, stderr = nprocs_from_option(xy_session_for_module, answer)
     assert returncode != 0
-    assert "Invalid number of threads <" in stderr
-    assert "nprocs=" in stderr
+    assert f"Invalid number of threads <{answer}> for nprocs=" in stderr
 
 
 def test_tool_refuses_trailing_text(xy_session_for_module):
@@ -66,8 +60,7 @@ def test_tool_refuses_trailing_text(xy_session_for_module):
     tools = Tools(session=xy_session_for_module)
     with pytest.raises(ToolError) as error:
         tools.r_univar(map="doesnotexist", flags="g", nprocs="2x")
-    assert "Invalid number of threads <" in error.value.stderr
-    assert "nprocs=" in error.value.stderr
+    assert "Invalid number of threads <2x> for nprocs=" in error.value.stderr
 
 
 @pytest.mark.skipif(
@@ -87,7 +80,7 @@ def test_cores_are_the_default(monkeypatch):
     ("answer", "expected"), [("0", "6 6"), ("-2", "4 4"), ("3", "3 3")]
 )
 def test_omp_num_threads(xy_session_for_module, answer, expected):
-    """With OMP_NUM_THREADS=6, the default is 6, and OpenMP gets the result"""
+    """With OMP_NUM_THREADS=6, the default is 6 for both functions"""
     returncode, output, stderr = nprocs_from_option(xy_session_for_module, answer, "6")
     if output.endswith(" 1"):
         pytest.skip("GRASS is built without OpenMP")
