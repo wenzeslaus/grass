@@ -1,8 +1,6 @@
 """Test functions in grass.script.utils"""
 
 import os
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -77,18 +75,18 @@ def test_resolve_nprocs(monkeypatch):
     ("value", "expected"),
     [
         ("6", 6),
-        ("6,2", 6),
+        (" 6 ,2", 6),
         ("", 8),
         ("0", 8),
         ("\u00b2", 8),
-        ("9" * 5000, 8),
+        ("9" * 10, 8),
     ],
 )
 def test_resolve_nprocs_omp_num_threads(monkeypatch, value, expected):
-    """OMP_NUM_THREADS replaces the cores only when its first value is a number
+    """OMP_NUM_THREADS is the default only when its first value is a positive number
 
-    A non-ASCII digit (here superscript two) is not a number, as in C, and a
-    value too long to be a thread count is ignored rather than an error.
+    A non-ASCII digit (here superscript two) and a value of more than nine
+    digits are ignored rather than an error.
     """
     monkeypatch.setattr(gutils, "available_cores", lambda: 8)
     monkeypatch.setenv("OMP_NUM_THREADS", value)
@@ -97,43 +95,38 @@ def test_resolve_nprocs_omp_num_threads(monkeypatch, value, expected):
     assert gs.resolve_nprocs(3) == 3
 
 
-def test_cpu_list():
-    """Single CPUs and ranges in a sysfs CPU list are expanded"""
-    assert gutils._cpu_list("0-3,8,10-11\n") == {0, 1, 2, 3, 8, 10, 11}
-
-
 def test_available_cores():
     """There is at least one core and not more cores than logical CPUs"""
     assert 1 <= gutils.available_cores() <= gs.available_cpus()
 
 
-@pytest.mark.skipif(
-    not hasattr(os, "sched_setaffinity"), reason="needs CPU affinity (Linux)"
-)
-def test_available_cores_counts_smt_siblings_once():
-    """A core and its SMT siblings in the affinity mask count as one core
+def test_available_cores_reads_sysfs():
+    """Each distinct list of thread siblings of the allowed CPUs is one core"""
+    try:
+        cores = {
+            Path(
+                f"/sys/devices/system/cpu/cpu{cpu}/topology/thread_siblings_list"
+            ).read_text(encoding="ascii")
+            for cpu in os.sched_getaffinity(0)
+        }
+    except (AttributeError, OSError):
+        pytest.skip("needs CPU affinity and the CPU topology in sysfs (Linux)")
+    assert gutils.available_cores() == len(cores)
 
-    The count is taken in a subprocess limited to the thread siblings of one
-    allowed CPU, so the affinity of the test process does not change.
+
+@pytest.mark.parametrize(
+    ("siblings_of_3", "cpus", "expected"), [("2-3", 3, 2), ("2-3", 1, 1), ("", 3, 3)]
+)
+def test_available_cores_rules(monkeypatch, siblings_of_3, cpus, expected):
+    """Siblings count once, at their lowest CPU in the mask (CPU 0 is not in it)
+
+    The result is at most available_cpus() and, with an unreadable topology,
+    equal to it.
     """
-    cpus = os.sched_getaffinity(0)
-    siblings = set()
-    for cpu in cpus:
-        path = Path(f"/sys/devices/system/cpu/cpu{cpu}/topology/thread_siblings_list")
-        if not path.exists():
-            pytest.skip("needs the CPU topology in sysfs")
-        siblings = gutils._cpu_list(path.read_text(encoding="ascii")) & cpus
-        if len(siblings) > 1:
-            break
-    else:
-        pytest.skip("needs an allowed CPU with an allowed SMT sibling")
-    code = (
-        "import os, sys\n"
-        "from grass.script import utils\n"
-        f"os.sched_setaffinity(0, {sorted(siblings)})\n"
-        "sys.stdout.write(str(utils.available_cores()))\n"
+    topology = {"cpu1": "0,1\n", "cpu2": "2-3\n", "cpu3": siblings_of_3}
+    monkeypatch.setattr(os, "sched_getaffinity", lambda pid: {1, 2, 3}, raising=False)
+    monkeypatch.setattr(
+        Path, "read_text", lambda self: topology[self.parent.parent.name]
     )
-    result = subprocess.run(
-        [sys.executable, "-c", code], capture_output=True, text=True, check=True
-    )
-    assert result.stdout == "1"
+    monkeypatch.setattr(gutils, "available_cpus", lambda: cpus)
+    assert gutils.available_cores() == expected
