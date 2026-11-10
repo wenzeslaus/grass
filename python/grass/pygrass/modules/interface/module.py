@@ -232,11 +232,11 @@ class ParallelModuleQueue:
         """Constructor
 
         :param nprocs: The maximum number of Module processes that can be
-                       run in parallel. A positive value is used as is,
-                       ``0`` or ``None`` means the default number of
-                       workers, and a negative value reserves that many
-                       from the default (at least 1 remains). The default
-                       is the one of :func:`grass.script.utils.resolve_nprocs`.
+                       run in parallel. A positive value is used as-is,
+                       ``0`` or ``None`` means the default of
+                       :func:`grass.script.utils.resolve_nprocs`, and
+                       a negative value reduces it by that many (clamped
+                       to at least 1).
         :type nprocs: int
         """
         nprocs = resolve_nprocs(nprocs or 0)

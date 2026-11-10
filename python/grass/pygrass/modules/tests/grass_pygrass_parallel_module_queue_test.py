@@ -15,4 +15,4 @@ def test_default_worker_count(monkeypatch, nprocs):
     """0 and None give one worker per core"""
     monkeypatch.setattr(gutils, "available_cores", lambda: 8)
     monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
-    assert ParallelModuleQueue(nprocs=nprocs)._num_procs == 8
+    assert ParallelModuleQueue(nprocs=nprocs).get_max_num_procs() == 8
