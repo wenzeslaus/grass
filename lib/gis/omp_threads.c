@@ -31,8 +31,8 @@ int G_set_omp_num_threads(struct Option *opt)
                          threads),
                       threads);
 #else
-    /* The default (0) is not a request for more than one thread. */
-    if (threads != 1 && atoi(opt->answer) != 0) {
+    threads = atoi(opt->answer); /* 0 as given, not resolved to the cores */
+    if (!(threads == 0 || threads == 1)) {
         G_warning(_("GRASS is not compiled with OpenMP support, parallel "
                     "computation is disabled. Only one thread will be used."));
     }
