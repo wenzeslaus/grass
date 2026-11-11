@@ -165,17 +165,21 @@ def _is_environment_shared(library):
 def _set_c_variable(library, name, value):
     """Set a variable in the C runtime of the libraries, or remove it with ""
 
-    A value which the C runtime cannot take is skipped, as the libraries
-    could not use it, and failing would break the grass.lib import.
+    A value which the C runtime cannot take is removed instead, so that the
+    libraries do not use a stale value and the grass.lib import does not
+    fail.
     """
     try:
         # The C runtime of the libraries uses the ANSI code page.
         encoded_name = name.encode("mbcs")
-        encoded_value = value.encode("mbcs")
     except UnicodeEncodeError:
         return
+    try:
+        encoded_value = value.encode("mbcs")
+    except UnicodeEncodeError:
+        encoded_value = b""
     if len(encoded_name) + len(encoded_value) + 2 > _PUTENV_BUFFER_SIZE:
-        return
+        encoded_value = b""
     library.G_putenv(encoded_name, encoded_value)
 
 
@@ -191,8 +195,9 @@ def sync_environment():
 
     The function copies GISRC, GISBASE, GIS_LOCK, and all variables starting
     with GRASS_ from os.environ. The session variables and the variables
-    copied before are removed when they are no longer set. A value outside
-    of the ANSI code page or longer than about 1000 bytes is not copied.
+    copied before are removed when they are no longer set. A variable with
+    a value outside of the ANSI code page or too long for G_putenv is
+    removed as well.
     The function does nothing outside of Windows and when the environment
     turns out to be shared.
 

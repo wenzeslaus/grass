@@ -3,10 +3,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 """Tests of the C libraries (grass.lib) seeing a session set up in their process
 
-On Windows, the C libraries may keep their own copy of the environment, so
-grass.lib copies the session variables into it when it is imported, init
-copies them again when grass.lib is already imported, and
-grass.lib.sync_environment copies them on request. On other platforms, the
+On Windows, the C libraries may keep their own copy of the environment, which
+grass.lib updates with the session variables. On other platforms, the
 environment is shared and the tests check the same behavior without the
 copying.
 """
