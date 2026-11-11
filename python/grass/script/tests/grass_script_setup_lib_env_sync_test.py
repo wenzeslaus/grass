@@ -43,35 +43,6 @@ def test_grass_lib_sees_session_of_init_in_same_process(
 
 
 @pytest.mark.usefixtures("mock_no_session")
-def test_grass_lib_imported_before_init_sees_session(
-    tmp_path, run_code_in_environment, clean_subprocess_environment
-):
-    """Check that grass.lib imported before init sees the session"""
-    project = tmp_path / "test"
-    code = f"""
-        import json
-        import os
-
-        import grass.lib.gis as libgis
-        import grass.lib.raster as libraster
-        import grass.script as gs
-
-        gisbase_before = os.environ.get("GISBASE")
-        gs.create_project(r"{project}")
-        with gs.setup.init(r"{project}"):
-            libgis.G_gisinit(b"test")
-            gs.run_command("g.region", rows=2, cols=2)
-            gs.mapcalc("ones = 1")
-            fd = libraster.Rast_open_old(b"ones", b"")
-            libraster.Rast_close(fd)
-        print(json.dumps({{"raster_opened": True, "gisbase_before": gisbase_before}}))
-    """
-    result = run_code_in_environment(code, env=clean_subprocess_environment)
-    assert result["raster_opened"]
-    assert result["gisbase_before"] is None
-
-
-@pytest.mark.usefixtures("mock_no_session")
 def test_grass_variables_reach_c_libraries(
     tmp_path, run_code_in_environment, clean_subprocess_environment
 ):
@@ -141,36 +112,21 @@ def test_explicit_sync_updates_and_removes_variables(
     }
 
 
-@pytest.mark.usefixtures("mock_no_session")
-def test_grass_lib_sees_custom_env_session_after_sync(
-    tmp_path, run_code_in_environment, clean_subprocess_environment
+def test_grass_lib_importable_with_variable_outside_code_page(
+    run_code_in_environment, clean_subprocess_environment
 ):
-    """Check that grass.lib sees a session of a custom env after sync_environment"""
-    project = tmp_path / "test"
-    code = f"""
-        import json
-        import os
+    """Check that a GRASS_ variable which cannot be copied does not break the import
 
-        import grass.lib
-        import grass.lib.gis as libgis
-        import grass.lib.raster as libraster
-        import grass.script as gs
-
-        gs.create_project(r"{project}")
-        with gs.setup.init(r"{project}", env=os.environ.copy()) as session:
-            gs.run_command("g.region", rows=2, cols=2, env=session.env)
-            gs.mapcalc("ones = 1", env=session.env)
-            grass.lib.sync_environment(env=session.env)
-            libgis.G_gisinit(b"test")
-            fd = libraster.Rast_open_old(b"ones", b"")
-            libraster.Rast_close(fd)
-            gisrc_in_os_environ = "GISRC" in os.environ
-        print(
-            json.dumps(
-                {{"raster_opened": True, "gisrc_in_os_environ": gisrc_in_os_environ}}
-            )
-        )
+    On Windows, a value outside of the ANSI code page cannot be passed to the
+    C runtime of the libraries.
     """
-    result = run_code_in_environment(code, env=clean_subprocess_environment)
-    assert result["raster_opened"]
-    assert not result["gisrc_in_os_environ"]
+    env = clean_subprocess_environment
+    env["GRASS_TEST_VARIABLE"] = "\u4e2d\u6587"
+    code = """
+        import json
+
+        import grass.lib.gis
+
+        print(json.dumps({"imported": True}))
+    """
+    assert run_code_in_environment(code, env=env)["imported"]
