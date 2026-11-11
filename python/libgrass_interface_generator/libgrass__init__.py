@@ -167,8 +167,8 @@ def _set_c_variable(library, name, value):
     """Set a variable as seen by the C libraries, or remove it with None
 
     On Windows, a value which the C runtime of the libraries cannot take is
-    skipped, as the libraries could not use it, and failing would break the
-    grass.lib import.
+    removed instead, so that the libraries do not use a stale value and the
+    grass.lib import does not fail.
     """
     if library is None:
         # The C libraries share the environment of the process with Python.
@@ -182,11 +182,14 @@ def _set_c_variable(library, name, value):
         # The C runtime of the libraries uses the ANSI code page, and an
         # empty value removes the variable.
         encoded_name = name.encode("mbcs")
-        encoded_value = (value or "").encode("mbcs")
     except UnicodeEncodeError:
         return
+    try:
+        encoded_value = (value or "").encode("mbcs")
+    except UnicodeEncodeError:
+        encoded_value = b""
     if len(encoded_name) + len(encoded_value) + 2 > _PUTENV_BUFFER_SIZE:
-        return
+        encoded_value = b""
     library.G_putenv(encoded_name, encoded_value)
 
 
@@ -202,19 +205,19 @@ def sync_environment(env=None):
 
     With *env*, the variables are copied from that environment instead of
     os.environ, on all platforms, e.g., to use grass.lib with a session
-    from init(..., env=env). The C libraries have one environment per
-    process, so this session then also applies to processes started without
-    an explicit environment, while os.environ is not changed. Use it when
-    the process works with only one session, and call the function again
-    without *env* after ending the session, which returns the C libraries
-    to the variables in os.environ.
+    from init(..., env=env). os.environ is not changed. Outside of Windows,
+    processes started without an explicit environment also get the session,
+    and GRASS_ variables set only in os.environ stay visible to the C
+    libraries. Call the function without *env* after the session ends to
+    return the C libraries to the variables in os.environ.
 
     The function copies GISRC, GISBASE, GIS_LOCK, and all variables starting
     with GRASS_. The session variables and the variables copied before are
-    removed when they are no longer set. On Windows, a value outside of the
-    ANSI code page or longer than about 1000 bytes is not copied. Unless a
-    custom env is or was copied, the function does nothing outside of
-    Windows and when the environment turns out to be shared.
+    removed when they are no longer set. On Windows, a variable with a value
+    outside of the ANSI code page or too long for G_putenv is removed as
+    well. Without *env*, the function does nothing outside of Windows and
+    when the environment turns out to be shared, unless the previous call
+    used *env*.
 
     The C libraries keep the first session they read, so switching to
     another session in the same process is not supported on any platform.

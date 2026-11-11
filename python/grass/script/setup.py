@@ -439,9 +439,8 @@ def init(
         mapset_path.directory, mapset_path.location, mapset_path.mapset
     )
     if env is os.environ and "grass.lib" in sys.modules:
-        # The C libraries may keep their own copy of the environment. Only
-        # an already imported grass.lib needs the copy done here because its
-        # import does the same.
+        # The C libraries may keep their own copy of the environment. A
+        # grass.lib imported later copies the session on import.
         sys.modules["grass.lib"].sync_environment()
     return SessionHandle(env=env, locked=lock)
 
