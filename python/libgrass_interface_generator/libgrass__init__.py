@@ -5,20 +5,18 @@ import sys
 from .ctypes_loader import add_library_search_dirs
 
 
-def _core_libraries(lib_path):
-    """Get the real paths of the core shared library files in a directory"""
+def _core_library_path(lib_path):
+    """Get the path of the core shared library in a directory, or None"""
     try:
-        names = os.listdir(lib_path)
+        names = sorted(os.listdir(lib_path))
     except OSError:
-        return []
-    return sorted(
-        {
-            os.path.realpath(os.path.join(lib_path, name))
-            for name in names
-            if name.startswith(("libgrass_gis.", "grass_gis."))
-            and (name.endswith((".so", ".dylib", ".dll")) or ".so." in name)
-        }
-    )
+        return None
+    for name in names:
+        if name.startswith(("libgrass_gis.", "grass_gis.")) and (
+            name.endswith((".so", ".dylib", ".dll")) or ".so." in name
+        ):
+            return os.path.join(lib_path, name)
+    return None
 
 
 def _find_lib_path():
@@ -32,10 +30,9 @@ def _find_lib_path():
     GISBASE is used as a fallback for other layouts.
     """
     path = os.path.dirname(os.path.realpath(__file__))
-    # Four levels up from grass/lib is the installation in the traditional
-    # layout (lib, grass, python, etc) and the library directory in the FHS
-    # layout (lib, grass, site-packages, python3.X). For a shallower path, the
-    # climb stops at the filesystem root, where no candidate matches.
+    # Four levels up from grass/lib (through lib, grass, python, and etc) is
+    # the installation in the traditional layout, and (through lib, grass,
+    # site-packages, and python3.X) the library directory in the FHS layout.
     for _ in range(4):
         path = os.path.dirname(path)
     candidates = [os.path.join(path, "lib"), path]
@@ -43,18 +40,17 @@ def _find_lib_path():
     if gisbase:
         candidates.append(os.path.join(gisbase, "lib"))
     for candidate in candidates:
-        if _core_libraries(candidate):
+        if _core_library_path(candidate):
             return candidate
     return None
 
 
-# Every other GRASS library needs libgrass_gis and libgrass_gis needs
-# libgrass_datetime, so these two are loaded before the rest. A library loaded
-# before the GRASS libraries it needs makes the dynamic linker resolve those
-# through the process-startup search path, which may find another GRASS
-# installation and leave the process with two copies of the same library.
-# Only these two are ordered: a second copy of libgrass_gis breaks every other
-# library because they all rely on the session state it holds.
+# Most GRASS libraries need libgrass_gis and libgrass_gis needs
+# libgrass_datetime, so these two are loaded first. A library loaded before
+# the GRASS libraries it needs makes the dynamic linker find them through the
+# process-startup search path, which may point to another GRASS installation.
+# A second copy of libgrass_gis breaks the libraries using it because they
+# rely on the session state it holds.
 _BASE_LIBRARY_NAMES = ("datetime", "gis")
 
 
@@ -63,7 +59,7 @@ def _preload_libraries(lib_path):
 
     Libraries can be loaded only after the libraries they depend on, so
     loading is repeated until it makes no progress. Windows DLLs are not
-    matched because dependent DLLs resolve from the registered directories.
+    matched because Windows finds dependent DLLs without it.
 
     Returns a list of (path, error) pairs for libraries which failed to load.
     """
@@ -98,7 +94,7 @@ def _preload_libraries(lib_path):
     return []
 
 
-def _load_libraries(lib_path):
+def _load_libraries_if_needed(lib_path):
     """Load the GRASS libraries unless they already find each other.
 
     Loading the libraries into the process by their full paths makes them
@@ -107,22 +103,23 @@ def _load_libraries(lib_path):
     build time does not point to them, e.g., for an installation moved
     away from the prefix it was configured with.
     """
-    core_libraries = _core_libraries(lib_path)
-    if not core_libraries:
+    core_library = _core_library_path(lib_path)
+    if not core_library:
         return
     try:
-        # The core library loads by its full path when the GRASS libraries it
-        # depends on resolve through the search path recorded at build time,
-        # the search path variable, or a registration with the linker, and
-        # then all the libraries find each other without any loading here.
-        ctypes.CDLL(core_libraries[0])
+        # Nothing more is needed when the core library finds the GRASS
+        # libraries it depends on by itself.
+        ctypes.CDLL(core_library)
     except OSError:
         pass
     else:
         return
     for library, error in _preload_libraries(lib_path):
         if os.path.basename(library).startswith("libgrass_gis."):
-            msg = f"The GRASS core library failed to load ({library}: {error})"
+            msg = (
+                f"Cannot load the GRASS core library {library}: {error}. Check"
+                " that the GRASS installation and its dependencies are complete."
+            )
             raise ImportError(msg)
 
 
@@ -133,10 +130,10 @@ _copied_names = set()
 
 def _core_library():
     """Get the loaded core library with the environment functions set up"""
-    core_libraries = _core_libraries(_lib_path) if _lib_path else []
-    if not core_libraries:
+    core_library = _core_library_path(_lib_path) if _lib_path else None
+    if not core_library:
         return None
-    library = ctypes.CDLL(core_libraries[0])
+    library = ctypes.CDLL(core_library)
     library.G_getenv_nofatal.restype = ctypes.c_char_p
     library.G_getenv_nofatal.argtypes = [ctypes.c_char_p]
     library.G_putenv.restype = None
@@ -234,11 +231,7 @@ if _lib_path:
     # libraries by absolute path, skipping the expensive
     # ctypes.util.find_library() fallback.
     add_library_search_dirs([_lib_path])
-    if hasattr(os, "add_dll_directory"):
-        # On Windows, dependent DLLs resolve from the directories registered
-        # here and from the directory of the loaded DLL itself.
-        os.add_dll_directory(_lib_path)
-    _load_libraries(_lib_path)
+    _load_libraries_if_needed(_lib_path)
     sync_environment()
 
 __all__ = [

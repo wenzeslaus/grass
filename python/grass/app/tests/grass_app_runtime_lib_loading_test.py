@@ -19,15 +19,19 @@ import os
 import sys
 from pathlib import Path
 
-import pytest
-
 from grass.app.runtime import RuntimePaths
 from grass.script.setup import get_install_path
 
+IMPORT_CODE = """
+    import json
 
-@pytest.mark.skipif(
-    sys.platform.startswith("win"), reason="Loading is a no-op on Windows"
-)
+    import grass.lib.gis
+    import grass.lib.raster
+
+    print(json.dumps({"imported": True}))
+"""
+
+
 def test_grass_lib_load_failure_raises_import_error(
     tmp_path, run_code_in_environment, clean_subprocess_environment
 ):
@@ -41,7 +45,7 @@ def test_grass_lib_load_failure_raises_import_error(
         import grass.lib
 
         try:
-            grass.lib._load_libraries(r"{lib_path}")
+            grass.lib._load_libraries_if_needed(r"{lib_path}")
         except ImportError as error:
             print(json.dumps({{"message": str(error)}}))
         else:
@@ -52,10 +56,10 @@ def test_grass_lib_load_failure_raises_import_error(
     assert "libgrass_gis" in message
 
 
-def test_grass_lib_loading_without_grass_libraries_is_noop(
+def test_grass_lib_loading_without_core_library_is_noop(
     tmp_path, run_code_in_environment, clean_subprocess_environment
 ):
-    """Check that loading does nothing without the core library files"""
+    """Check that nothing is loaded without the core library"""
     lib_path = tmp_path / "lib"
     lib_path.mkdir()
     (lib_path / "libgrass_notalibrary.so").write_text("This is not a shared library.")
@@ -74,7 +78,7 @@ def test_grass_lib_loading_without_grass_libraries_is_noop(
 
 
         grass.lib._preload_libraries = record_call
-        grass.lib._load_libraries(r"{lib_path}")
+        grass.lib._load_libraries_if_needed(r"{lib_path}")
         print(json.dumps({{"calls": len(calls)}}))
     """
     assert run_code_in_environment(code, env=clean_subprocess_environment)["calls"] == 0
@@ -107,16 +111,10 @@ def test_preload_reports_libraries_which_cannot_be_loaded(
 def test_grass_lib_importable_without_session(
     run_code_in_environment, clean_subprocess_environment
 ):
-    """Check that grass.lib can be imported without any session or variable"""
-    code = """
-        import json
-
-        import grass.lib.gis
-        import grass.lib.raster
-
-        print(json.dumps({"imported": True}))
-    """
-    assert run_code_in_environment(code, env=clean_subprocess_environment)["imported"]
+    """Check the import without a session and the search path variable"""
+    assert run_code_in_environment(IMPORT_CODE, env=clean_subprocess_environment)[
+        "imported"
+    ]
 
 
 def test_grass_lib_importable_with_manual_search_path(
@@ -135,12 +133,4 @@ def test_grass_lib_importable_with_manual_search_path(
             env[variable] = lib_path + os.pathsep + env[variable]
         else:
             env[variable] = lib_path
-    code = """
-        import json
-
-        import grass.lib.gis
-        import grass.lib.raster
-
-        print(json.dumps({"imported": True}))
-    """
-    assert run_code_in_environment(code, env=env)["imported"]
+    assert run_code_in_environment(IMPORT_CODE, env=env)["imported"]

@@ -4,10 +4,12 @@
 """Tests of using grass.lib in a session set up by grass.script.setup.init
 
 This file is meant to be executed also standalone (pytest with this file as
-the only argument). The tests run their code in a subprocess without the
-dynamic library search path variable, so finding the libraries depends only
-on the variables init sets in the environment of the running process and on
-the search path recorded in the libraries at build time.
+the only argument), including against an installation moved away from the
+prefix it was configured with. The tests run their code in a subprocess
+without the dynamic library search path variable, so the libraries which a
+loaded library depends on resolve only through the search path recorded in
+the libraries at build time or through the loading done on the grass.lib
+import.
 """
 
 import sys
@@ -17,19 +19,18 @@ import pytest
 
 
 @pytest.mark.usefixtures("mock_no_session")
-def test_grass_lib_importable_with_init(
+def test_grass_lib_importable_after_init(
     tmp_path, run_code_in_environment, clean_subprocess_environment
 ):
-    """Check that grass.lib modules can be imported before and after init"""
+    """Check that grass.lib modules can be imported after init"""
     project = tmp_path / "test"
     code = f"""
         import json
-
-        import grass.lib.gis
         import grass.script as gs
 
         gs.create_project(r"{project}")
         with gs.setup.init(r"{project}"):
+            import grass.lib.gis
             import grass.lib.raster
         print(json.dumps({{"imported": True}}))
     """
