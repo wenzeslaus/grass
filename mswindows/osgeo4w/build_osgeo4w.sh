@@ -113,8 +113,7 @@ dist_esc="$src_esc\\\\$dist"
 set PATH=%PATH%;C:\\msys64\\mingw64\\bin;C:\\msys64\\usr\\bin
 
 if not exist %GISBASE%\\etc\\fontcap (
-	REM The variables g.mkfontcap needs outside of a session are set only
-	REM for this call, so that they do not stay in the caller's environment.
+	REM Keep GISRC and the resource paths out of the caller's environment.
 	setlocal
 	pushd .
 	%~d0
@@ -122,7 +121,6 @@ if not exist %GISBASE%\\etc\\fontcap (
 	set GISRC=dummy
 	set GRASS_ETCDIR=%GISBASE%\\etc
 	set GRASS_FONTSDIR=%GISBASE%\\fonts
-	set GRASS_LOCALEDIR=%GISBASE%\\locale
 	%GISBASE%\\bin\\g.mkfontcap.exe
 	popd
 	endlocal
@@ -163,8 +161,7 @@ cp -a $(ldd $dist/lib/*.dll | awk '/mingw64/{print $3}' |
 set PATH=%OSGEO4W_ROOT%\\bin${msys_path};%PATH%;$bash_exe_path
 
 if not exist %GISBASE%\\etc\\fontcap (
-	REM The variables g.mkfontcap needs outside of a session are set only
-	REM for this call, so that they do not stay in the caller's environment.
+	REM Keep GISRC and the resource paths out of the caller's environment.
 	setlocal
 	pushd .
 	%~d0
@@ -172,7 +169,6 @@ if not exist %GISBASE%\\etc\\fontcap (
 	set GISRC=dummy
 	set GRASS_ETCDIR=%GISBASE%\\etc
 	set GRASS_FONTSDIR=%GISBASE%\\fonts
-	set GRASS_LOCALEDIR=%GISBASE%\\locale
 	%GISBASE%\\bin\\g.mkfontcap.exe
 	popd
 	endlocal
