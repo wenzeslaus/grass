@@ -112,6 +112,73 @@ def test_explicit_sync_updates_and_removes_variables(
     }
 
 
+@pytest.mark.usefixtures("mock_no_session")
+def test_grass_lib_sees_custom_env_session_after_sync(
+    tmp_path, run_code_in_environment, clean_subprocess_environment
+):
+    """Check that grass.lib sees a session of a custom env after sync_environment"""
+    project = tmp_path / "test"
+    code = f"""
+        import json
+        import os
+
+        import grass.lib
+        import grass.lib.gis as libgis
+        import grass.lib.raster as libraster
+        import grass.script as gs
+
+        gs.create_project(r"{project}")
+        with gs.setup.init(r"{project}", env=os.environ.copy()) as session:
+            gs.run_command("g.region", rows=2, cols=2, env=session.env)
+            gs.mapcalc("ones = 1", env=session.env)
+            grass.lib.sync_environment(env=session.env)
+            libgis.G_gisinit(b"test")
+            fd = libraster.Rast_open_old(b"ones", b"")
+            libraster.Rast_close(fd)
+            gisrc_in_os_environ = "GISRC" in os.environ
+        print(
+            json.dumps(
+                {{"raster_opened": True, "gisrc_in_os_environ": gisrc_in_os_environ}}
+            )
+        )
+    """
+    result = run_code_in_environment(code, env=clean_subprocess_environment)
+    assert result["raster_opened"]
+    assert not result["gisrc_in_os_environ"]
+
+
+@pytest.mark.usefixtures("mock_no_session")
+def test_sync_without_env_returns_to_os_environ_after_custom_env(
+    tmp_path, run_code_in_environment, clean_subprocess_environment
+):
+    """Check that sync_environment without env removes a copied custom env"""
+    project = tmp_path / "test"
+    code = f"""
+        import json
+        import os
+
+        import grass.lib
+        import grass.lib.gis as libgis
+        import grass.script as gs
+
+
+        def seen_by_c():
+            return libgis.G_getenv_nofatal(b"GISBASE") is not None
+
+
+        gs.create_project(r"{project}")
+        with gs.setup.init(r"{project}", env=os.environ.copy()) as session:
+            grass.lib.sync_environment(env=session.env)
+            during = seen_by_c()
+        grass.lib.sync_environment()
+        print(json.dumps({{"during": during, "after": seen_by_c()}}))
+    """
+    assert run_code_in_environment(code, env=clean_subprocess_environment) == {
+        "during": True,
+        "after": False,
+    }
+
+
 def test_grass_lib_importable_with_variable_outside_code_page(
     run_code_in_environment, clean_subprocess_environment
 ):

@@ -317,8 +317,8 @@ def init(
     through ``ctypes`` (:mod:`grass.lib`). Importing :mod:`grass.lib` does
     not depend on this function, but using it does: the C libraries read
     the session from the environment of the process, so :mod:`grass.lib`
-    sees the session only when it is set up in the global environment,
-    i.e., without *env*.
+    sees the session when it is set up in the global environment, i.e.,
+    without *env*, or after ``grass.lib.sync_environment(env=session.env)``.
 
     On Windows, the C libraries may keep their own copy of the environment.
     This function and the :mod:`grass.lib` import copy the session into it.
