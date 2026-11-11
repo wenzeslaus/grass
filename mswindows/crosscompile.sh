@@ -398,12 +398,17 @@ if "%GRASS_SH%" == "%GISBASE%\etc\sh.bat" if not defined BROWSER (
 )
 
 if not exist "%GISBASE%\etc\fontcap" (
+	REM Keep GISRC and the resource paths out of the environment of GRASS.
+	setlocal
 	pushd .
 	%~d0
 	cd %GISBASE%\lib
 	set GISRC=dummy
+	set GRASS_ETCDIR=%GISBASE%\etc
+	set GRASS_FONTSDIR=%GISBASE%\fonts
 	"%GISBASE%\bin\g.mkfontcap.exe"
 	popd
+	endlocal
 )
 
 "%GRASS_PYTHON%" "%GISBASE%\etc\grass$version.py" %*

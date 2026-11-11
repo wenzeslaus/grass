@@ -23,6 +23,10 @@ set PATH=%FREETYPEBASE%;%PATH%
 rem GISRC must be set
 set GISRC=dummy
 
+rem set resource paths required by g.mkfontcap
+set GRASS_ETCDIR=%GISBASE%\etc
+set GRASS_FONTSDIR=%GISBASE%\fonts
+
 rem run g.mkfontcap outside a GRASS session
 "%GISBASE%\bin\g.mkfontcap.exe" --overwrite
 
