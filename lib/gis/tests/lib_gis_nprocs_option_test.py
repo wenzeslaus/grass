@@ -76,12 +76,21 @@ def test_cores_are_the_default(monkeypatch):
     assert G_resolve_nprocs(-cores - 5) == 1
 
 
-@pytest.mark.parametrize(
-    ("answer", "expected"), [("0", "6 6"), ("-2", "4 4"), ("3", "3 3")]
-)
+@pytest.mark.parametrize(("answer", "expected"), [("0", 6), ("-2", 4), ("3", 3)])
 def test_omp_num_threads(xy_session_for_module, answer, expected):
-    """With OMP_NUM_THREADS=6, the default is 6 for both functions"""
+    """With OMP_NUM_THREADS=6, the default is 6 for both functions
+
+    Without OpenMP, G_set_omp_num_threads() returns 1.
+    """
     returncode, output, stderr = nprocs_from_option(xy_session_for_module, answer, "6")
-    if output.endswith(" 1"):
-        pytest.skip("GRASS is built without OpenMP")
-    assert (returncode, output) == (0, expected), stderr
+    assert returncode == 0, stderr
+    assert output in {f"{expected} {expected}", f"{expected} 1"}
+
+
+@pytest.mark.skipif(G_available_cores() < 1, reason="number of cores is unknown")
+@pytest.mark.parametrize("value", ["0", "abc", "9999999999"])
+def test_ignored_omp_num_threads(xy_session_for_module, value):
+    """A value of OMP_NUM_THREADS which OpenMP ignores counts as not set"""
+    returncode, output, stderr = nprocs_from_option(xy_session_for_module, "0", value)
+    assert returncode == 0, stderr
+    assert int(output.split()[0]) == G_available_cores()

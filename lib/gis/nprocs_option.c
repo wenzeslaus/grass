@@ -19,7 +19,6 @@
 #include <grass/gis.h>
 #include <grass/glocale.h>
 
-#if defined(_OPENMP)
 /* The number of threads from the OMP_NUM_THREADS environment variable, or
  * 0 when it is not set to a positive number. The first value of a list
  * counts, with at most nine digits, as in resolve_nprocs() of
@@ -43,7 +42,6 @@ static int omp_num_threads_env(void)
         env++;
     return *env == '\0' || *env == ',' ? value : 0;
 }
-#endif
 
 static int default_threads(void)
 {
@@ -55,7 +53,9 @@ static int default_threads(void)
         if (threads < 1)
             threads = omp_get_max_threads();
 #else
-        threads = G_available_cores();
+        threads = omp_num_threads_env();
+        if (threads < 1)
+            threads = G_available_cores();
         if (threads < 1)
             threads = 1;
 #endif
@@ -71,11 +71,11 @@ static int default_threads(void)
  * G_available_cores()), or the OpenMP default when the OMP_NUM_THREADS
  * environment variable is set to a positive number or the number of
  * cores is unknown. A value of OMP_NUM_THREADS which OpenMP ignores, such
- * as 0 or text, counts as not set. Without
- * OpenMP, the default is the number of physical cores, or 1 when that is
- * unknown. The default is determined once per process, on the first
- * call. A negative value is that many threads fewer than the default, at
- * least one.
+ * as 0 or text, counts as not set. Without OpenMP, the default is the
+ * first value of OMP_NUM_THREADS when that is a positive number, then the
+ * number of physical cores, or 1 when that is unknown. The default is
+ * determined once per process, on the first call. A negative value is
+ * that many threads fewer than the default, at least one.
  *
  * \param nprocs value of an nprocs option
  *
