@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,10 +11,9 @@
 #include <grass/glocale.h>
 
 #if defined(_OPENMP)
-/* The number of threads from the OMP_NUM_THREADS environment variable, or
- * 0 when it is not set to a positive number. The first value of a list
- * counts, with at most nine digits, as in resolve_nprocs() of
- * grass.script. OpenMP ignores a value which is not positive. */
+/* The first value of OMP_NUM_THREADS when it is a positive number of at
+ * most nine digits, 0 otherwise. The rule of resolve_nprocs() in
+ * grass.script. */
 static int omp_num_threads_env(void)
 {
     const char *env = getenv("OMP_NUM_THREADS");
@@ -22,14 +22,14 @@ static int omp_num_threads_env(void)
 
     if (!env)
         return 0;
-    while (*env == ' ' || *env == '\t')
+    while (isspace((unsigned char)*env))
         env++;
     for (; *env >= '0' && *env <= '9'; env++) {
         if (++digits > 9)
             return 0;
         value = 10 * value + (*env - '0');
     }
-    while (*env == ' ' || *env == '\t')
+    while (isspace((unsigned char)*env))
         env++;
     return *env == '\0' || *env == ',' ? value : 0;
 }
@@ -41,10 +41,10 @@ static int omp_num_threads_env(void)
 
     If \em nprocs is 0, the default number of threads is used, which is
     the number of physical CPU cores available to the process (see
-    G_available_cores()), or the OpenMP default when the OMP_NUM_THREADS
-    environment variable is set to a positive number or the number of
-    cores is unknown. A value of OMP_NUM_THREADS which OpenMP ignores, such
-    as 0 or text, counts as not set. The default is determined once per
+    G_available_cores()). When the first value of the OMP_NUM_THREADS
+    environment variable is a positive number of at most nine digits,
+    that value is the default instead. When the number of cores is
+    unknown, it is the OpenMP default. The default is determined once per
     process, on the first call.
     If \em nprocs is positive, that many threads are used.
     If \em nprocs is negative, it is added to the default (at least one
@@ -70,7 +70,9 @@ int G_set_omp_num_threads(struct Option *opt)
     static int base = 0;
 
     if (base < 1) {
-        base = omp_num_threads_env() > 0 ? 0 : G_available_cores();
+        base = omp_num_threads_env();
+        if (base < 1)
+            base = G_available_cores();
         if (base < 1)
             base = omp_get_max_threads();
     }

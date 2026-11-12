@@ -107,15 +107,16 @@ def test_omp_num_threads_is_the_default(univar_session, nprocs, expected):
 
 @needs_known_cores
 @pytest.mark.parametrize("value", ["0", "abc", "-2", "3x", "9999999999"])
-def test_ignored_omp_num_threads_counts_as_not_set(univar_session, value):
-    """With a value OpenMP ignores, nprocs=0 gives one thread per core"""
+def test_omp_num_threads_not_a_positive_number(univar_session, value):
+    """With a value which does not count as set, nprocs=0 gives one thread per core"""
     threads = thread_count(univar_session, nprocs=0, omp_num_threads=value)
     assert threads == G_available_cores()
 
 
-def test_omp_num_threads_list(univar_session):
-    """The first value of a list in OMP_NUM_THREADS is the default"""
-    assert thread_count(univar_session, nprocs=0, omp_num_threads="3,2") == 3
+@pytest.mark.parametrize("value", ["3,2", "3,abc", " 3\n"])
+def test_omp_num_threads_first_value(univar_session, value):
+    """The first value of OMP_NUM_THREADS is the default, whatever follows it"""
+    assert thread_count(univar_session, nprocs=0, omp_num_threads=value) == 3
 
 
 @needs_known_cores
