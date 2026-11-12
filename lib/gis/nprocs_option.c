@@ -19,15 +19,39 @@
 #include <grass/gis.h>
 #include <grass/glocale.h>
 
+#if defined(_OPENMP)
+/* The number of threads from the OMP_NUM_THREADS environment variable, or
+ * 0 when it is not set to a positive number. The first value of a list
+ * counts, with at most nine digits, as in resolve_nprocs() of
+ * grass.script. OpenMP ignores a value which is not positive. */
+static int omp_num_threads_env(void)
+{
+    const char *env = getenv("OMP_NUM_THREADS");
+    int value = 0;
+    int digits = 0;
+
+    if (!env)
+        return 0;
+    while (*env == ' ' || *env == '\t')
+        env++;
+    for (; *env >= '0' && *env <= '9'; env++) {
+        if (++digits > 9)
+            return 0;
+        value = 10 * value + (*env - '0');
+    }
+    while (*env == ' ' || *env == '\t')
+        env++;
+    return *env == '\0' || *env == ',' ? value : 0;
+}
+#endif
+
 static int default_threads(void)
 {
     static int threads = 0;
 
     if (threads < 1) {
 #if defined(_OPENMP)
-        const char *env = getenv("OMP_NUM_THREADS");
-
-        threads = env && *env ? 0 : G_available_cores();
+        threads = omp_num_threads_env() > 0 ? 0 : G_available_cores();
         if (threads < 1)
             threads = omp_get_max_threads();
 #else
@@ -45,7 +69,9 @@ static int default_threads(void)
  * A positive value is the number of threads. 0 means the default, which
  * is the number of physical cores available to the process (see
  * G_available_cores()), or the OpenMP default when the OMP_NUM_THREADS
- * environment variable is set or the number of cores is unknown. Without
+ * environment variable is set to a positive number or the number of
+ * cores is unknown. A value of OMP_NUM_THREADS which OpenMP ignores, such
+ * as 0 or text, counts as not set. Without
  * OpenMP, the default is the number of physical cores, or 1 when that is
  * unknown. The default is determined once per process, on the first
  * call. A negative value is that many threads fewer than the default, at
