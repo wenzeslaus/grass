@@ -84,13 +84,15 @@ def test_omp_num_threads(xy_session_for_module, answer, expected):
     """
     returncode, output, stderr = nprocs_from_option(xy_session_for_module, answer, "6")
     assert returncode == 0, stderr
-    assert output in {f"{expected} {expected}", f"{expected} 1"}
+    _, openmp, _ = nprocs_from_option(xy_session_for_module, "2", "6")
+    threads = expected if openmp == "2 2" else 1
+    assert output == f"{expected} {threads}"
 
 
 @pytest.mark.skipif(G_available_cores() < 1, reason="number of cores is unknown")
 @pytest.mark.parametrize("value", ["0", "abc", "9999999999"])
-def test_ignored_omp_num_threads(xy_session_for_module, value):
-    """A value of OMP_NUM_THREADS which OpenMP ignores counts as not set"""
+def test_omp_num_threads_not_a_positive_number(xy_session_for_module, value):
+    """With a value which does not count as set, 0 gives the cores"""
     returncode, output, stderr = nprocs_from_option(xy_session_for_module, "0", value)
     assert returncode == 0, stderr
     assert int(output.split()[0]) == G_available_cores()
