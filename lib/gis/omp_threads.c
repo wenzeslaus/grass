@@ -9,6 +9,32 @@
 #include <grass/gis.h>
 #include <grass/glocale.h>
 
+#if defined(_OPENMP)
+/* The number of threads from the OMP_NUM_THREADS environment variable, or
+ * 0 when it is not set to a positive number. The first value of a list
+ * counts, with at most nine digits, as in resolve_nprocs() of
+ * grass.script. OpenMP ignores a value which is not positive. */
+static int omp_num_threads_env(void)
+{
+    const char *env = getenv("OMP_NUM_THREADS");
+    int value = 0;
+    int digits = 0;
+
+    if (!env)
+        return 0;
+    while (*env == ' ' || *env == '\t')
+        env++;
+    for (; *env >= '0' && *env <= '9'; env++) {
+        if (++digits > 9)
+            return 0;
+        value = 10 * value + (*env - '0');
+    }
+    while (*env == ' ' || *env == '\t')
+        env++;
+    return *env == '\0' || *env == ',' ? value : 0;
+}
+#endif
+
 /*! \brief Set the number of threads for OpenMP
     The intended usage is at the beginning of a C tool when parameters are
     processed, namely the G_OPT_M_NPROCS standard option.
@@ -16,8 +42,10 @@
     If \em nprocs is 0, the default number of threads is used, which is
     the number of physical CPU cores available to the process (see
     G_available_cores()), or the OpenMP default when the OMP_NUM_THREADS
-    environment variable is set or the number of cores is unknown. The
-    default is determined once per process, on the first call.
+    environment variable is set to a positive number or the number of
+    cores is unknown. A value of OMP_NUM_THREADS which OpenMP ignores, such
+    as 0 or text, counts as not set. The default is determined once per
+    process, on the first call.
     If \em nprocs is positive, that many threads are used.
     If \em nprocs is negative, it is added to the default (at least one
     thread is used), which keeps that many cores free for other work.
@@ -42,9 +70,7 @@ int G_set_omp_num_threads(struct Option *opt)
     static int base = 0;
 
     if (base < 1) {
-        const char *env = getenv("OMP_NUM_THREADS");
-
-        base = env && *env ? 0 : G_available_cores();
+        base = omp_num_threads_env() > 0 ? 0 : G_available_cores();
         if (base < 1)
             base = omp_get_max_threads();
     }
