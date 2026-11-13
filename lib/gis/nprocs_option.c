@@ -96,7 +96,8 @@ int G_resolve_nprocs(int nprocs)
  * \brief Read the number of threads from an nprocs option
  *
  * Call after G_parser(). The answer is resolved with G_resolve_nprocs().
- * An answer which is not an integer is a fatal error naming the option.
+ * An answer which is not an integer, apart from white space around it, is
+ * a fatal error naming the option.
  * The function does not set up OpenMP threads, so the number can be
  * passed to any library.
  *
@@ -119,6 +120,8 @@ int G_nprocs_from_option(const struct Option *nprocs)
     answer = nprocs->answer ? nprocs->answer : "";
     errno = 0;
     value = strtoll(answer, &end, 10);
+    while (isspace((unsigned char)*end))
+        end++;
     if (errno || end == answer || *end != '\0' || value > INT_MAX ||
         value < INT_MIN)
         G_fatal_error(_("Invalid number of threads <%s> for %s="), answer,

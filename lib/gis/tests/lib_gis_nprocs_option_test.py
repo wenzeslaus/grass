@@ -55,6 +55,13 @@ def test_not_an_int(xy_session_for_module, answer):
     assert f"Invalid number of threads <{answer}> for nprocs=" in stderr
 
 
+def test_white_space_around_answer(xy_session_for_module):
+    """White space around a number, as in an NPROCS setting, is accepted"""
+    returncode, output, stderr = nprocs_from_option(xy_session_for_module, " 2 \n")
+    assert returncode == 0, stderr
+    assert output.split()[0] == "2"
+
+
 def test_tool_refuses_trailing_text(xy_session_for_module):
     """A tool refuses 2x although the parser lets it through"""
     tools = Tools(session=xy_session_for_module)
