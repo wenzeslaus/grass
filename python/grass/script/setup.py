@@ -326,10 +326,10 @@ def init(
     operating system does not apply a modified variable to an already
     running process.
 
-    On Windows, the C libraries do not see environment variables set in
-    the running process, so :mod:`grass.lib` functions see a session set
-    up by this function only in processes started afterwards, such as
-    subprocesses.
+    On Windows, the C libraries may keep their own copy of the environment.
+    This function and the :mod:`grass.lib` import copy the session into it.
+    After changing the session variables in another way, call
+    ``grass.lib.sync_environment()``.
 
     When the path or specified mapset does not exist, ValueError is raised.
 
@@ -444,6 +444,10 @@ def init(
     env["GISRC"] = write_gisrc(
         mapset_path.directory, mapset_path.location, mapset_path.mapset
     )
+    if env is os.environ and "grass.lib" in sys.modules:
+        # The C libraries may keep their own copy of the environment. A
+        # grass.lib imported later copies the session on import.
+        sys.modules["grass.lib"].sync_environment()
     return SessionHandle(env=env, locked=lock)
 
 
