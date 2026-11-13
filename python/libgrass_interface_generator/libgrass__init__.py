@@ -53,6 +53,7 @@ _SESSION_VARIABLE_NAMES = ("GISRC", "GISBASE", "GIS_LOCK")
 _PUTENV_BUFFER_SIZE = 1024
 _environment_shared = None
 _copied_names = set()
+_custom_env_copied = False
 
 
 def _libgis():
@@ -88,19 +89,29 @@ def _is_environment_shared(library):
 
 
 def _set_c_variable(library, name, value):
-    """Set a variable in the C runtime of the libraries, or remove it with ""
+    """Set a variable as seen by the C libraries, or remove it with None
 
-    A value which the C runtime cannot take is removed from it instead, so
-    that the libraries do not use a stale value and the grass.lib import does
-    not fail. The environment of the process keeps the value.
+    On Windows, a value which the C runtime of the libraries cannot take is
+    removed from it instead, so that the libraries do not use a stale value
+    and the grass.lib import does not fail. The environment of the process
+    keeps the value.
     """
+    if library is None:
+        # The C libraries share the environment of the process with Python.
+        # os.putenv and os.unsetenv change it without changing os.environ.
+        if value is None:
+            os.unsetenv(name)
+        else:
+            os.putenv(name, value)
+        return
     try:
-        # The C runtime of the libraries uses the ANSI code page.
+        # The C runtime of the libraries uses the ANSI code page, and an
+        # empty value removes the variable.
         encoded_name = name.encode("mbcs")
     except UnicodeEncodeError:
         return
     try:
-        encoded_value = value.encode("mbcs")
+        encoded_value = (value or "").encode("mbcs")
     except UnicodeEncodeError:
         encoded_value = b""
     if len(encoded_name) + len(encoded_value) + 2 > _PUTENV_BUFFER_SIZE:
@@ -112,7 +123,7 @@ def _set_c_variable(library, name, value):
         ctypes.windll.kernel32.SetEnvironmentVariableW(name, value)
 
 
-def sync_environment():
+def sync_environment(env=None):
     """Copy the session variables into the environment of the C libraries.
 
     On Windows, the C libraries may keep their own copy of the environment,
@@ -122,38 +133,49 @@ def sync_environment():
     changing the variables in any other way, e.g., after ending a session
     or setting a GRASS_ variable, so that the C libraries see the change.
 
+    With *env*, the variables are copied from that environment instead of
+    os.environ, on all platforms, e.g., to use grass.lib with a session
+    from init(..., env=env). os.environ is not changed, but processes
+    started without an explicit environment also get the session. Outside
+    of Windows, GRASS_ variables set only in os.environ stay visible to the
+    C libraries. Call the function without *env* after the session ends to
+    return the C libraries to the variables in os.environ.
+
     The function copies GISRC, GISBASE, GIS_LOCK, and all variables starting
-    with GRASS_ from os.environ. The session variables and the variables
-    copied before are removed when they are no longer set. A variable with
-    a value outside of the ANSI code page or too long for G_putenv is
-    removed as well.
-    The function does nothing outside of Windows and when the environment
-    turns out to be shared.
+    with GRASS_. The session variables and the variables copied before are
+    removed when they are no longer set. On Windows, a variable with a value
+    outside of the ANSI code page or too long for G_putenv is removed from
+    the environment of the C libraries as well. Without *env*, the
+    function does nothing outside of Windows and when the environment
+    turns out to be shared, unless the previous call used *env*.
 
     The C libraries keep the first session they read, so switching to
     another session in the same process is not supported on any platform.
     """
-    global _environment_shared
-    if not sys.platform.startswith("win"):
-        return
-    library = _libgis()
-    if library is None:
-        return
-    if _environment_shared is None:
-        _environment_shared = _is_environment_shared(library)
-    if _environment_shared:
-        return
+    global _environment_shared, _custom_env_copied
+    custom = env is not None
+    if not custom:
+        env = os.environ
+    library = _libgis() if sys.platform.startswith("win") else None
+    if not custom and not _custom_env_copied:
+        if library is None:
+            return
+        if _environment_shared is None:
+            _environment_shared = _is_environment_shared(library)
+        if _environment_shared:
+            return
     names = {
         name
-        for name in os.environ
+        for name in env
         if name in _SESSION_VARIABLE_NAMES or name.startswith("GRASS_")
     }
     for name in names:
-        _set_c_variable(library, name, os.environ[name])
+        _set_c_variable(library, name, env[name])
     for name in (_copied_names | set(_SESSION_VARIABLE_NAMES)) - names:
-        _set_c_variable(library, name, "")
+        _set_c_variable(library, name, None)
     _copied_names.clear()
     _copied_names.update(names)
+    _custom_env_copied = custom
 
 
 _lib_path = _find_lib_path()
