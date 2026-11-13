@@ -161,6 +161,53 @@ jobs:
             python/grass/app/tests/grass_app_runtime_lib_loading_test.py \
             --junitxml=pytest.lib_loading_relocated.junit.xml
 
+      - name: Experiment - which GRASS libraries load in a relocated installation
+        shell: micromamba-shell {0}
+        run: |
+          cat > "${RUNNER_TEMP}/probe.py" << 'PROBE'
+          import collections
+          import ctypes
+          import os
+
+          import grass.lib.gis
+          import grass.lib.raster
+
+          libc = ctypes.CDLL(None)
+          libc._dyld_image_count.restype = ctypes.c_uint32
+          libc._dyld_get_image_name.restype = ctypes.c_char_p
+          libc._dyld_get_image_name.argtypes = [ctypes.c_uint32]
+          names = [
+              libc._dyld_get_image_name(i).decode()
+              for i in range(libc._dyld_image_count())
+          ]
+          grass_names = [name for name in names if "libgrass_" in name]
+          print("libgrass images:", len(grass_names))
+          print(collections.Counter(os.path.dirname(name) for name in grass_names))
+          PROBE
+          python_path="$(grass --config python_path)"
+          lib="$(ls "${HOME}"/install/grass*/lib/libgrass_gis*.dylib | head -1)"
+          echo "== rpaths of ${lib}"
+          otool -l "${lib}" | grep -A2 LC_RPATH | grep path
+          echo "== install names of GRASS dependencies"
+          otool -L "${lib}" | grep grass
+          echo "== build tree directories"
+          ls -d dist.* || true
+          mv "${HOME}/install" "${HOME}/install-relocated"
+          trap 'mv "${HOME}/install-relocated" "${HOME}/install"' EXIT
+          PYTHONPATH="${HOME}/install-relocated${python_path#"${HOME}/install"}"
+          export PYTHONPATH
+          echo "== relocated, build tree present"
+          python "${RUNNER_TEMP}/probe.py" || echo "probe failed"
+          for dir in dist.*; do mv "${dir}" "${dir}.hidden"; done
+          trap 'mv "${HOME}/install-relocated" "${HOME}/install"; for dir in dist.*.hidden; do mv "${dir}" "${dir%.hidden}"; done' EXIT
+          echo "== relocated, build tree hidden"
+          python "${RUNNER_TEMP}/probe.py" || echo "probe failed"
+          echo "== relocated, build tree hidden, pytest"
+          pytest \
+            python/grass/script/tests/grass_script_setup_lib_loading_test.py \
+            python/grass/app/tests/grass_app_runtime_lib_loading_test.py \
+            -p no:cacheprovider || echo "pytest failed"
+
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
