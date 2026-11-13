@@ -93,15 +93,30 @@ def test_grass_lib_importable_with_variable_outside_code_page(
     """Check that a GRASS_ variable which cannot be copied does not break the import
 
     On Windows, a value outside of the ANSI code page cannot be passed to the
-    C runtime of the libraries.
+    C runtime of the libraries. Processes started afterwards still get it.
     """
     env = clean_subprocess_environment
     env["GRASS_TEST_VARIABLE"] = "\u4e2d\u6587"
     code = """
         import json
+        import subprocess
+        import sys
 
         import grass.lib.gis
 
-        print(json.dumps({"imported": True}))
+        child = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import os; print(ascii(os.environ.get('GRASS_TEST_VARIABLE')))",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        print(json.dumps({"imported": True, "in_child": child.stdout.strip()}))
     """
-    assert run_code_in_environment(code, env=env)["imported"]
+    assert run_code_in_environment(code, env=env) == {
+        "imported": True,
+        "in_child": ascii("\u4e2d\u6587"),
+    }

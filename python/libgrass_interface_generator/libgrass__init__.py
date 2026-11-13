@@ -168,9 +168,9 @@ def _is_environment_shared(library):
 def _set_c_variable(library, name, value):
     """Set a variable in the C runtime of the libraries, or remove it with ""
 
-    A value which the C runtime cannot take is removed instead, so that the
-    libraries do not use a stale value and the grass.lib import does not
-    fail.
+    A value which the C runtime cannot take is removed from it instead, so
+    that the libraries do not use a stale value and the grass.lib import does
+    not fail. The environment of the process keeps the value.
     """
     try:
         # The C runtime of the libraries uses the ANSI code page.
@@ -184,6 +184,10 @@ def _set_c_variable(library, name, value):
     if len(encoded_name) + len(encoded_value) + 2 > _PUTENV_BUFFER_SIZE:
         encoded_value = b""
     library.G_putenv(encoded_name, encoded_value)
+    if value and not encoded_value:
+        # Removing a variable from the C runtime also removes it from the
+        # environment of the process, which started processes inherit.
+        ctypes.windll.kernel32.SetEnvironmentVariableW(name, value)
 
 
 def sync_environment():
