@@ -21,8 +21,7 @@
 #include <grass/glocale.h>
 
 /* The first value of OMP_NUM_THREADS when it is a positive number of at
- * most nine digits, 0 otherwise. The rule of resolve_nprocs() in
- * grass.script. */
+ * most nine digits, 0 otherwise. */
 static int omp_num_threads_env(void)
 {
     const char *env = getenv("OMP_NUM_THREADS");
