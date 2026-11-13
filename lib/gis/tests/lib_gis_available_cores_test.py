@@ -1,0 +1,148 @@
+# SPDX-FileCopyrightText: 2026 Vaclav Petras
+# SPDX-FileCopyrightText: GRASS Development Team
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+"""Tests of G_available_cores() and of the threads G_set_omp_num_threads() sets"""
+
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+from grass.lib.gis import G_available_cores
+from grass.tools import Tools
+
+needs_known_cores = pytest.mark.skipif(
+    G_available_cores() < 1, reason="the number of cores is unknown"
+)
+
+
+@needs_known_cores
+def test_between_one_and_logical_cpus():
+    """There is at least one core and not more cores than logical CPUs"""
+    assert 1 <= G_available_cores() <= os.cpu_count()
+
+
+def siblings(cpu):
+    """Logical CPUs on the same core as cpu (SMT siblings), from sysfs"""
+    path = Path(f"/sys/devices/system/cpu/cpu{cpu}/topology/thread_siblings_list")
+    cpus = set()
+    for part in path.read_text(encoding="utf-8").strip().split(","):
+        first, unused, last = part.partition("-")
+        cpus.update(range(int(first), int(last or first) + 1))
+    return cpus
+
+
+@pytest.mark.skipif(
+    not hasattr(os, "sched_setaffinity"), reason="needs CPU affinity (Linux)"
+)
+@pytest.mark.parametrize("cores", [1, 2])
+def test_cores_in_affinity_mask_count_once(cores):
+    """A process limited to one or two cores has that many cores
+
+    The first core is one allowed CPU with its SMT siblings when the mask
+    has them, the second one is another allowed CPU. G_available_cores()
+    runs in a subprocess, so the affinity of the test process does not change.
+    """
+    allowed = os.sched_getaffinity(0)
+    try:
+        cpus = max((siblings(cpu) & allowed for cpu in allowed), key=len)
+    except OSError:
+        cpus = {min(allowed)}
+    if cores == 2:
+        if cpus == allowed:
+            pytest.skip("needs two cores in the affinity mask")
+        cpus.add(max(allowed - cpus))
+    code = (
+        "import os\n"
+        f"os.sched_setaffinity(0, {cpus})\n"
+        "from grass.lib.gis import G_available_cores\n"
+        "print(G_available_cores())\n"
+    )
+    output = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    ).stdout
+    assert int(output) == cores
+
+
+def thread_count(session, nprocs, omp_num_threads=None):
+    """Threads r.univar sets up with nprocs and OMP_NUM_THREADS (None: unset)
+
+    Returns None when the message about threads is missing, which is the
+    case without OpenMP.
+    """
+    env = session.env.copy()
+    env.pop("OMP_NUM_THREADS", None)
+    if omp_num_threads is not None:
+        env["OMP_NUM_THREADS"] = omp_num_threads
+    tools = Tools(env=env, verbose=True)
+    stderr = tools.r_univar(map="one", flags="g", nprocs=nprocs).stderr
+    if "One thread is set up" in stderr:
+        return 1
+    match = re.search(r"(\d+) threads are set up", stderr)
+    return int(match.group(1)) if match else None
+
+
+@pytest.fixture(scope="module")
+def univar_session(xy_session_for_module):
+    """Session with a 1x1 raster, skipping the tests without OpenMP"""
+    session = xy_session_for_module
+    tools = Tools(session=session)
+    tools.g_region(rows=1, cols=1)
+    tools.r_mapcalc(expression="one = 1")
+    if thread_count(session, nprocs=2) is None:
+        pytest.skip("GRASS is built without OpenMP")
+    return session
+
+
+@pytest.mark.parametrize(("nprocs", "expected"), [(0, 3), (-1, 2)])
+def test_omp_num_threads_is_the_default(univar_session, nprocs, expected):
+    """With OMP_NUM_THREADS=3, nprocs=0 gives 3 threads and nprocs=-1 gives 2"""
+    assert thread_count(univar_session, nprocs=nprocs, omp_num_threads="3") == expected
+
+
+@needs_known_cores
+def test_omp_num_threads_zero_counts_as_not_set(univar_session):
+    """With OMP_NUM_THREADS=0, which OpenMP ignores, nprocs=0 gives one thread per core
+
+    More values are checked in lib_gis_nprocs_option_test.py.
+    """
+    threads = thread_count(univar_session, nprocs=0, omp_num_threads="0")
+    assert threads == G_available_cores()
+
+
+@needs_known_cores
+def test_default_is_available_cores(univar_session):
+    """Without OMP_NUM_THREADS, nprocs=0 gives one thread per core"""
+    assert thread_count(univar_session, nprocs=0) == G_available_cores()
+
+
+def test_default_is_read_once():
+    """A call with nprocs=-1 counts from the default, not from an earlier result
+
+    Calls G_set_omp_num_threads() three times in one process through ctypes.
+    """
+    code = (
+        "from ctypes import byref\n"
+        "from grass.lib.gis import G_set_omp_num_threads, Option, String\n"
+        "option = Option()\n"
+        "option.key = String(b'nprocs')\n"
+        "for answer in (b'4', b'-1', b'-1'):\n"
+        "    option.answer = String(answer)\n"
+        "    print(G_set_omp_num_threads(byref(option)))\n"
+    )
+    env = os.environ | {"OMP_NUM_THREADS": "3"}
+    output = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=True,
+        env=env,
+    ).stdout
+    threads = [int(line) for line in output.split()]
+    if threads[0] == 1:
+        pytest.skip("GRASS is built without OpenMP")
+    assert threads == [4, 2, 2]
