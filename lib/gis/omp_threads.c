@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,14 +10,44 @@
 #include <grass/gis.h>
 #include <grass/glocale.h>
 
+#if defined(_OPENMP)
+/* The first value of OMP_NUM_THREADS when it is a positive number of at
+ * most nine digits, 0 otherwise. */
+static int omp_num_threads_env(void)
+{
+    const char *env = getenv("OMP_NUM_THREADS");
+    int value = 0;
+    int digits = 0;
+
+    if (!env)
+        return 0;
+    while (isspace((unsigned char)*env))
+        env++;
+    for (; *env >= '0' && *env <= '9'; env++) {
+        if (++digits > 9)
+            return 0;
+        value = 10 * value + (*env - '0');
+    }
+    while (isspace((unsigned char)*env))
+        env++;
+    return *env == '\0' || *env == ',' ? value : 0;
+}
+#endif
+
 /*! \brief Set the number of threads for OpenMP
     The intended usage is at the beginning of a C tool when parameters are
     processed, namely the G_OPT_M_NPROCS standard option.
 
-    If \em nprocs is set to 0, default OpenMP internal logic is used.
-    If \em nprocs is a positive number, specified number of threads is used.
-    If \em nprocs is a negative number, then <em>maximum threads - number</em>
-    is used instead (e.g. to keep \em number of cores free for other use.
+    If \em nprocs is 0, the default number of threads is used, which is
+    the number of physical CPU cores available to the process (see
+    G_available_cores()). When the first value of the OMP_NUM_THREADS
+    environment variable is a positive number of at most nine digits,
+    that value is the default instead. When the number of cores is
+    unknown, it is the OpenMP default. The default is determined once per
+    process, on the first call.
+    If \em nprocs is positive, that many threads are used.
+    If \em nprocs is negative, it is added to the default (at least one
+    thread is used), which keeps that many cores free for other work.
 
     \param opt A nprocs Option struct to specify the number of threads
     \return the number of threads set up for OpenMP parallel computing
@@ -33,17 +64,22 @@ int G_set_omp_num_threads(struct Option *opt)
 
     int threads = atoi(opt->answer);
 #if defined(_OPENMP)
-    if (threads == 0) {
-        threads = omp_get_max_threads();
+    /* Read once, before omp_set_num_threads() below changes what OpenMP
+     * reports, so that every call in the process uses the same default. */
+    static int base = 0;
+
+    if (base < 1) {
+        base = omp_num_threads_env();
+        if (base < 1)
+            base = G_available_cores();
+        if (base < 1)
+            base = omp_get_max_threads();
     }
-    else {
-        int num_logic_procs = omp_get_num_procs();
-        if (threads < 1) {
-            threads += num_logic_procs;
-            threads = (threads < 1) ? 1 : threads;
-        }
-        omp_set_num_threads(threads);
+    if (threads < 1) {
+        threads += base;
+        threads = (threads < 1) ? 1 : threads;
     }
+    omp_set_num_threads(threads);
     G_verbose_message(n_("One thread is set up for parallel computing.",
                          "%d threads are set up for parallel computing.",
                          threads),
