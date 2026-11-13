@@ -213,17 +213,17 @@ def sync_environment(env=None):
 
     With *env*, the variables are copied from that environment instead of
     os.environ, on all platforms, e.g., to use grass.lib with a session
-    from init(..., env=env). os.environ is not changed. Outside of Windows,
-    processes started without an explicit environment also get the session,
-    and GRASS_ variables set only in os.environ stay visible to the C
-    libraries. Call the function without *env* after the session ends to
+    from init(..., env=env). os.environ is not changed, but processes
+    started without an explicit environment also get the session. Outside
+    of Windows, GRASS_ variables set only in os.environ stay visible to the
+    C libraries. Call the function without *env* after the session ends to
     return the C libraries to the variables in os.environ.
 
     The function copies GISRC, GISBASE, GIS_LOCK, and all variables starting
     with GRASS_. The session variables and the variables copied before are
     removed when they are no longer set. On Windows, a variable with a value
-    outside of the ANSI code page or too long for G_putenv is removed as
-    well. Without *env*, the function does nothing outside of Windows and
+    outside of the ANSI code page or too long for G_putenv is removed from
+    the environment of the C libraries as well. Without *env*, the function does nothing outside of Windows and
     when the environment turns out to be shared, unless the previous call
     used *env*.
 
