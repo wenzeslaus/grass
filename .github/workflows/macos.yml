@@ -149,11 +149,17 @@ jobs:
           # install names recorded at configure time. The import and
           # session tests pass only through the loading done on the
           # grass.lib import or through a search path variable they set
-          # themselves. The Python package moves with the installation, so
-          # its path is taken beforehand.
+          # themselves. The build tree, which the macOS build records as a
+          # search path, is hidden. The Python package moves with the
+          # installation, so its path is taken beforehand.
           python_path="$(grass --config python_path)"
           mv "${HOME}/install" "${HOME}/install-relocated"
-          trap 'mv "${HOME}/install-relocated" "${HOME}/install"' EXIT
+          for dir in dist.*; do mv "${dir}" "${dir}.hidden"; done
+          restore() {
+            mv "${HOME}/install-relocated" "${HOME}/install"
+            for dir in dist.*.hidden; do mv "${dir}" "${dir%.hidden}"; done
+          }
+          trap restore EXIT
           PYTHONPATH="${HOME}/install-relocated${python_path#"${HOME}/install"}"
           export PYTHONPATH
           pytest \
