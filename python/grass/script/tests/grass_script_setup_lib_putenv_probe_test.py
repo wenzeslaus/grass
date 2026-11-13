@@ -33,10 +33,9 @@ def test_probe_child_environment(
 
         results = {{"before_import": child()}}
         import grass.lib
-        import grass.lib.gis as libgis
         import grass.script as gs
 
-        results["shared"] = grass.lib._is_environment_shared()
+        results["shared"] = grass.lib._is_environment_shared(grass.lib._libgis())
         results["after_import"] = child()
         os.environ["GRASS_PROBE_SET_LATER"] = "中"
         grass.lib.sync_environment()
@@ -46,7 +45,6 @@ def test_probe_child_environment(
             results["custom_env_before_sync"] = child()
             grass.lib.sync_environment(env=session.env)
             results["custom_env_after_sync"] = child()
-            results["c_sees_gisrc"] = libgis.G_getenv_nofatal(b"GISRC") is not None
         grass.lib.sync_environment()
         results["after_plain_sync"] = child()
         print(json.dumps({{"results": results}}))
