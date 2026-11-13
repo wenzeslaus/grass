@@ -146,12 +146,12 @@ jobs:
         run: |
           # The installation is moved away from the prefix it was configured
           # with, so that the libraries cannot find each other through the
-          # install names recorded at configure time. The import and
-          # session tests pass only through the loading done on the
-          # grass.lib import or through a search path variable they set
-          # themselves. The build tree, which the macOS build records as a
-          # search path, is hidden. The Python package moves with the
-          # installation, so its path is taken beforehand.
+          # install names recorded at configure time, and the build tree,
+          # which the macOS build records as a search path, is hidden. The
+          # import and session tests pass only through the loading done on
+          # the grass.lib import or through a search path variable they set
+          # themselves. The Python package moves with the installation, so
+          # its path is taken beforehand.
           python_path="$(grass --config python_path)"
           mv "${HOME}/install" "${HOME}/install-relocated"
           for dir in dist.*; do mv "${dir}" "${dir}.hidden"; done
