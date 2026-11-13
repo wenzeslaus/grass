@@ -93,6 +93,22 @@ jobs:
         run: .github/workflows/print_versions.sh
       - name: Test executing of the grass command
         run: .github/workflows/test_simple.sh
+      - name: Install pytest
+        run: python3 -m pip install --user --break-system-packages pytest
+      - name: Run pytest for the grass.lib loading tests with a relocated installation
+        run: |
+          # The installation is moved away from the prefix it was configured
+          # with, so that the GRASS libraries are found only through the
+          # search path recorded relative to them. The Python package moves
+          # with the installation, so its path is taken beforehand.
+          python_path="$(grass --config python_path)"
+          mv "${HOME}/install" "${HOME}/install-relocated"
+          trap 'mv "${HOME}/install-relocated" "${HOME}/install"' EXIT
+          PYTHONPATH="${HOME}/install-relocated${python_path#"${HOME}/install"}"
+          export PYTHONPATH
+          python3 -m pytest \
+            python/grass/script/tests/grass_script_setup_lib_loading_test.py \
+            python/grass/app/tests/grass_app_runtime_lib_loading_test.py
       - name: Run tests
         run: .github/workflows/test_thorough.sh --config .gunittest.cfg --min-success 100
       - name: Make HTML test report available
