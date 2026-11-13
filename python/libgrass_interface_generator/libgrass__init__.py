@@ -145,9 +145,9 @@ def sync_environment(env=None):
     with GRASS_. The session variables and the variables copied before are
     removed when they are no longer set. On Windows, a variable with a value
     outside of the ANSI code page or too long for G_putenv is removed from
-    the environment of the C libraries as well. Without *env*, the function does nothing outside of Windows and
-    when the environment turns out to be shared, unless the previous call
-    used *env*.
+    the environment of the C libraries as well. Without *env*, the
+    function does nothing outside of Windows and when the environment
+    turns out to be shared, unless the previous call used *env*.
 
     The C libraries keep the first session they read, so switching to
     another session in the same process is not supported on any platform.
