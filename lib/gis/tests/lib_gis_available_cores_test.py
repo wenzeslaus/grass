@@ -16,8 +16,7 @@ from grass.lib.gis import G_available_cores
 from grass.tools import Tools
 
 needs_known_cores = pytest.mark.skipif(
-    sys.platform not in {"linux", "darwin"},
-    reason="the number of cores is unknown on this platform",
+    G_available_cores() < 1, reason="the number of cores is unknown"
 )
 
 
@@ -106,21 +105,13 @@ def test_omp_num_threads_is_the_default(univar_session, nprocs, expected):
 
 
 @needs_known_cores
-# Ten digits, which do not count as set either, are left out because the
-# OpenMP runtime of LLVM aborts the tool with them.
-@pytest.mark.parametrize("value", ["0", "abc", "-2", "3x"])
-def test_omp_num_threads_not_a_positive_number(univar_session, value):
-    """With a value which does not count as set, nprocs=0 gives one thread per core"""
-    threads = thread_count(univar_session, nprocs=0, omp_num_threads=value)
+def test_omp_num_threads_zero_counts_as_not_set(univar_session):
+    """With OMP_NUM_THREADS=0, which OpenMP ignores, nprocs=0 gives one thread per core
+
+    More values are checked in lib_gis_nprocs_option_test.py.
+    """
+    threads = thread_count(univar_session, nprocs=0, omp_num_threads="0")
     assert threads == G_available_cores()
-
-
-# A list of valid values, such as 3,2, is left out because it also turns
-# on nested parallelism in the OpenMP runtime.
-@pytest.mark.parametrize("value", ["3,abc", " 3\n"])
-def test_omp_num_threads_first_value(univar_session, value):
-    """The first value of OMP_NUM_THREADS is the default, whatever follows it"""
-    assert thread_count(univar_session, nprocs=0, omp_num_threads=value) == 3
 
 
 @needs_known_cores
