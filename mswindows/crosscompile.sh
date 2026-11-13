@@ -402,6 +402,8 @@ if not exist "%GISBASE%\etc\fontcap" (
 	%~d0
 	cd %GISBASE%\lib
 	set GISRC=dummy
+	set GRASS_ETCDIR=%GISBASE%\etc
+	set GRASS_FONTSDIR=%GISBASE%\fonts
 	"%GISBASE%\bin\g.mkfontcap.exe"
 	popd
 )
