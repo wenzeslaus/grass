@@ -70,9 +70,14 @@ static int default_threads(void)
  * environment variable is a positive number of at most nine digits, that
  * value is the default instead, also without OpenMP. When the number of
  * cores is unknown, the default is the OpenMP default, or 1 without
- * OpenMP. The default is determined once per process, on the first call.
- * A negative value is that many threads fewer than the default, at least
- * one.
+ * OpenMP. A negative value is that many threads fewer than the default,
+ * at least one.
+ *
+ * The default is determined once per process, on the first call of this
+ * function or of G_nprocs_from_option(), whatever the value of nprocs.
+ * Make the first call from one thread, outside of parallel regions, and
+ * before any call of omp_set_num_threads(), which changes the OpenMP
+ * default.
  *
  * \param nprocs value of an nprocs option
  *
@@ -82,8 +87,8 @@ static int default_threads(void)
  */
 int G_resolve_nprocs(int nprocs)
 {
-    /* Read for a positive value too, before its use in
-     * omp_set_num_threads() changes what OpenMP reports. */
+    /* Determine the default also for a positive value, before
+     * omp_set_num_threads() changes omp_get_max_threads(). */
     int threads = default_threads();
 
     if (nprocs > 0)
