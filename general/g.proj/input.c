@@ -332,7 +332,7 @@ int input_epsg(int epsg_num)
 
     hSRS = OSRNewSpatialReference(NULL);
     if (OSRImportFromEPSG(hSRS, epsg_num) != OGRERR_NONE) {
-        /* GDAL uses its own PROJ context, but with the same search rules */
+        // GDAL uses its own PROJ context, but with the same search rules
         GPJ_report_db_status();
         G_fatal_error(_("Unable to translate EPSG code"));
     }
