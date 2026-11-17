@@ -203,11 +203,15 @@ def main():
     if (
         tgis.check_granularity_string(granularity, input_strds.get_temporal_type())
         is False
+        or int(granularity.split()[0]) <= 0
     ):
         dbif.close()
         gs.fatal(_("Invalid granularity"))
 
-    if tgis.check_granularity_string(cycle, input_strds.get_temporal_type()) is False:
+    if (
+        tgis.check_granularity_string(cycle, input_strds.get_temporal_type()) is False
+        or int(cycle.split()[0]) <= 0
+    ):
         dbif.close()
         gs.fatal(_("Invalid cycle"))
 
@@ -215,6 +219,7 @@ def main():
         if (
             tgis.check_granularity_string(offset, input_strds.get_temporal_type())
             is False
+            or int(offset.split()[0]) < 0
         ):
             dbif.close()
             gs.fatal(_("Invalid offset"))
@@ -230,11 +235,11 @@ def main():
                 _("Space time raster dataset <%s> not found") % (lower_strds.get_id())
             )
 
+        lower_strds.select(dbif)
+
         if lower_strds.get_temporal_type() != input_strds.get_temporal_type():
             dbif.close()
             gs.fatal(_("Temporal type of input strds and lower strds must be equal"))
-
-        lower_strds.select(dbif)
 
     # The upper threshold space time raster dataset
     if upper:
@@ -252,11 +257,11 @@ def main():
                 _("Space time raster dataset <%s> not found") % (upper_strds.get_id())
             )
 
+        upper_strds.select(dbif)
+
         if upper_strds.get_temporal_type() != input_strds.get_temporal_type():
             dbif.close()
             gs.fatal(_("Temporal type of input strds and upper strds must be equal"))
-
-        upper_strds.select(dbif)
 
     input_strds_start, input_strds_end = input_strds.get_temporal_extent_as_tuple()
 
@@ -267,13 +272,16 @@ def main():
     else:
         start = int(start)
         stop = int(stop) if stop else input_strds_end
+        cycle = int(cycle)
+        offset = int(offset) if offset else 0
+        granularity = int(granularity)
 
     if input_strds.is_time_absolute():
         end = tgis.increment_datetime_by_string(start, cycle)
     else:
         end = start + cycle
 
-    limit_relations = ["EQUALS", "DURING", "OVERLAPS", "OVERLAPPING", "CONTAINS"]
+    limit_relations = ["EQUAL", "DURING", "OVERLAPS", "OVERLAPPED", "CONTAINS"]
 
     count = 1
     output_maps = []
@@ -347,8 +355,8 @@ def main():
         # Aggregate
         num_maps = len(gran_list)
 
-        for i in range(num_maps):
-            map = gran_list[num_maps - i - 1] if reverse else gran_list[i]
+        for i in reversed(range(num_maps)) if reverse else range(num_maps):
+            map = gran_list[i]
             # Select input maps based on temporal topology relations
             input_maps = []
             if map.get_equal():
