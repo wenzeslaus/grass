@@ -62,8 +62,8 @@ static const char GRASS_CONFIGURE_PARAMS[] =
 #endif
 
 /* Return 1 if the file exists, 0 otherwise. PROJ uses paths in UTF-8, but
- * on Windows, it may keep a path from an environment variable, such as
- * PROJ_DATA, in the ANSI code page, so that is used for invalid UTF-8. */
+ * on Windows, it may keep a path from PROJ_DATA in the ANSI code page, so
+ * fall back to it when the path is not valid UTF-8. */
 static int file_exists(const char *path)
 {
 #ifdef _WIN32
