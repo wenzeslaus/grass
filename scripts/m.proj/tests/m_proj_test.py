@@ -9,6 +9,7 @@ coordinates and its ITRF2014 coordinates (from NAD83(2011) at the
 reference epoch of the transformation) come from cs2cs and GDAL.
 """
 
+import json
 import os
 from io import StringIO
 
@@ -113,6 +114,10 @@ def test_wkt_and_projjson(nad83_session, crs_format):
     """CRS of the project (NAD83(2011)) as WKT or PROJJSON to ITRF2014"""
     tools = Tools(session=nad83_session)
     crs = tools.g_proj(flags="pf", format=crs_format).text.strip()
+    if crs_format == "projjson":
+        # On Windows, Python tools run through cmd.exe, which ends the command
+        # at a newline in an argument, so PROJJSON is passed on one line.
+        crs = json.dumps(json.loads(crs))
     rows = reproject(
         nad83_session, f"{LON} {LAT}\n", proj_in=crs, proj_out="EPSG:9000", flags="d"
     )
