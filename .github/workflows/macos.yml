@@ -162,8 +162,11 @@ jobs:
 
       - name: Probe a relocated installation (experiment)
         if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 15
         shell: micromamba-shell {0}
         run: |
+          bash .github/workflows/relocation_probe.sh "${HOME}/install" inplace
           # The macOS build records the build tree as a search path.
           for dir in dist.*; do mv "${dir}" "${dir}.hidden"; done
           trap 'for dir in dist.*.hidden; do mv "${dir}" "${dir%.hidden}"; done' EXIT

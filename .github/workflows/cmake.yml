@@ -107,7 +107,10 @@ jobs:
         run: .github/workflows/test_simple.sh
       - name: Probe a relocated installation (experiment)
         if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 15
         run: |
+          bash .github/workflows/relocation_probe.sh "${HOME}/install" inplace
           bash .github/workflows/relocation_probe.sh "${HOME}/install"
       - name: Run tests
         run: .github/workflows/test_thorough.sh --config .gunittest.cfg --min-success 100
