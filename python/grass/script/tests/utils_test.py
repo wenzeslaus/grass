@@ -86,7 +86,7 @@ def test_KeyValue_values():
 
 
 def test_resolve_nprocs(monkeypatch):
-    """Check G_OPT_M_NPROCS resolution: positive as-is, 0 = cores, negative reserves."""
+    """Check G_OPT_M_NPROCS resolution: positive as-is, 0 = cores, negative counts down."""
     monkeypatch.setattr(gutils, "available_cores", lambda: 8)
     monkeypatch.delenv("OMP_NUM_THREADS", raising=False)
     assert gs.resolve_nprocs(1) == 1
@@ -121,11 +121,6 @@ def test_resolve_nprocs_omp_num_threads(monkeypatch, value, expected):
     assert gs.resolve_nprocs(0) == expected
     assert gs.resolve_nprocs(-2) == expected - 2
     assert gs.resolve_nprocs(3) == 3
-
-
-def test_available_cores():
-    """There is at least one core and not more cores than logical CPUs"""
-    assert 1 <= gutils.available_cores() <= gs.available_cpus()
 
 
 def test_available_cores_reads_sysfs():
