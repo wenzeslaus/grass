@@ -71,7 +71,7 @@ def test_tool_refuses_trailing_text(xy_session_for_module):
 
 
 needs_known_cores = pytest.mark.skipif(
-    G_available_cores() < 1, reason="the number of cores is unknown"
+    sys.platform not in {"linux", "darwin"}, reason="the number of cores is unknown"
 )
 
 
