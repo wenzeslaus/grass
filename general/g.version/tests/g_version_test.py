@@ -268,8 +268,9 @@ def test_e_flag_proj_runtime_values(session):
 def test_e_flag_incompatible_proj_db(session, tmp_path, dir_name):
     """Test that a proj.db which PROJ rejects is reported as such.
 
-    The non-ASCII directory name checks that the path is handled as UTF-8
-    as PROJ uses it, which on Windows needs a wide-character file check.
+    The non-ASCII directory name checks that the path is found in the
+    encoding PROJ keeps it in, which on Windows can be the ANSI code page
+    for a path from PROJ_DATA.
     """
     proj_data = tmp_path / dir_name
     user_dir = tmp_path / "user_dir"
