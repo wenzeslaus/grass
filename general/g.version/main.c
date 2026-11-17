@@ -61,9 +61,9 @@ static const char GRASS_CONFIGURE_PARAMS[] =
 #define PROJ_SEARCH_PATH_SEPARATOR ':'
 #endif
 
-/* Return 1 if the file exists, 0 otherwise. PROJ uses paths in UTF-8, but
- * on Windows, it may keep a path from PROJ_DATA in the ANSI code page, so
- * fall back to it when the path is not valid UTF-8. */
+// Return 1 if the file exists, 0 otherwise. PROJ uses paths in UTF-8, but
+// on Windows, it may keep a path from PROJ_DATA in the ANSI code page, so
+// fall back to it when the path is not valid UTF-8.
 static int file_exists(const char *path)
 {
 #ifdef _WIN32
@@ -89,12 +89,12 @@ static int file_exists(const char *path)
 #endif
 }
 
-/* Return the first proj.db file in the PROJ search path, or NULL.
- * When PROJ cannot open any database, such a file was rejected, typically
- * because it comes from another PROJ installation. */
+// Return the first proj.db file in the PROJ search path, or NULL.
+// When PROJ cannot open any database, such a file was rejected, typically
+// because it comes from another PROJ installation.
 static char *search_proj_db(void)
 {
-    /* Each proj_info() call frees the previous search path string. */
+    // Each proj_info() call frees the previous search path string.
     char *searchpath = G_store(proj_info().searchpath);
     const char *start = searchpath;
     char *found = NULL;
@@ -121,9 +121,9 @@ static char *search_proj_db(void)
     return found;
 }
 
-/* Return the name of the environment variable which points PROJ to its
- * data: PROJ_DATA since PROJ 9.1, PROJ_LIB in PROJ 9.0. Remove this, and
- * use PROJ_DATA directly, when GRASS requires PROJ 9.1 or later. */
+// Return the name of the environment variable which points PROJ to its
+// data: PROJ_DATA since PROJ 9.1, PROJ_LIB in PROJ 9.0. Remove this, and
+// use PROJ_DATA directly, when GRASS requires PROJ 9.1 or later.
 static const char *proj_data_variable(PJ_INFO info)
 {
     if (info.major < 9 || (info.major == 9 && info.minor < 1))
@@ -374,7 +374,7 @@ int main(int argc, char *argv[])
         }
         G_free(proj);
 
-        /* The PROJ library and database (proj.db) in use at runtime. */
+        // The PROJ library and database (proj.db) in use at runtime.
         {
             PJ_LOG_LEVEL log_level;
             const char *db;
@@ -382,10 +382,10 @@ int main(int argc, char *argv[])
             char *db_rejected = NULL;
             PJ_INFO proj_runtime;
 
-            /* A missing database is reported below, so keep PROJ quiet. */
+            // A missing database is reported below, so keep PROJ quiet.
             log_level = proj_log_level(NULL, PJ_LOG_NONE);
             db = proj_context_get_database_path(NULL);
-            /* Valid only until the next PROJ call, so copy right away. */
+            // Valid only until the next PROJ call, so copy right away.
             db_path = db ? G_store(db) : NULL;
             proj_log_level(NULL, log_level);
             if (!db_path)
