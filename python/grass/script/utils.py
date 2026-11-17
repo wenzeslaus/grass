@@ -142,9 +142,9 @@ def available_cores() -> int:
     .. versionadded:: 8.6
     """
     if hasattr(os, "sched_getaffinity"):  # Linux
-        affinity = os.sched_getaffinity(0)
         cores = 0
         try:
+            affinity = os.sched_getaffinity(0)
             for cpu in affinity:
                 siblings = _cpu_list(
                     Path(
