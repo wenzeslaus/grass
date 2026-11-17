@@ -125,23 +125,17 @@ specification</a>
 <p>The maximum size of input WKT or PROJ CRS descriptions is
 limited to 8000 bytes.
 
-<p>The <b>-i</b> flag reports the PROJ installation in use rather than a CRS:
-the PROJ library version, the PROJ database (<code>proj.db</code>) with its layout
-version, EPSG dataset version and the PROJ version it was created with,
-and the directories PROJ searches for its resources. It does not read
-the CRS of the current project and works without a working <code>proj.db</code>,
-so it can be used to diagnose errors which mention <code>proj.db</code>. A GRASS
-session is still needed, e.g., <code>grass --tmp-project XY --exec g.proj -i</code>.
-The PROJ version which created the database is marked when it differs
-from the PROJ version in use. When PROJ cannot open any database but a
-<code>proj.db</code> file exists in its search path, the file is reported as
-rejected (<code>proj_db_rejected</code> in shell format). This typically means that
-another package in the same environment points the <code>PROJ_DATA</code>
-environment variable (<code>PROJ_LIB</code> before PROJ 9.1) to its own copy of the
-database from a different PROJ version. Only the <i>plain</i> and <i>shell</i>
-formats are supported with <b>-i</b>. The runtime PROJ version (<code>proj_runtime</code>)
-and database path (<code>proj_db</code>) are also part of the
-<a href="g.version.html">g.version</a> <b>-e</b> output.
+<p>The <b>-i</b> flag reports the PROJ installation in use instead of a CRS.
+That is the PROJ version, the PROJ database (<code>proj.db</code>) with its layout
+version, EPSG dataset version, and the PROJ version which created it,
+and the directories PROJ searches. The PROJ version which created the
+database is marked when it differs from the PROJ version in use. The
+flag works even when PROJ cannot use any <code>proj.db</code>, so it helps with
+errors which mention <code>proj.db</code>. A <code>proj.db</code> which PROJ found but cannot
+use is reported as rejected (<code>proj_db_rejected</code> in shell format), for
+example, when <code>PROJ_DATA</code> (<code>PROJ_LIB</code> before PROJ 9.1) points to the
+data of another PROJ installation. Only the <i>plain</i> and <i>shell</i> formats
+are supported with <b>-i</b>.
 
 <h2>EXAMPLES</h2>
 

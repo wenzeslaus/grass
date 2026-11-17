@@ -3,6 +3,7 @@
  * MODULE:       g.proj
  * PURPOSE:      Report the PROJ installation in use: library version,
  *               database (proj.db) and the directories PROJ searches.
+ * SPDX-FileCopyrightText: 2026 Vaclav Petras
  * SPDX-FileCopyrightText: 2026 GRASS Development Team
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
@@ -30,10 +31,8 @@ static void print_plain(const char *label, const char *value)
     fprintf(stdout, "%-26s %s\n", label, value ? value : _("unknown"));
 }
 
-/* Print the PROJ version the database was created by and flag a different
- * major or minor version than the one in use. PROJ accepts databases with
- * a compatible layout, but such a mix usually means PROJ_DATA points to
- * the data of another PROJ installation. */
+/* Print the PROJ version which created the database and mark it when its
+ * major or minor version differs from the PROJ in use. */
 static void print_db_proj_version(const char *db_proj_version,
                                   int runtime_major, int runtime_minor)
 {
@@ -58,18 +57,6 @@ static void print_shell(const char *key, const char *value)
     fprintf(stdout, "%s=%s\n", key, value ? value : "");
 }
 
-/* Return the name of the environment variable which points PROJ to its
- * data: PROJ_DATA since PROJ 9.1, PROJ_LIB in PROJ 9.0. Remove this, and
- * use PROJ_DATA directly, when GRASS requires PROJ 9.1 or later. */
-static const char *proj_data_variable(void)
-{
-    PJ_INFO info = proj_info();
-
-    if (info.major < 9 || (info.major == 9 && info.minor < 1))
-        return "PROJ_LIB";
-    return "PROJ_DATA";
-}
-
 void print_proj_install_info(enum OutputFormat format)
 {
     PJ_LOG_LEVEL log_level;
@@ -83,12 +70,9 @@ void print_proj_install_info(enum OutputFormat format)
     char *db_layout = NULL;
     char *db_epsg = NULL;
     char *db_proj_version = NULL;
-    const char *variable = proj_data_variable();
 
-    /* Missing or unusable database is reported below, so keep PROJ's
-     * own logger quiet. PROJ reports the level without its sign, so a
-     * negative PROJ_DEBUG level is restored as positive, which only makes
-     * PROJ more verbose. */
+    /* A missing or unusable database is reported below, so keep PROJ's
+     * own logger quiet. */
     log_level = proj_log_level(NULL, PJ_LOG_NONE);
 
     db = proj_context_get_database_path(NULL);
@@ -99,8 +83,8 @@ void print_proj_install_info(enum OutputFormat format)
         db_path = G_store(db);
         major = get_db_metadata("DATABASE.LAYOUT.VERSION.MAJOR");
         minor = get_db_metadata("DATABASE.LAYOUT.VERSION.MINOR");
-        if (major)
-            G_asprintf(&db_layout, "%s.%s", major, minor ? minor : "0");
+        if (major && minor)
+            G_asprintf(&db_layout, "%s.%s", major, minor);
         G_free(major);
         G_free(minor);
         db_epsg = get_db_metadata("EPSG.VERSION");
@@ -145,21 +129,14 @@ void print_proj_install_info(enum OutputFormat format)
             char *text = NULL;
 
             G_asprintf(&text,
-                       _("%s cannot be used, it probably comes from another "
-                         "PROJ installation"),
+                       _("%s (rejected by PROJ, probably from another PROJ "
+                         "installation)"),
                        db_rejected);
             print_plain(_("Database:"), text);
             G_free(text);
         }
         else {
-            char *text = NULL;
-
-            G_asprintf(&text,
-                       _("not found (set %s to the directory containing "
-                         "proj.db)"),
-                       variable);
-            print_plain(_("Database:"), text);
-            G_free(text);
+            print_plain(_("Database:"), _("not found"));
         }
         print_plain(_("Search path:"), searchpath);
     }

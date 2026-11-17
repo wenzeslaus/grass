@@ -113,23 +113,17 @@ specification](https://proj.org/en/stable/specifications/projjson.html)
 The maximum size of input WKT or PROJ CRS descriptions is limited to
 8000 bytes.
 
-The **-i** flag reports the PROJ installation in use rather than a CRS:
-the PROJ library version, the PROJ database (`proj.db`) with its layout
-version, EPSG dataset version and the PROJ version it was created with,
-and the directories PROJ searches for its resources. It does not read
-the CRS of the current project and works without a working `proj.db`,
-so it can be used to diagnose errors which mention `proj.db`. A GRASS
-session is still needed, e.g., `grass --tmp-project XY --exec g.proj -i`.
-The PROJ version which created the database is marked when it differs
-from the PROJ version in use. When PROJ cannot open any database but a
-`proj.db` file exists in its search path, the file is reported as
-rejected (`proj_db_rejected` in shell format). This typically means that
-another package in the same environment points the `PROJ_DATA`
-environment variable (`PROJ_LIB` before PROJ 9.1) to its own copy of the
-database from a different PROJ version. Only the *plain* and *shell*
-formats are supported with **-i**. The runtime PROJ version (`proj_runtime`)
-and database path (`proj_db`) are also part of the
-[g.version](g.version.md) **-e** output.
+The **-i** flag reports the PROJ installation in use instead of a CRS.
+That is the PROJ version, the PROJ database (`proj.db`) with its layout
+version, EPSG dataset version, and the PROJ version which created it,
+and the directories PROJ searches. The PROJ version which created the
+database is marked when it differs from the PROJ version in use. The
+flag works even when PROJ cannot use any `proj.db`, so it helps with
+errors which mention `proj.db`. A `proj.db` which PROJ found but cannot
+use is reported as rejected (`proj_db_rejected` in shell format), for
+example, when `PROJ_DATA` (`PROJ_LIB` before PROJ 9.1) points to the
+data of another PROJ installation. Only the *plain* and *shell* formats
+are supported with **-i**.
 
 ## EXAMPLES
 
@@ -180,7 +174,7 @@ Database created by PROJ:  9.4.0
 Search path:               /home/user/.local/share/proj:/usr/share/proj
 ```
 
-The same in shell script style, e.g., for use with `parse_command()`:
+The same in shell script style:
 
 ```sh
 g.proj -i format=shell

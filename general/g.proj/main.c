@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
     projinstall->guisection = _("Print");
     projinstall->label = _("Print information about the PROJ installation");
     projinstall->description =
-        _("PROJ version, database (proj.db) and search path in use");
+        _("PROJ version, database (proj.db), and search path in use");
 
     shellinfo = G_define_flag();
     shellinfo->key = 'g';
@@ -263,7 +263,8 @@ int main(int argc, char *argv[])
     /* PROJ installation does not depend on the current project */
     if (projinstall->answer) {
         if (outputFormat != PLAIN && outputFormat != SHELL)
-            G_fatal_error(_("Flag -%c supports only plain and shell format"),
+            G_fatal_error(_("Flag -%c can be used only with format=plain or "
+                            "format=shell"),
                           projinstall->key);
         print_proj_install_info(outputFormat);
         exit(EXIT_SUCCESS);
