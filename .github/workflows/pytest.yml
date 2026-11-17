@@ -168,6 +168,10 @@ jobs:
             python/grass/script/tests/grass_script_setup_lib_loading_test.py \
             python/grass/app/tests/grass_app_runtime_lib_loading_test.py \
             --junitxml=pytest.lib_loading_relocated.junit.xml
+      - name: Probe a relocated installation (experiment)
+        if: ${{ !cancelled() }}
+        run: |
+          bash .github/workflows/relocation_probe.sh "${HOME}/install"
       - name: Fix non-standard installed script paths in coverage data
         run: |
           PYTHONPATH="$(grass --config python_path):${PYTHONPATH}"
