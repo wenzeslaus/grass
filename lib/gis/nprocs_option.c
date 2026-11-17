@@ -87,8 +87,6 @@ static int default_threads(void)
  */
 int G_resolve_nprocs(int nprocs)
 {
-    /* Determine the default also for a positive value, before
-     * omp_set_num_threads() changes omp_get_max_threads(). */
     int threads = default_threads();
 
     if (nprocs > 0)

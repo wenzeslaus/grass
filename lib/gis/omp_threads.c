@@ -15,7 +15,7 @@
 
     The number of threads is read from \em opt with G_nprocs_from_option().
     See G_resolve_nprocs() for the rules. Without OpenMP, the function
-    returns 1 and warns when the answer asks for more than one thread.
+    returns 1 and warns for any answer other than 0 and 1.
 
     \param opt A nprocs Option struct to specify the number of threads
     \return the number of threads set up for OpenMP parallel computing
@@ -32,7 +32,7 @@ int G_set_omp_num_threads(struct Option *opt)
                          threads),
                       threads);
 #else
-    /* The answer, not the resolved number, decides the warning, as before.
+    /* The answer, not the resolved number, decides the warning.
      * G_nprocs_from_option() has refused answers which are not numbers. */
     threads = atoi(opt->answer);
     if (!(threads == 0 || threads == 1)) {
