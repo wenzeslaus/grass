@@ -10,7 +10,7 @@
 #
 ################################################################################
 
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.24)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 #[[
@@ -206,7 +206,6 @@ if(APPLE)
     set(CMAKE_MACOSX_RPATH TRUE)
 endif()
 
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${GRASS_INSTALL_LIBDIR}")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # TODO: a proper fix to this workaround
