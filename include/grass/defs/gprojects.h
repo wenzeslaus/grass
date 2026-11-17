@@ -52,7 +52,6 @@ void GPJ_free_datum_transform(struct gpj_datum_transform_list *);
 
 /* db_info.c */
 char *GPJ_search_proj_db(void);
-const char *GPJ_proj_data_variable(void);
 void GPJ_report_db_status(void);
 
 /* ellipse.c */

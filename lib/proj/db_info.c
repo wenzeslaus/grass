@@ -12,6 +12,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef _WIN32
+#include <io.h>
+#include <windows.h>
+#endif
 
 #include <grass/gis.h>
 #include <grass/gprojects.h>
@@ -22,6 +26,34 @@
 #else
 #define SEARCH_PATH_SEPARATOR ':'
 #endif
+
+/* Return 1 if the file exists, 0 otherwise. PROJ uses paths in UTF-8, but
+ * on Windows, it may keep a path from an environment variable, such as
+ * PROJ_DATA, in the ANSI code page, so that is used for invalid UTF-8. */
+static int file_exists(const char *path)
+{
+#ifdef _WIN32
+    UINT code_page = CP_UTF8;
+    int len =
+        MultiByteToWideChar(code_page, MB_ERR_INVALID_CHARS, path, -1, NULL, 0);
+    wchar_t *wide_path;
+    int exists;
+
+    if (len <= 0) {
+        code_page = CP_ACP;
+        len = MultiByteToWideChar(code_page, 0, path, -1, NULL, 0);
+    }
+    if (len <= 0)
+        return 0;
+    wide_path = G_malloc(len * sizeof(wchar_t));
+    MultiByteToWideChar(code_page, 0, path, -1, wide_path, len);
+    exists = _waccess(wide_path, 0) == 0;
+    G_free(wide_path);
+    return exists;
+#else
+    return access(path, F_OK) == 0;
+#endif
+}
 
 /*!
    \brief Find a proj.db file in the PROJ search path
@@ -53,7 +85,7 @@ char *GPJ_search_proj_db(void)
             char *path = NULL;
 
             G_asprintf(&path, "%.*s%cproj.db", (int)len, start, HOST_DIRSEP);
-            if (access(path, F_OK) == 0) {
+            if (file_exists(path)) {
                 found = path;
                 break;
             }
@@ -67,14 +99,10 @@ char *GPJ_search_proj_db(void)
     return found;
 }
 
-/*!
-   \brief Name of the environment variable which points PROJ to its data
-
-   PROJ_DATA is used since PROJ 9.1, older versions use PROJ_LIB.
-
-   \return PROJ_DATA or PROJ_LIB depending on the PROJ version in use
- */
-const char *GPJ_proj_data_variable(void)
+/* Return the name of the environment variable which points PROJ to its
+ * data: PROJ_DATA since PROJ 9.1, PROJ_LIB in PROJ 9.0. Remove this, and
+ * use PROJ_DATA directly, when GRASS requires PROJ 9.1 or later. */
+static const char *proj_data_variable(void)
 {
     PJ_INFO info = proj_info();
 
@@ -127,7 +155,7 @@ void GPJ_report_db_status(void)
         return;
     }
 
-    variable = GPJ_proj_data_variable();
+    variable = proj_data_variable();
     set_variable = variable;
     value = getenv(variable);
     /* PROJ 9.1 and later still use PROJ_LIB when PROJ_DATA is not set. */

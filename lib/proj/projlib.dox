@@ -127,8 +127,6 @@ default: cmd
 
  - GPJ_search_proj_db()
 
- - GPJ_proj_data_variable()
-
  - GPJ_wkt_to_grass()
 
  - GPJ_init_transform()
