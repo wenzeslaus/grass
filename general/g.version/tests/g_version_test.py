@@ -1,4 +1,5 @@
 import sqlite3
+import subprocess
 import sys
 from pathlib import Path
 
@@ -292,8 +293,17 @@ def test_e_flag_incompatible_proj_db(session, tmp_path, dir_name):
     output = gs.parse_command("g.version", flags="eg", env=env)
     if output["proj_db"]:
         pytest.skip("PROJ database cannot be replaced (embedded in PROJ)")
-    text = " ".join(gs.read_command("g.version", flags="e", env=env).split())
+    process = gs.Popen(
+        ["g.version", "-e"],
+        env=env,
+        stdout=subprocess.PIPE,
+        text=True,
+        # On Windows, the path may be printed in the ANSI code page.
+        errors="replace",
+    )
+    stdout, _ = process.communicate()
+    assert process.returncode == 0
+    text = " ".join(stdout.split())
     assert "another PROJ installation" in text
-    # On Windows, the path may be printed in the ANSI code page.
     if dir_name.isascii() or sys.platform != "win32":
         assert str(proj_data / "proj.db") in text
