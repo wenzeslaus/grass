@@ -68,12 +68,12 @@ SPDX-License-Identifier: GPL-2.0-or-later
 # %end
 # %flag
 # % key: i
-# % description: Use LL WGS84 as input and current project as output CRS
+# % description: Use LL WGS84 as input and the current project CRS as output
 # % guisection: Projections
 # %end
 # %flag
 # % key: o
-# % description: Use current project as input and LL WGS84 as output CRS
+# % description: Use the current project CRS as input and LL WGS84 as output
 # % guisection: Projections
 # %end
 # %flag
@@ -101,6 +101,7 @@ SPDX-License-Identifier: GPL-2.0-or-later
 
 import json
 import os
+import shlex
 import sys
 import threading
 from pathlib import Path
@@ -138,18 +139,11 @@ def is_proj_string(crs):
 
 def run_projinfo(args, crs):
     """Run projinfo on a CRS definition and return its standard output"""
-    if not gcore.find_program("projinfo"):
-        gcore.fatal(
-            _("projinfo program not found, install PROJ first: https://proj.org")
-        )
     env = os.environ.copy()
     # Interpret +init=epsg:XXXX in PROJ strings the way PROJ 4 did.
     env["PROJ_USE_PROJ4_INIT_RULES"] = "YES"
-    # Read bytes: the area of use in the output can contain non-ASCII
-    # characters such as a degree sign, which projinfo on Windows writes
-    # in the ANSI code page, so the output is not always valid UTF-8.
-    # Only ASCII parts of the output are used, so replace what does not
-    # decode.
+    # The area of use can contain degree signs which are not UTF-8 on
+    # Windows. Only ASCII parts of the output are used.
     process = gcore.Popen(
         ["projinfo", "-q", *args, crs],
         stdout=gcore.PIPE,
@@ -189,8 +183,6 @@ def first_axis_is_northing(crs):
             definition = definition["components"][0]
         elif "source_crs" in definition:
             definition = definition["source_crs"]
-        elif "base_crs" in definition:
-            definition = definition["base_crs"]
         else:
             return False
     axes = definition["coordinate_system"].get("axis", [])
@@ -222,6 +214,10 @@ def main():
                 "cs2cs program not found, install PROJ first: \
             https://proj.org"
             )
+        )
+    if not gcore.find_program("projinfo"):
+        gcore.fatal(
+            _("projinfo program not found, install PROJ first: https://proj.org")
         )
 
     # parse field separator
@@ -319,11 +315,10 @@ def main():
         # and writes longitude latitude or easting northing.
         cmd = ["cs2cs"] + copyinp + outfmt + in_crs.split() + ["+to"] + out_crs.split()
     else:
-        # Anything else goes through the cs2cs "source_crs target_crs"
-        # syntax. cs2cs does not mix the two syntaxes, so a PROJ string
-        # is converted to WKT. The axis order of the CRS is honored by
-        # cs2cs, so swap input (-r) and output (-s) when needed to keep
-        # x y, i.e., longitude latitude or easting northing.
+        # cs2cs does not mix the "+to" and "source_crs target_crs"
+        # syntaxes, so PROJ strings are converted to WKT. cs2cs honors the
+        # axis order of the CRS, so swap axes (-r, -s) where needed to keep
+        # x y.
         if is_proj_string(in_crs):
             in_crs = proj_string_to_wkt(in_crs)
         if is_proj_string(out_crs):
@@ -335,7 +330,7 @@ def main():
             axis_order.append("-s")
         cmd = ["cs2cs"] + copyinp + outfmt + axis_order + [in_crs, out_crs]
 
-    gcore.debug("cs2cs command: %s" % cmd)
+    gcore.verbose(_("cs2cs command: {}").format(shlex.join(cmd)))
     p = gcore.Popen(cmd, stdin=gcore.PIPE, stdout=gcore.PIPE, text=False)
 
     tr = TrThread(ifs, inf, p.stdin)
@@ -377,11 +372,7 @@ def main():
     p.wait()
 
     if p.returncode != 0:
-        gcore.fatal(
-            _("Coordinate transformation failed (cs2cs exit code {})").format(
-                p.returncode
-            )
-        )
+        gcore.warning(_("Projection transform probably failed, please investigate"))
 
 
 if __name__ == "__main__":
