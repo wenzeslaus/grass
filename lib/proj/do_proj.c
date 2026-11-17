@@ -934,6 +934,8 @@ int GPJ_transform(const struct pj_info *info_in, const struct pj_info *info_out,
     }
 
     /* prepare */
+    // HUGE_VAL as the time means no coordinate epoch, so time-dependent
+    // Helmert transformations use their reference epoch.
     if (in_is_ll) {
         if (in_deg2rad) {
             /* convert degrees to radians */
@@ -947,7 +949,7 @@ int GPJ_transform(const struct pj_info *info_in, const struct pj_info *info_out,
         c.lpzt.z = 0;
         if (z)
             c.lpzt.z = *z;
-        c.lpzt.t = 0;
+        c.lpzt.t = HUGE_VAL;
     }
     else {
         /* convert to meters */
@@ -956,7 +958,7 @@ int GPJ_transform(const struct pj_info *info_in, const struct pj_info *info_out,
         c.xyzt.z = 0;
         if (z)
             c.xyzt.z = *z;
-        c.xyzt.t = 0;
+        c.xyzt.t = HUGE_VAL;
     }
 
     G_debug(1, "c.xyzt.x: %g", c.xyzt.x);
@@ -1102,7 +1104,7 @@ int GPJ_transform_array(const struct pj_info *info_in,
     }
     ok = 0;
     if (in_is_ll) {
-        c.lpzt.t = 0;
+        c.lpzt.t = HUGE_VAL;
         if (out_is_ll) {
             /* what is more costly ?
              * calling proj_trans for each point
@@ -1159,7 +1161,7 @@ int GPJ_transform_array(const struct pj_info *info_in,
         }
     }
     else {
-        c.xyzt.t = 0;
+        c.xyzt.t = HUGE_VAL;
         if (out_is_ll) {
             for (i = 0; i < n; i++) {
                 /* convert to meters */
@@ -1247,7 +1249,7 @@ int pj_do_proj(double *x, double *y, const struct pj_info *info_in,
         c.lpzt.lam = (*x) / RAD_TO_DEG;
         c.lpzt.phi = (*y) / RAD_TO_DEG;
         c.lpzt.z = 0;
-        c.lpzt.t = 0;
+        c.lpzt.t = HUGE_VAL;
         c = proj_trans(info_trans.pj, PJ_FWD, c);
         ok = proj_errno(info_trans.pj);
 
@@ -1267,7 +1269,7 @@ int pj_do_proj(double *x, double *y, const struct pj_info *info_in,
         c.xyzt.x = *x * METERS_in;
         c.xyzt.y = *y * METERS_in;
         c.xyzt.z = 0;
-        c.xyzt.t = 0;
+        c.xyzt.t = HUGE_VAL;
         c = proj_trans(info_trans.pj, PJ_FWD, c);
         ok = proj_errno(info_trans.pj);
 
@@ -1341,7 +1343,7 @@ int pj_do_transform(int count, double *x, double *y, double *h,
     }
     ok = 0;
     if (strncmp(info_in->proj, "ll", 2) == 0) {
-        c.lpzt.t = 0;
+        c.lpzt.t = HUGE_VAL;
         if (strncmp(info_out->proj, "ll", 2) == 0) {
             for (i = 0; i < count; i++) {
                 /* convert to radians */
@@ -1372,7 +1374,7 @@ int pj_do_transform(int count, double *x, double *y, double *h,
         }
     }
     else {
-        c.xyzt.t = 0;
+        c.xyzt.t = HUGE_VAL;
         if (strncmp(info_out->proj, "ll", 2) == 0) {
             for (i = 0; i < count; i++) {
                 /* convert to meters */

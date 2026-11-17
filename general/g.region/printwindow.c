@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include <grass/gis.h>
 #include <grass/gprojects.h>
 #include <grass/glocale.h>
@@ -671,7 +672,7 @@ void print_window(struct Cell_head *window, int print_flag, int flat_flag,
             c.lpzt.lam = DEG2RAD(longitude);
             c.lpzt.phi = DEG2RAD(latitude);
             c.lpzt.z = 0;
-            c.lpzt.t = 0;
+            c.lpzt.t = HUGE_VAL;
             fact = proj_factors(iproj.pj, c);
             convergence = RAD2DEG(fact.meridian_convergence);
         }
