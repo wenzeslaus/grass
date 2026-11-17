@@ -17,8 +17,8 @@
 
 #include "local_proto.h"
 
-/* Strings returned by PROJ are valid only until the next call,
- * so each value is copied right away. */
+// Strings returned by PROJ are valid only until the next call,
+// so each value is copied right away.
 static char *get_db_metadata(const char *key)
 {
     const char *value = proj_context_get_database_metadata(NULL, key);
@@ -31,8 +31,8 @@ static void print_plain(const char *label, const char *value)
     fprintf(stdout, "%-26s %s\n", label, value ? value : _("unknown"));
 }
 
-/* Print the PROJ version which created the database and mark it when its
- * major or minor version differs from the PROJ in use. */
+// Print the PROJ version which created the database and mark it when its
+// major or minor version differs from the PROJ in use.
 static void print_db_proj_version(const char *db_proj_version,
                                   int runtime_major, int runtime_minor)
 {
@@ -71,8 +71,8 @@ void print_proj_install_info(enum OutputFormat format)
     char *db_epsg = NULL;
     char *db_proj_version = NULL;
 
-    /* A missing or unusable database is reported below, so keep PROJ's
-     * own logger quiet. */
+    // A missing or unusable database is reported below, so keep PROJ's
+    // own logger quiet.
     log_level = proj_log_level(NULL, PJ_LOG_NONE);
 
     db = proj_context_get_database_path(NULL);
@@ -91,13 +91,13 @@ void print_proj_install_info(enum OutputFormat format)
         db_proj_version = get_db_metadata("PROJ.VERSION");
     }
     else {
-        /* A proj.db in the search path which PROJ did not open */
+        // A proj.db in the search path which PROJ did not open
         db_rejected = GPJ_search_proj_db();
     }
     proj_log_level(NULL, log_level);
 
-    /* Each proj_info() call frees the previous search path string,
-     * so take the values from one call after all others. */
+    // Each proj_info() call frees the previous search path string,
+    // so take the values from one call after all others.
     {
         PJ_INFO info = proj_info();
 

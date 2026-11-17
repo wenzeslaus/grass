@@ -260,7 +260,7 @@ int main(int argc, char *argv[])
         outputFormat = PLAIN;
     }
 
-    /* PROJ installation does not depend on the current project */
+    // PROJ installation does not depend on the current project
     if (projinstall->answer) {
         if (outputFormat != PLAIN && outputFormat != SHELL)
             G_fatal_error(_("Flag -%c can be used only with format=plain or "
