@@ -16,7 +16,14 @@ printed by **-r** flag.
 
 Version numbers of additional libraries like [PROJ](https://proj.org/),
 [GDAL/OGR](https://gdal.org/) or [GEOS](https://trac.osgeo.org/geos) are
-printed by **-e** flag.
+printed by **-e** flag. For PROJ, the flag also reports the version of
+the library and the path of the database (`proj.db`) in use at runtime
+(`proj_runtime`, `proj_db`). The library can differ from the compile-time
+version, and the database can come from another PROJ installation, for
+example, when another package sets `PROJ_DATA`. Such a mismatch is a
+common cause of errors mentioning `proj.db`. An empty `proj_db` (`null`
+in JSON) means PROJ could not open any database. The plain output then
+also says whether a `proj.db` was found but rejected or not found at all.
 
 See also function `version()` from [Python Scripting
 Library](https://grasswiki.osgeo.org/wiki/GRASS_Python_Scripting_Library).
@@ -67,7 +74,9 @@ libgis date: 2024-04-27T09:38:49+00:00
     build_off_t_size=8
     libgis_revision=c9e8576cf
     libgis_date=2024-04-27T09:38:49+00:00
-    proj=8.2.1
+    proj=9.4.0
+    proj_runtime=9.4.0
+    proj_db=/usr/share/proj/proj.db
     gdal=3.4.3
     geos=3.9.2
     sqlite=3.36.0
@@ -106,7 +115,9 @@ libgis date: 2024-04-27T09:38:49+00:00
         "build_off_t_size": 8,
         "libgis_revision": "c9e8576cf",
         "libgis_date": "2024-04-27T09:38:49+00:00",
-        "proj": "8.2.1",
+        "proj": "9.4.0",
+        "proj_runtime": "9.4.0",
+        "proj_db": "/usr/share/proj/proj.db",
         "gdal": "3.4.3",
         "geos": "3.9.2",
         "sqlite": "3.36.0"
