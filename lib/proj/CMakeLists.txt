@@ -6,6 +6,7 @@ install(
 set(grass_gproj_SOURCES
     convert.c
     datum.c
+    db_info.c
     do_proj.c
     ellipse.c
     get_proj.c

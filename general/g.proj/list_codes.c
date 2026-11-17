@@ -3,8 +3,7 @@
 #include <grass/gis.h>
 #include <grass/glocale.h>
 #include <grass/config.h>
-
-#include <proj.h>
+#include <grass/gprojects.h>
 
 char *get_authority_names(void)
 {
@@ -55,8 +54,10 @@ void list_codes(char *authname)
     crs_cnt = 0;
     proj_crs_info =
         proj_get_crs_info_list_from_database(NULL, authname, NULL, &crs_cnt);
-    if (crs_cnt < 1)
+    if (crs_cnt < 1) {
+        GPJ_report_db_status();
         G_fatal_error(_("No codes found for authority %s"), authname);
+    }
 
     for (i = 0; i < crs_cnt; i++) {
         const char *proj_definition;
