@@ -77,7 +77,25 @@ GRASS_NAME	= grass
 COMPILE_FLAGS_C    = $(CPPFLAGS) $(CFLAGS) $(INCLUDE_DIRS) $(INC)
 COMPILE_FLAGS_CXX  = $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIRS) $(INC)
 
-LDFLAGS     =  $(LIBPATH) $(LINK_FLAGS) $(LD_SEARCH_FLAGS)
+# The GRASS libraries are found relative to the linked file, so that the
+# installation works also when moved elsewhere. The path goes from the
+# directory of the file up to GISBASE, e.g., .. for bin and ../.. for
+# driver/db. Files linked elsewhere, such as addon tools, get only the
+# absolute paths. Only platforms whose linker takes -rpath get the path.
+ifneq ($(findstring -rpath,$(LD_SEARCH_FLAGS) $(LINK_FLAGS)),)
+ifeq ($(SHLIB_SUFFIX),.dylib)
+RPATH_ORIGIN = @loader_path
+else
+RPATH_ORIGIN = \$$ORIGIN
+endif
+grass_empty :=
+grass_space := $(grass_empty) $(grass_empty)
+gisbase_from_target = $(subst $(grass_space),/,$(patsubst %,..,$(subst /, ,$(patsubst $(GISBASE)/%,%,$(@D)))))
+relative_rpath_flag = -Wl,-rpath,$(RPATH_ORIGIN)/$(gisbase_from_target)/lib
+RELATIVE_RPATH = $(if $(filter $(GISBASE)/%,$(@D)),$(relative_rpath_flag))
+endif
+
+LDFLAGS     =  $(LIBPATH) $(RELATIVE_RPATH) $(LINK_FLAGS) $(LD_SEARCH_FLAGS)
 VECT_CFLAGS =  $(GDALCFLAGS) $(GEOSCFLAGS)
 
 # Object with _fmode which must be linked to each executable on Windows

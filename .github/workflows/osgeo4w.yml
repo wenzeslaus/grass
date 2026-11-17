@@ -181,6 +181,7 @@ jobs:
           pytest ^
             python/grass/script/tests/grass_script_setup_lib_loading_test.py ^
             python/grass/app/tests/grass_app_runtime_lib_loading_test.py ^
+            python/grass/script/tests/grass_script_setup_lib_env_sync_test.py ^
             --junitxml=pytest.lib_loading.junit.xml
         # Obfuscated usage of GitHub Actions features, Windows CMD shell limits analysis
         shell: cmd /D /E:ON /V:OFF /S /C "CALL C:/OSGeo4W/OSGeo4W.bat "{0}"" # zizmor: ignore[misfeature]
