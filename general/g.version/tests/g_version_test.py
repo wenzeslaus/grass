@@ -305,5 +305,6 @@ def test_e_flag_incompatible_proj_db(session, tmp_path, dir_name):
     assert process.returncode == 0
     text = " ".join(stdout.split())
     assert "another PROJ installation" in text
+    # The replacement character does not match the path.
     if dir_name.isascii() or sys.platform != "win32":
         assert str(proj_data / "proj.db") in text
