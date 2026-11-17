@@ -26,10 +26,10 @@
 #define SEARCH_PATH_SEPARATOR ':'
 #endif
 
-/* Return 1 if the file exists, 0 otherwise. PROJ uses paths in UTF-8, but
- * on Windows, it may keep a path from an environment variable, such as
- * PROJ_DATA, in the ANSI code page, so fall back to it when the path is not
- * valid UTF-8. */
+// Return 1 if the file exists, 0 otherwise. PROJ uses paths in UTF-8, but
+// on Windows, it may keep a path from an environment variable, such as
+// PROJ_DATA, in the ANSI code page, so fall back to it when the path is not
+// valid UTF-8.
 static int file_exists(const char *path)
 {
 #ifdef _WIN32
@@ -98,9 +98,9 @@ char *GPJ_search_proj_db(void)
     return found;
 }
 
-/* Return the name of the environment variable which points PROJ to its
- * data: PROJ_DATA since PROJ 9.1, PROJ_LIB in PROJ 9.0. Remove this, and
- * use PROJ_DATA directly, when GRASS requires PROJ 9.1 or later. */
+// Return the name of the environment variable which points PROJ to its
+// data: PROJ_DATA since PROJ 9.1, PROJ_LIB in PROJ 9.0. Remove this, and
+// use PROJ_DATA directly, when GRASS requires PROJ 9.1 or later.
 static const char *proj_data_variable(void)
 {
     PJ_INFO info = proj_info();
@@ -136,11 +136,11 @@ void GPJ_report_db_status(void)
     const char *user_dir;
     char *user_dir_copy;
 
-    /* The failed PROJ call of the caller has already logged the missing
-     * database, so keep PROJ quiet here. */
+    // The failed PROJ call of the caller has already logged the missing
+    // database, so keep PROJ quiet here.
     log_level = proj_log_level(NULL, PJ_LOG_NONE);
     db = proj_context_get_database_path(NULL);
-    /* Valid only until the next PROJ call */
+    // Valid only until the next PROJ call
     db_path = db ? G_store(db) : NULL;
     proj_log_level(NULL, log_level);
 
@@ -153,7 +153,7 @@ void GPJ_report_db_status(void)
     variable = proj_data_variable();
     set_variable = variable;
     value = getenv(variable);
-    /* PROJ 9.1 and later still use PROJ_LIB when PROJ_DATA is not set. */
+    // PROJ 9.1 and later still use PROJ_LIB when PROJ_DATA is not set.
     if (!value && strcmp(variable, "PROJ_LIB") != 0) {
         value = getenv("PROJ_LIB");
         if (value)
@@ -162,8 +162,8 @@ void GPJ_report_db_status(void)
     found = GPJ_search_proj_db();
     user_dir = proj_context_get_user_writable_directory(NULL, 0);
     user_dir_copy = user_dir ? G_store(user_dir) : NULL;
-    /* Each proj_info() call frees the previous search path string,
-     * so copy the values from the last call. */
+    // Each proj_info() call frees the previous search path string,
+    // so copy the values from the last call.
     {
         PJ_INFO info = proj_info();
 
@@ -174,8 +174,8 @@ void GPJ_report_db_status(void)
         strncmp(found, user_dir_copy, strlen(user_dir_copy)) == 0 &&
         (found[strlen(user_dir_copy)] == HOST_DIRSEP ||
          found[strlen(user_dir_copy)] == '/')) {
-        /* PROJ searches the user directory first, so setting a variable
-         * does not help. */
+        // PROJ searches the user directory first, so setting a variable
+        // does not help.
         G_warning(_("PROJ %s cannot use the database <%s> in the PROJ user "
                     "directory, which probably comes from another PROJ "
                     "installation. Remove it or replace it with the proj.db "

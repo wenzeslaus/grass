@@ -19,8 +19,8 @@
 #include <grass/gprojects.h>
 #include <grass/glocale.h>
 
-/* Warn about a failed proj_create() together with the PROJ database
- * status. */
+// Warn about a failed proj_create() together with the PROJ database
+// status.
 static void warn_proj_create_failed(const char *def)
 {
     GPJ_report_db_status();
