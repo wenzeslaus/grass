@@ -209,6 +209,29 @@ function(build_module)
         add_dependencies(${G_NAME} python_doc_utils)
     endif()
 
+    if(NOT WIN32)
+        # The GRASS libraries are found relative to the installed file, so
+        # that the installation works also when moved elsewhere.
+        if(APPLE)
+            set(rpath_origin "@loader_path")
+        else()
+            set(rpath_origin "$ORIGIN")
+        endif()
+        file(
+            RELATIVE_PATH
+            libdir_from_install_dest
+            "${CMAKE_INSTALL_PREFIX}/${install_dest}"
+            "${CMAKE_INSTALL_PREFIX}/${GRASS_INSTALL_LIBDIR}"
+        )
+        if(libdir_from_install_dest)
+            set(rpath_origin "${rpath_origin}/${libdir_from_install_dest}")
+        endif()
+        set_target_properties(
+            ${G_NAME}
+            PROPERTIES INSTALL_RPATH "${rpath_origin}"
+        )
+    endif()
+
     if(G_HTML_FILE_NAME)
         set(HTML_FILE_NAME ${G_HTML_FILE_NAME})
     else()
