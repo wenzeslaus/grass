@@ -121,6 +121,10 @@ jobs:
           python3 -m pytest \
             python/grass/script/tests/grass_script_setup_lib_loading_test.py \
             python/grass/app/tests/grass_app_runtime_lib_loading_test.py
+      - name: Probe a relocated installation (experiment)
+        if: ${{ !cancelled() }}
+        run: |
+          bash .github/workflows/relocation_probe.sh "${HOME}/install"
       - name: Run tests
         run: .github/workflows/test_thorough.sh --config .gunittest.cfg --min-success 100
       - name: Make HTML test report available
