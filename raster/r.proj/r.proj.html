@@ -144,14 +144,15 @@ methods for the local interpolation step are provided.
 the <em>PROJ</em> coordinate system translation library.
 
 <p>Accurate datum transformations often need transformation grids which
-are not part of PROJ itself. When a grid is missing, PROJ silently uses
-a less accurate operation, possibly without any datum shift. Install
-the grids from <a href="https://github.com/OSGeo/PROJ-data">PROJ-data</a>
+are not part of PROJ itself. When a grid is not installed, <em>r.proj</em>
+uses a less accurate transformation without a warning, possibly without
+any datum shift. Install the grids (see
+<a href="https://proj.org/en/stable/resource_files.html">PROJ resource files</a>)
 or set the environment variable <code>PROJ_NETWORK</code> to
 <code>ON</code> to let PROJ download them on demand (see
 <a href="https://proj.org/usage/network.html">PROJ network access</a>).
-<em>r.proj</em> prints the selected pipeline as a message; the
-<b>pipeline</b> option forces a specific one.
+<em>r.proj</em> prints the selected pipeline. To use a different one,
+set it with the <b>pipeline</b> option.
 
 <h2>NOTES</h2>
 
