@@ -125,9 +125,10 @@ def test_epsg_fails_with_hint_for_incompatible_proj_db_in_user_dir(
 def test_incompatible_proj_db_in_non_ascii_user_dir(env_without_proj_db, tmp_path):
     """A rejected proj.db is found in a directory with a non-ASCII name
 
-    PROJ uses UTF-8 paths, which on Windows need a wide-character file
-    check. The user directory is under the user's home directory there,
-    so non-ASCII user names are a common case.
+    The PROJ user directory is under the user's home directory, so
+    non-ASCII user names are a common case. On Windows, PROJ keeps the path
+    from the environment variable used here in the ANSI code page, not in
+    UTF-8.
     """
     env, _, _ = env_without_proj_db
     user_dir = tmp_path / "user_dir_\u00e9"

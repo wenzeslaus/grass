@@ -27,19 +27,26 @@
 #define SEARCH_PATH_SEPARATOR ':'
 #endif
 
-/* Return 1 if the file exists, 0 otherwise. The path is in UTF-8 as PROJ
- * uses it; on Windows, access() would read it in the ANSI code page. */
+/* Return 1 if the file exists, 0 otherwise. PROJ uses paths in UTF-8, but
+ * on Windows, it may keep a path from an environment variable, such as
+ * PROJ_DATA, in the ANSI code page, so that is used for invalid UTF-8. */
 static int file_exists(const char *path)
 {
 #ifdef _WIN32
-    int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
+    UINT code_page = CP_UTF8;
+    int len =
+        MultiByteToWideChar(code_page, MB_ERR_INVALID_CHARS, path, -1, NULL, 0);
     wchar_t *wide_path;
     int exists;
 
+    if (len <= 0) {
+        code_page = CP_ACP;
+        len = MultiByteToWideChar(code_page, 0, path, -1, NULL, 0);
+    }
     if (len <= 0)
         return 0;
     wide_path = G_malloc(len * sizeof(wchar_t));
-    MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, len);
+    MultiByteToWideChar(code_page, 0, path, -1, wide_path, len);
     exists = _waccess(wide_path, 0) == 0;
     G_free(wide_path);
     return exists;
