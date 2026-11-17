@@ -278,38 +278,20 @@ int main(int argc, char *argv[])
     if (extended->answer) {
         char *proj = NULL;
 
-        G_asprintf(&proj, "%d%d%d", PROJ_VERSION_MAJOR, PROJ_VERSION_MINOR,
+        G_asprintf(&proj, "%d.%d.%d", PROJ_VERSION_MAJOR, PROJ_VERSION_MINOR,
                    PROJ_VERSION_PATCH);
-        if (strlen(proj) == 3) {
-            char proj_str[6];
-            snprintf(proj_str, sizeof(proj_str), "%c.%c.%c", proj[0], proj[1],
-                     proj[2]);
-
-            switch (format) {
-            case SHELL:
-                fprintf(stdout, "proj=%s\n", proj_str);
-                break;
-            case PLAIN:
-                fprintf(stdout, "PROJ: %s\n", proj_str);
-                break;
-            case JSON:
-                G_json_object_set_string(root_object, "proj", proj_str);
-                break;
-            }
+        switch (format) {
+        case SHELL:
+            fprintf(stdout, "proj=%s\n", proj);
+            break;
+        case PLAIN:
+            fprintf(stdout, "PROJ: %s\n", proj);
+            break;
+        case JSON:
+            G_json_object_set_string(root_object, "proj", proj);
+            break;
         }
-        else {
-            switch (format) {
-            case SHELL:
-                fprintf(stdout, "proj=%s\n", proj);
-                break;
-            case PLAIN:
-                fprintf(stdout, "PROJ: %s\n", proj);
-                break;
-            case JSON:
-                G_json_object_set_string(root_object, "proj", proj);
-                break;
-            }
-        }
+        G_free(proj);
         switch (format) {
         case SHELL:
             fprintf(stdout, "gdal=%s\n", GDAL_RELEASE_NAME);
