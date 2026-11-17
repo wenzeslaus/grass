@@ -160,6 +160,14 @@ jobs:
             -k manual \
             --junitxml=pytest.lib_loading_relocated.junit.xml
 
+      - name: Probe a relocated installation (experiment)
+        if: ${{ !cancelled() }}
+        shell: micromamba-shell {0}
+        run: |
+          # The macOS build records the build tree as a search path.
+          for dir in dist.*; do mv "${dir}" "${dir}.hidden"; done
+          trap 'for dir in dist.*.hidden; do mv "${dir}" "${dir%.hidden}"; done' EXIT
+          bash .github/workflows/relocation_probe.sh "${HOME}/install"
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
