@@ -16,16 +16,14 @@ printed by **-r** flag.
 
 Version numbers of additional libraries like [PROJ](https://proj.org/),
 [GDAL/OGR](https://gdal.org/) or [GEOS](https://trac.osgeo.org/geos) are
-printed by **-e** flag. For PROJ, the flag also reports the library
-version and the database (`proj.db`) which are actually in use at runtime
-(`proj_runtime`, `proj_db`). These can differ from the compile-time
-version when another package in the same environment points the
-`PROJ_DATA` environment variable to its own copy of `proj.db`, which is a
-common cause of errors mentioning `proj.db`. An empty `proj_db` (`null` in
-JSON) means PROJ could not open any database. The plain output then says
-whether no `proj.db` was found or one was found but rejected, typically
-because it comes from another PROJ installation. The shell and JSON
-outputs only say that there is no usable database.
+printed by **-e** flag. For PROJ, the flag also reports the version of
+the library and the path of the database (`proj.db`) in use at runtime
+(`proj_runtime`, `proj_db`). The library can differ from the compile-time
+version, and the database can come from another PROJ installation, for
+example, when another package sets `PROJ_DATA`. Such a mismatch is a
+common cause of errors mentioning `proj.db`. An empty `proj_db` (`null`
+in JSON) means PROJ could not open any database. The plain output then
+also says whether a `proj.db` was found but rejected or not found at all.
 
 See also function `version()` from [Python Scripting
 Library](https://grasswiki.osgeo.org/wiki/GRASS_Python_Scripting_Library).

@@ -19,16 +19,14 @@ Library</a> can be printed by <b>-r</b> flag.
 Version numbers of additional libraries
 like <a href="https://proj.org/">PROJ</a>, <a href="https://gdal.org/">GDAL/OGR</a>
 or <a href="https://trac.osgeo.org/geos">GEOS</a> are printed
-by <b>-e</b> flag. For PROJ, the flag also reports the library
-version and the database (<code>proj.db</code>) which are actually in use at runtime
-(<code>proj_runtime</code>, <code>proj_db</code>). These can differ from the compile-time
-version when another package in the same environment points the
-<code>PROJ_DATA</code> environment variable to its own copy of <code>proj.db</code>, which is a
-common cause of errors mentioning <code>proj.db</code>. An empty <code>proj_db</code> (<code>null</code> in
-JSON) means PROJ could not open any database. The plain output then says
-whether no <code>proj.db</code> was found or one was found but rejected, typically
-because it comes from another PROJ installation. The shell and JSON
-outputs only say that there is no usable database.
+by <b>-e</b> flag. For PROJ, the flag also reports the version of
+the library and the path of the database (<code>proj.db</code>) in use at runtime
+(<code>proj_runtime</code>, <code>proj_db</code>). The library can differ from the compile-time
+version, and the database can come from another PROJ installation, for
+example, when another package sets <code>PROJ_DATA</code>. Such a mismatch is a
+common cause of errors mentioning <code>proj.db</code>. An empty <code>proj_db</code> (<code>null</code>
+in JSON) means PROJ could not open any database. The plain output then
+also says whether a <code>proj.db</code> was found but rejected or not found at all.
 
 <p>
 See also function <code>version()</code>

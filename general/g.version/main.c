@@ -91,8 +91,7 @@ static int file_exists(const char *path)
 
 /* Return the first proj.db file in the PROJ search path, or NULL.
  * When PROJ cannot open any database, such a file was rejected, typically
- * because it comes from another PROJ installation. The same as
- * GPJ_search_proj_db() in lib/proj which g.version does not link. */
+ * because it comes from another PROJ installation. */
 static char *search_proj_db(void)
 {
     /* Each proj_info() call frees the previous search path string. */
@@ -375,10 +374,7 @@ int main(int argc, char *argv[])
         }
         G_free(proj);
 
-        /* PROJ runtime information: the library and the database (proj.db)
-         * actually in use. These can differ from the compile-time version
-         * above, e.g., when another package in the same environment sets
-         * PROJ_DATA to its own copy of proj.db. */
+        /* The PROJ library and database (proj.db) in use at runtime. */
         {
             PJ_LOG_LEVEL log_level;
             const char *db;
@@ -386,10 +382,7 @@ int main(int argc, char *argv[])
             char *db_rejected = NULL;
             PJ_INFO proj_runtime;
 
-            /* A missing database is reported below, so keep PROJ quiet.
-             * PROJ reports the level without its sign, so a negative
-             * PROJ_DEBUG level is restored as positive, which only makes
-             * PROJ more verbose. */
+            /* A missing database is reported below, so keep PROJ quiet. */
             log_level = proj_log_level(NULL, PJ_LOG_NONE);
             db = proj_context_get_database_path(NULL);
             /* Valid only until the next PROJ call, so copy right away. */
@@ -397,8 +390,6 @@ int main(int argc, char *argv[])
             proj_log_level(NULL, log_level);
             if (!db_path)
                 db_rejected = search_proj_db();
-            /* Called last because each call invalidates the search path
-             * string of the previous one. */
             proj_runtime = proj_info();
 
             switch (format) {

@@ -1,4 +1,5 @@
 import sqlite3
+import sys
 from pathlib import Path
 
 import pytest
@@ -254,10 +255,9 @@ def test_e_flag_proj_runtime_values(session):
     """Test that g.version -e reports a usable PROJ runtime and database."""
     output = gs.parse_command("g.version", flags="e", format="json", env=session.env)
     assert output["proj_runtime"].count(".") == 2, (
-        "Expected a dotted PROJ runtime version, got %s" % output["proj_runtime"]
+        f"Expected a dotted PROJ runtime version, got {output['proj_runtime']}"
     )
-    # A session created with an EPSG code needs a working proj.db,
-    # so the database must have been found.
+    # The test environment has a usable PROJ installation.
     assert output["proj_db"], "Expected a path to proj.db"
     if not Path(output["proj_db"]).is_file():
         pytest.skip("PROJ database is embedded in PROJ")
@@ -294,6 +294,6 @@ def test_e_flag_incompatible_proj_db(session, tmp_path, dir_name):
         pytest.skip("PROJ database cannot be replaced (embedded in PROJ)")
     text = " ".join(gs.read_command("g.version", flags="e", env=env).split())
     assert "another PROJ installation" in text
-    # The encoding of a non-ASCII path in the output depends on the platform.
-    if dir_name.isascii():
+    # On Windows, the path may be printed in the ANSI code page.
+    if dir_name.isascii() or sys.platform != "win32":
         assert str(proj_data / "proj.db") in text
