@@ -3,10 +3,9 @@
 
    \brief GProj Library - Information about the PROJ database in use
 
-   (C) 2026 by the GRASS Development Team
-
-   This program is free software under the GNU General Public License
-   (>=v2). Read the file COPYING that comes with GRASS for details.
+   SPDX-FileCopyrightText: 2026 Vaclav Petras
+   SPDX-FileCopyrightText: 2026 GRASS Development Team
+   SPDX-License-Identifier: GPL-2.0-or-later
  */
 
 #include <stdlib.h>
@@ -73,7 +72,6 @@ static int file_exists(const char *path)
  */
 char *GPJ_search_proj_db(void)
 {
-    /* Each proj_info() call frees the previous search path string */
     char *searchpath = G_store(proj_info().searchpath);
     const char *start = searchpath;
     char *found = NULL;
@@ -115,11 +113,9 @@ static const char *proj_data_variable(void)
 /*!
    \brief Report the state of the PROJ database (proj.db)
 
-   PROJ needs its database for almost everything, and the most common
-   reason for PROJ calls failing is that it cannot find the database, or
-   finds one from a different PROJ installation, e.g., when the PROJ_DATA
-   environment variable points elsewhere or is missing in a relocated
-   installation. Call this right before reporting a failed PROJ call.
+   Most PROJ calls fail when PROJ cannot open its database or opens one
+   from another PROJ installation. Call this right before reporting a
+   failed PROJ call.
 
    When a database is in use, its path is printed as an important message.
    Otherwise, a warning says whether a proj.db file was found but rejected,
@@ -140,10 +136,8 @@ void GPJ_report_db_status(void)
     const char *user_dir;
     char *user_dir_copy;
 
-    /* PROJ logs its own message when the database is missing; the caller
-     * has already triggered it, so do not repeat it here. PROJ reports the
-     * level without its sign, so a negative PROJ_DEBUG level is restored
-     * as positive, which only makes PROJ more verbose. */
+    /* The failed PROJ call of the caller has already logged the missing
+     * database, so keep PROJ quiet here. */
     log_level = proj_log_level(NULL, PJ_LOG_NONE);
     db = proj_context_get_database_path(NULL);
     /* Valid only until the next PROJ call */
