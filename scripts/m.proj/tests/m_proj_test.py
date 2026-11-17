@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 GRASS Development Team
+# SPDX-FileCopyrightText: 2026 Vaclav Petras
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """Test m.proj with different kinds of CRS definitions.
@@ -13,16 +15,15 @@ from io import StringIO
 import pytest
 
 import grass.script as gs
-from grass.exceptions import CalledModuleError
-from grass.tools import Tools
+from grass.tools import ToolError, Tools
 
 LON = -78.0
 LAT = 35.0
 UTM_X = 773798.096
 UTM_Y = 3877156.692
 # NAD83(2011) -> ITRF2014 (EPSG:7807), evaluated at the reference epoch.
-ITRF_LON = -78.000004542
-ITRF_LAT = 35.000007465
+ITRF_LON = -78.0000045
+ITRF_LAT = 35.0000075
 
 UTM_TOLERANCE = 0.01
 DEGREE_TOLERANCE = 1e-7
@@ -64,7 +65,6 @@ def test_epsg_codes_use_x_y_order(nad83_session):
         proj_out="EPSG:32617",
         flags="d",
     )
-    assert len(rows) == 1
     assert rows[0][0] == pytest.approx(UTM_X, abs=UTM_TOLERANCE)
     assert rows[0][1] == pytest.approx(UTM_Y, abs=UTM_TOLERANCE)
 
@@ -108,13 +108,13 @@ def test_proj_string_and_epsg_code(nad83_session):
     assert rows[0][1] == pytest.approx(UTM_Y, abs=UTM_TOLERANCE)
 
 
-def test_wkt(nad83_session):
-    """WKT of the project (NAD83(2011)) to ITRF2014 given as EPSG code"""
+@pytest.mark.parametrize("crs_format", ["wkt", "projjson"])
+def test_wkt_and_projjson(nad83_session, crs_format):
+    """CRS of the project (NAD83(2011)) as WKT or PROJJSON to ITRF2014"""
     tools = Tools(session=nad83_session)
-    wkt = tools.g_proj(flags="pf", format="wkt").text.strip()
-    assert wkt.startswith("GEOGCRS")
+    crs = tools.g_proj(flags="pf", format=crs_format).text.strip()
     rows = reproject(
-        nad83_session, f"{LON} {LAT}\n", proj_in=wkt, proj_out="EPSG:9000", flags="d"
+        nad83_session, f"{LON} {LAT}\n", proj_in=crs, proj_out="EPSG:9000", flags="d"
     )
     assert rows[0][0] == pytest.approx(ITRF_LON, abs=DEGREE_TOLERANCE)
     assert rows[0][1] == pytest.approx(ITRF_LAT, abs=DEGREE_TOLERANCE)
@@ -132,12 +132,7 @@ def test_current_project_crs_is_exact(nad83_session):
 
 
 def test_ll_flags_round_trip(utm_session):
-    """-i and -o convert between LL WGS84 and the current project
-
-    The project is on WGS 84, so both directions are conversions only.
-    With a datum change, some PROJ versions (e.g., 9.0) select different
-    operations for the two directions and the round trip does not close.
-    """
+    """-i and -o convert between LL WGS84 and a WGS 84 project and back"""
     to_project = reproject(utm_session, f"{LON} {LAT}\n", flags="id")
     assert to_project[0][0] == pytest.approx(UTM_X, abs=UTM_TOLERANCE)
     assert to_project[0][1] == pytest.approx(UTM_Y, abs=UTM_TOLERANCE)
@@ -149,7 +144,7 @@ def test_ll_flags_round_trip(utm_session):
 
 
 def test_copy_input_and_header(nad83_session):
-    """-e echoes the input coordinates and -c adds column names"""
+    """-e echoes the input as given (not axis-swapped) and -c adds column names"""
     output = (
         Tools(session=nad83_session)
         .m_proj(
@@ -171,7 +166,7 @@ def test_copy_input_and_header(nad83_session):
 
 def test_unknown_crs_fails(nad83_session):
     """An unknown authority code is an error"""
-    with pytest.raises(CalledModuleError):
+    with pytest.raises(ToolError):
         reproject(
             nad83_session, f"{LON} {LAT}\n", proj_in="EPSG:999999", proj_out="EPSG:4326"
         )

@@ -1,7 +1,8 @@
 <h2>DESCRIPTION</h2>
 
 This program allows a user to convert coordinates from one coordinate
-reference system (CRS) to another. Coordinates can be read from one file, converted, and
+reference system (CRS) to another. Coordinates can be read from one
+file, converted, and
 results written to another file. Alternatively, if the <b>input=-</b>,
 eastings and northings may be passed to the program directly from
 standard input. If the <b>output</b> option is omitted, the results
@@ -33,9 +34,7 @@ if working with latitude-longitude data be sure to send the <code>x</code>
 value first, i.e., <code>longitude&nbsp;latitude</code>. Output data will
 be exported using the same convention. This holds for every kind of CRS
 definition, including authority codes and WKT whose official axis order
-is latitude first, such as <code>EPSG:4326</code>. (<em>cs2cs</em> itself
-honors the official axis order of a CRS; <em>m.proj</em> takes care of the
-difference.)
+is latitude first, such as <code>EPSG:4326</code>.
 <p>
 <em>cs2cs</em> will treat a third data column as a <code>z</code> value
 (elevation) and will modify the value accordingly. This usually
@@ -51,23 +50,15 @@ data is first stored to a temporary file before being processed
 with <em>cs2cs</em>.  It is therefore not advisable to
 send <em>m.proj</em> data from an open data stream. The module will
 stop listening for incoming data after 2 seconds of inactivity. You
-may use the projection parameters gleaned from <em>m.proj</em>'s
-verbose mode (<b>--verbose</b>) with <em>cs2cs</em> directly in this case.
+may use the <em>cs2cs</em> command printed in <em>m.proj</em>'s
+verbose mode (<b>--verbose</b>) directly in this case.
 <p>
-Any CRS definition can be used via the <b>proj_in</b> and
-<b>proj_out</b> options: an authority code (<code>EPSG:4326</code>,
-<code>ESRI:102008</code>, ...), WKT, PROJJSON, or a PROJ string. Full
-documentation of the formats may be found on
+Full documentation of the CRS formats accepted by the <b>proj_in</b> and
+<b>proj_out</b> options may be found on
 the <a href="https://proj.org">PROJ</a> website. Using
 these options will fully override the default parameters the module
 would normally use. When the current project is used as input or output,
-its CRS is passed to <em>cs2cs</em> as WKT, so the datum of the project is
-used as it is.
-<p>
-The datum transformation between the two CRS is selected by PROJ.
-Accurate transformations often need transformation grids which are not
-part of PROJ itself; see the manual of <a href="r.proj.html">r.proj</a>
-for where to get them and how to let PROJ download them on demand.
+its full CRS definition including the datum is used.
 <p>
 By using the <b>--verbose</b> verbose flag, the user can see exactly
 what CRS definitions will be used in the conversion as well as

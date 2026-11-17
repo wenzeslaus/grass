@@ -1,15 +1,15 @@
 ## DESCRIPTION
 
 This program allows a user to convert coordinates from one coordinate
-reference system (CRS) to another. Coordinates can be read from one
-file, converted, and results written to another file. Alternatively, if
-the **input=-**, eastings and northings may be passed to the program
-directly from standard input. If the **output** option is omitted, the
-results are sent directly to standard output. In this way *m.proj* can
-be used as a simple frontend to the
-[PROJ](https://proj.org/apps/cs2cs.html) *cs2cs* utility. The **-i** or
-**-o** flags make the task especially easy for the common problem of
-converting to or from lat/long WGS84.
+reference system (CRS) to another. Coordinates can be read from one file,
+converted, and results
+written to another file. Alternatively, if the **input=-**, eastings and
+northings may be passed to the program directly from standard input. If
+the **output** option is omitted, the results are sent directly to
+standard output. In this way *m.proj* can be used as a simple frontend
+to the [PROJ](https://proj.org/apps/cs2cs.html) *cs2cs* utility. The
+**-i** or **-o** flags make the task especially easy for the common
+problem of converting to or from lat/long WGS84.
 
 The input and output CRS are given with the **proj_in** and
 **proj_out** options as anything PROJ understands: an authority code
@@ -28,11 +28,10 @@ of [r.proj](r.proj.md).
 
 *m.proj* expects input data to be formatted as `x y`, so if working with
 latitude-longitude data be sure to send the `x` value first, i.e.,
-`longitude latitude`. Output data will be exported using the same
+`longitude latitude`. Output data will be exported using the same
 convention. This holds for every kind of CRS definition, including
 authority codes and WKT whose official axis order is latitude first,
-such as `EPSG:4326`. (*cs2cs* itself honors the official axis order of
-a CRS; *m.proj* takes care of the difference.)
+such as `EPSG:4326`.
 
 *cs2cs* will treat a third data column as a `z` value (elevation) and
 will modify the value accordingly. This usually translates into small
@@ -47,22 +46,14 @@ If sending *m.proj* data from standard input, be aware that the data is
 first stored to a temporary file before being processed with *cs2cs*. It
 is therefore not advisable to send *m.proj* data from an open data
 stream. The module will stop listening for incoming data after 2 seconds
-of inactivity. You may use the projection parameters gleaned from
-*m.proj*'s verbose mode (**--verbose**) with *cs2cs* directly in this
-case.
+of inactivity. You may use the *cs2cs* command printed in *m.proj*'s
+verbose mode (**--verbose**) directly in this case.
 
-Any CRS definition can be used via the **proj_in** and **proj_out**
-options: an authority code (`EPSG:4326`, `ESRI:102008`, ...), WKT,
-PROJJSON, or a PROJ string. Full documentation of the formats may be
-found on the [PROJ](https://proj.org) website. Using these options will
-fully override the default parameters the module would normally use.
-When the current project is used as input or output, its CRS is passed
-to *cs2cs* as WKT, so the datum of the project is used as it is.
-
-The datum transformation between the two CRS is selected by PROJ.
-Accurate transformations often need transformation grids which are not
-part of PROJ itself; see the manual of [r.proj](r.proj.md) for where to
-get them and how to let PROJ download them on demand.
+Full documentation of the CRS formats accepted by the **proj_in** and
+**proj_out** options may be found on the [PROJ](https://proj.org)
+website. Using these options will fully override the default parameters
+the module would normally use. When the current project is used as input
+or output, its full CRS definition including the datum is used.
 
 By using the **--verbose** verbose flag, the user can see exactly what
 CRS definitions will be used in the conversion as well as some other
