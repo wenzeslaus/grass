@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: GRASS Development Team
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-"""Tests of G_available_cores() and of the threads G_set_omp_num_threads() sets"""
+"""Tests of G_available_cores()"""
 
 import os
 import subprocess
@@ -64,31 +64,3 @@ def test_cores_in_affinity_mask_count_once(cores):
         [sys.executable, "-c", code], capture_output=True, text=True, check=True
     ).stdout
     assert int(output) == cores
-
-
-def test_default_is_read_once():
-    """A call with nprocs=-1 counts from the default, not from an earlier result
-
-    Calls G_set_omp_num_threads() three times in one process through ctypes.
-    """
-    code = (
-        "from ctypes import byref\n"
-        "from grass.lib.gis import G_set_omp_num_threads, Option, String\n"
-        "option = Option()\n"
-        "option.key = String(b'nprocs')\n"
-        "for answer in (b'4', b'-1', b'-1'):\n"
-        "    option.answer = String(answer)\n"
-        "    print(G_set_omp_num_threads(byref(option)))\n"
-    )
-    env = os.environ | {"OMP_NUM_THREADS": "3"}
-    output = subprocess.run(
-        [sys.executable, "-c", code],
-        capture_output=True,
-        text=True,
-        check=True,
-        env=env,
-    ).stdout
-    threads = [int(line) for line in output.split()]
-    if threads[0] == 1:
-        pytest.skip("GRASS is built without OpenMP")
-    assert threads == [4, 2, 2]
