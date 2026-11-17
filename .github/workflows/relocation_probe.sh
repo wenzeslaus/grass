@@ -15,9 +15,28 @@ clean=(env -i "PATH=${PATH}" "HOME=${work}" "GRASS_CONFIG_DIR=${work}/config" "L
 # Layout-specific locations are taken before the move.
 gisbase="$("${clean[@]}" "${launcher}" --config path)"
 python_path="$("${clean[@]}" "${launcher}" --config python_path)"
+case "${gisbase}" in
+"${prefix}"*) ;;
+*)
+    echo "FAIL setup: path ${gisbase} is not under ${prefix}"
+    exit 0
+    ;;
+esac
+
+# The project is created before the move, so that it does not depend on it.
+project="${work}/project"
+"${clean[@]}" "PYTHONPATH=${python_path}" python3 -c "
+import sys
+import grass.script as gs
+gs.create_project(sys.argv[1])
+" "${project}" || echo "FAIL setup: create_project before the move"
 
 if [ "${mode}" = "moved" ]; then
     moved="${prefix}-moved"
+    if [ -e "${moved}" ]; then
+        echo "FAIL setup: ${moved} exists"
+        exit 0
+    fi
     mv "${prefix}" "${moved}"
     trap 'mv "${moved}" "${prefix}"; rm -rf -- "${work}"' EXIT
 else
@@ -44,13 +63,6 @@ probe() {
         echo "FAIL ${name} (exit ${status}): $(echo "${output}" | grep -v '^$' | tail -n 2 | tr '\n' ' ' | cut -c1-300)"
     fi
 }
-
-project="${work}/project"
-"${clean[@]}" "PYTHONPATH=${python_path}" python3 -c "
-import sys
-import grass.script as gs
-gs.create_project(sys.argv[1])
-" "${project}" >/dev/null 2>&1 || mkdir -p "${project}/PERMANENT"
 
 # Launcher of the moved installation, nothing set.
 probe "launcher: --config path" "${moved}" "${clean[@]}" "${launcher}" --config path
@@ -85,11 +97,16 @@ with gs.setup.init(sys.argv[1]):
     libgis.G_gisinit('probe')
     print(libgis.G_mapset())
 " "${project}"
-probe "python: init, runtime paths in session env" "${moved}" "${clean[@]}" "PYTHONPATH=${python_path}" python3 -c "
+probe "python: init, GISBASE in session env" "${moved}" "${clean[@]}" "PYTHONPATH=${python_path}" python3 -c "
 import sys
 import grass.script as gs
 with gs.setup.init(sys.argv[1]) as session:
     print(session.env['GISBASE'])
+" "${project}"
+probe "python: init, GRASS_ETCDIR in session env" "${moved}" "${clean[@]}" "PYTHONPATH=${python_path}" python3 -c "
+import sys
+import grass.script as gs
+with gs.setup.init(sys.argv[1]) as session:
     print(session.env.get('GRASS_ETCDIR'))
 " "${project}"
 probe "python: grass.lib import without session" "" "${clean[@]}" "PYTHONPATH=${python_path}" python3 -c "

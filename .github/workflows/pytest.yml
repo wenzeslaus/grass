@@ -170,7 +170,10 @@ jobs:
             --junitxml=pytest.lib_loading_relocated.junit.xml
       - name: Probe a relocated installation (experiment)
         if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 15
         run: |
+          bash .github/workflows/relocation_probe.sh "${HOME}/install" inplace
           bash .github/workflows/relocation_probe.sh "${HOME}/install"
       - name: Fix non-standard installed script paths in coverage data
         run: |
