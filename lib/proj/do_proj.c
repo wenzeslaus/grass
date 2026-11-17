@@ -934,9 +934,8 @@ int GPJ_transform(const struct pj_info *info_in, const struct pj_info *info_out,
     }
 
     /* prepare */
-    /* The time coordinate t is the coordinate epoch in decimal years.
-     * HUGE_VAL means no epoch, so time-dependent transformations are
-     * evaluated at their reference epoch. */
+    /* HUGE_VAL as the time means no coordinate epoch, so time-dependent
+     * Helmert transformations use their reference epoch. */
     if (in_is_ll) {
         if (in_deg2rad) {
             /* convert degrees to radians */
