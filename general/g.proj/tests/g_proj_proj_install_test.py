@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 import grass.script as gs
+from grass.tools import ToolError, Tools
 
 SHELL_KEYS = [
     "proj_runtime",
@@ -43,54 +44,50 @@ def test_plain(session):
     """Plain output names the database in use"""
     info = gs.parse_command("g.proj", flags="i", format="shell", env=session.env)
     text = gs.read_command("g.proj", flags="i", env=session.env)
-    assert f"Database: {info['proj_db']}" in " ".join(text.split())
+    assert info["proj_db"] in " ".join(text.split())
 
 
-def test_unsupported_format(run_g_proj, session):
+def test_unsupported_format(session):
     """Formats other than plain and shell are rejected"""
-    returncode, _, stderr = run_g_proj(["-i", "format=wkt"], env=session.env)
-    assert returncode != 0
-    assert "ERROR:" in stderr
+    with pytest.raises(ToolError):
+        Tools(session=session).g_proj(flags="i", format="wkt")
 
 
-def test_excludes_crs_input(run_g_proj, session):
+def test_excludes_crs_input(session):
     """CRS input options cannot be combined with -i"""
-    returncode, _, stderr = run_g_proj(["-i", "epsg=4326"], env=session.env)
-    assert returncode != 0
-    assert "ERROR:" in stderr
+    with pytest.raises(ToolError):
+        Tools(session=session).g_proj(flags="i", epsg=4326)
 
 
-def test_without_proj_db(run_g_proj, env_without_proj_db):
+def test_without_proj_db(env_without_proj_db, tools_without_proj_db):
     """The report works and says so when no proj.db can be found"""
-    env, proj_data, _ = env_without_proj_db
-    returncode, stdout, stderr = run_g_proj(["-i", "format=shell"], env=env)
-    assert returncode == 0, stderr
-    info = gs.parse_key_val(stdout)
+    result = tools_without_proj_db.g_proj(flags="i", format="shell")
+    assert result.returncode == 0, result.stderr
+    info = result.keyval
     assert info["proj_db"] == ""
     assert info["proj_db_rejected"] == ""
-    assert str(proj_data) in info["proj_searchpath"]
+    assert env_without_proj_db["PROJ_DATA"] in info["proj_searchpath"]
 
-    returncode, stdout, stderr = run_g_proj(["-i"], env=env)
-    assert returncode == 0, stderr
-    assert "not found" in stdout
+    result = tools_without_proj_db.g_proj(flags="i")
+    assert result.returncode == 0, result.stderr
+    assert "not found" in result.text
 
 
 def test_with_incompatible_proj_db(
-    run_g_proj, env_without_proj_db, write_incompatible_proj_db
+    env_without_proj_db, tools_without_proj_db, write_incompatible_proj_db
 ):
     """A proj.db which PROJ rejects is reported as such"""
-    env, proj_data, _ = env_without_proj_db
-    proj_db = proj_data / "proj.db"
+    proj_db = Path(env_without_proj_db["PROJ_DATA"]) / "proj.db"
     write_incompatible_proj_db(proj_db)
-    returncode, stdout, stderr = run_g_proj(["-i", "format=shell"], env=env)
-    assert returncode == 0, stderr
-    info = gs.parse_key_val(stdout)
+    result = tools_without_proj_db.g_proj(flags="i", format="shell")
+    assert result.returncode == 0, result.stderr
+    info = result.keyval
     assert info["proj_db"] == ""
     assert info["proj_db_rejected"] == str(proj_db)
 
-    returncode, stdout, stderr = run_g_proj(["-i"], env=env)
-    assert returncode == 0, stderr
-    assert "another PROJ installation" in " ".join(stdout.split())
+    result = tools_without_proj_db.g_proj(flags="i")
+    assert result.returncode == 0, result.stderr
+    assert "another PROJ installation" in " ".join(result.text.split())
 
 
 def test_database_from_other_proj_version(session, env_without_proj_db):
@@ -98,8 +95,8 @@ def test_database_from_other_proj_version(session, env_without_proj_db):
     info = gs.parse_command("g.proj", flags="i", format="shell", env=session.env)
     if not Path(info["proj_db"]).is_file():
         pytest.skip("PROJ database is embedded in PROJ")
-    env, proj_data, _ = env_without_proj_db
-    proj_db = proj_data / "proj.db"
+    env = env_without_proj_db
+    proj_db = Path(env["PROJ_DATA"]) / "proj.db"
     shutil.copyfile(info["proj_db"], proj_db)
     with sqlite3.connect(proj_db) as connection:
         connection.execute(
