@@ -163,11 +163,9 @@ def available_cores() -> int:
 def resolve_nprocs(nprocs: int | str) -> int:
     """Resolve G_OPT_M_NPROCS into a worker count.
 
-    Mirrors the semantics of ``G_set_omp_num_threads()`` in
-    ``lib/gis/omp_threads.c``: 0 means use all available cores, a positive
-    number is used as-is, a negative number means the number of cores plus
-    nprocs (clamped to at least 1). The cores are counted by
-    :func:`available_cores`.
+    0 means one worker per core counted by :func:`available_cores`, a
+    positive number is used as-is, and a negative number means the number
+    of cores plus nprocs (clamped to at least 1).
 
     .. versionadded:: 8.6
     """
