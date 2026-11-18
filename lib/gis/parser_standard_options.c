@@ -797,7 +797,8 @@ struct Option *G_define_standard_option(int opt)
         /* end dynamic answer */
         Opt->label = _("Number of threads for parallel computing");
         Opt->description =
-            _("0: OMP_NUM_THREADS if set, otherwise one per physical core; "
+            _("0: OpenMP default if OMP_NUM_THREADS is set, otherwise one per "
+              "physical core where known; "
               ">0: that many threads; "
               "<0: that many fewer than the default");
         break;
