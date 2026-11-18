@@ -160,9 +160,10 @@ class StandaloneTools:
         command = pack_importer_exporter.process_parameter_list(command)
 
         if not self._crs_initialized:
-            self._initialize_crs(pack_importer_exporter.input_rasters)
+            # The rasters are in the list of current ones until they are imported.
+            self._initialize_crs(pack_importer_exporter.current_input_rasters)
 
-        pack_importer_exporter.import_data()
+        pack_importer_exporter.import_data(env=self._session.env)
 
         if not self._is_region_modified() and pack_importer_exporter.input_rasters:
             # Reset the region for every run or keep it persistent?
@@ -177,7 +178,8 @@ class StandaloneTools:
             )
             self._region_is_set = True
         result = self.no_nonsense_run_from_list(command)
-        pack_importer_exporter.export_data()
+        # An existing file is replaced as existing data in the project is.
+        pack_importer_exporter.export_data(env=self._session.env, delete_first=True)
         return result
 
     def no_nonsense_run(self, name, /, *, tool_kwargs=None, stdin=None, **kwargs):
