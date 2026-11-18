@@ -285,7 +285,11 @@ def main():
     p.wait()
 
     if p.returncode != 0:
-        gcore.warning(_("Projection transform probably failed, please investigate"))
+        gcore.fatal(
+            _("Coordinate transformation failed (cs2cs exit code {})").format(
+                p.returncode
+            )
+        )
 
 
 if __name__ == "__main__":
