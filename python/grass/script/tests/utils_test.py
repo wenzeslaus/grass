@@ -1,7 +1,9 @@
 """Test functions in grass.script.utils"""
 
 import multiprocessing
+import os
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -84,8 +86,8 @@ def test_KeyValue_values():
 
 
 def test_resolve_nprocs(monkeypatch):
-    """Check G_OPT_M_NPROCS resolution: positive as-is, 0 = all, negative reserves."""
-    monkeypatch.setattr(gutils, "available_cpus", lambda: 8)
+    """Check G_OPT_M_NPROCS resolution: positive as-is, 0 = cores, negative counts down."""
+    monkeypatch.setattr(gutils, "available_cores", lambda: 8)
     assert gs.resolve_nprocs(1) == 1
     assert gs.resolve_nprocs(4) == 4
     assert gs.resolve_nprocs("3") == 3
@@ -94,6 +96,38 @@ def test_resolve_nprocs(monkeypatch):
     assert gs.resolve_nprocs(-10) == 1
     with pytest.raises(ValueError, match="invalid literal for int"):
         gs.resolve_nprocs("not-a-number")
+
+
+def test_available_cores_reads_sysfs():
+    """Each distinct list of thread siblings of the allowed CPUs is one core"""
+    try:
+        cores = {
+            Path(
+                f"/sys/devices/system/cpu/cpu{cpu}/topology/thread_siblings_list"
+            ).read_text(encoding="ascii")
+            for cpu in os.sched_getaffinity(0)
+        }
+    except (AttributeError, OSError):
+        pytest.skip("needs CPU affinity and the CPU topology in sysfs (Linux)")
+    assert gutils.available_cores() == min(len(cores), gs.available_cpus())
+
+
+@pytest.mark.parametrize(
+    ("siblings", "cpus", "expected"), [("4,6,8", 3, 2), ("4,6,8", 1, 1), ("", 3, 3)]
+)
+def test_available_cores_rules(monkeypatch, siblings, cpus, expected):
+    """Siblings count once, at their lowest CPU in the mask (CPU 0 is not in it)
+
+    The result is at most available_cpus() and, with an unreadable topology,
+    equal to it.
+    """
+    topology = {"cpu1": "0-3\n", "cpu2": "0-3\n", "cpu6": siblings}
+    monkeypatch.setattr(os, "sched_getaffinity", lambda pid: {1, 2, 6}, raising=False)
+    monkeypatch.setattr(
+        Path, "read_text", lambda self: topology[self.parent.parent.name]
+    )
+    monkeypatch.setattr(gutils, "available_cpus", lambda: cpus)
+    assert gutils.available_cores() == expected
 
 
 def test_get_multiprocessing_context():

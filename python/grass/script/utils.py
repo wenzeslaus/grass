@@ -121,20 +121,58 @@ def available_cpus() -> int:
     return os.cpu_count() or 1
 
 
+def _cpu_list(text: str) -> set[int]:
+    """Parse a sysfs CPU list such as "0-3,8,10-11" into a set of CPU numbers."""
+    cpus = set()
+    for part in text.split(","):
+        first, _, last = part.strip().partition("-")
+        cpus.update(range(int(first), int(last or first) + 1))
+    return cpus
+
+
+def available_cores() -> int:
+    """Number of physical CPU cores this process may use.
+
+    Logical CPUs of one core (SMT, Hyper-Threading) count once. On Linux,
+    it is the number of cores with a CPU in the affinity mask of the process,
+    according to the topology in sysfs, and at most :func:`available_cpus`.
+    Elsewhere, including macOS, and when the topology is unknown, it is
+    :func:`available_cpus`.
+
+    .. versionadded:: 8.6
+    """
+    if hasattr(os, "sched_getaffinity"):  # Linux
+        cores = 0
+        try:
+            affinity = os.sched_getaffinity(0)
+            for cpu in affinity:
+                siblings = _cpu_list(
+                    Path(
+                        f"/sys/devices/system/cpu/cpu{cpu}/topology/thread_siblings_list"
+                    ).read_text()
+                )
+                if cpu == min(siblings & affinity):
+                    cores += 1
+        except (OSError, ValueError):
+            cores = 0
+        if cores:
+            return min(cores, available_cpus())
+    return available_cpus()
+
+
 def resolve_nprocs(nprocs: int | str) -> int:
     """Resolve G_OPT_M_NPROCS into a worker count.
 
-    Mirrors the semantics of ``G_set_omp_num_threads()`` in
-    ``lib/gis/omp_threads.c``: 0 means use all available cores, a positive
-    number is used as-is, a negative number means cpu_count + nprocs
-    (clamped to at least 1).
+    0 means one worker per core counted by :func:`available_cores`, a
+    positive number is used as-is, and a negative number means the number
+    of cores plus nprocs (clamped to at least 1).
 
     .. versionadded:: 8.6
     """
     n = int(nprocs)
     if n > 0:
         return n
-    available = available_cpus()
+    available = available_cores()
     if n == 0:
         return available
     return max(1, available + n)
