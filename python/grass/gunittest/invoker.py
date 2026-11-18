@@ -1,10 +1,8 @@
 """
 GRASS Python testing framework test files invoker (runner)
 
-Copyright (C) 2014 by the GRASS Development Team
-This program is free software under the GNU General Public
-License (>=v2). Read the file COPYING that comes with GRASS
-for details.
+SPDX-FileCopyrightText: 2014 GRASS Development Team
+SPDX-License-Identifier: GPL-2.0-or-later
 
 :authors: Vaclav Petras
 """
@@ -46,7 +44,7 @@ maketrans = str.maketrans
 
 # TODO: this might be more extend then update
 def update_keyval_file(filename, module, returncode):
-    if os.path.exists(filename):
+    if Path(filename).exists():
         keyval = text_to_keyvalue(Path(filename).read_text(encoding="utf-8"), sep="=")
     else:
         keyval = {}
@@ -127,7 +125,7 @@ class GrassTestFilesInvoker:
         mapset_dir = os.path.join(gisdbase, location, mapset)
         if self.clean_before:
             silent_rmtree(mapset_dir)
-        os.mkdir(mapset_dir)
+        Path(mapset_dir).mkdir()
         # TODO: default region in mapset will be what?
         # copy DEFAULT_WIND file from PERMANENT to WIND
         # TODO: this should be a function in grass.script (used also in gis_set.py,
@@ -145,7 +143,7 @@ class GrassTestFilesInvoker:
         self.testsuite_dirs[module.tested_dir].append(module.name)
         cwd: str = os.path.join(results_dir, module.tested_dir, module.name)
         data_dir: str = os.path.join(module.file_dir, "data")
-        if os.path.exists(data_dir):
+        if Path(data_dir).exists():
             # TODO: link dir instead of copy tree and remove link afterwads
             # (removing is good because of testsuite dir in samplecode)
             # TODO: use different dir name in samplecode and test if it works

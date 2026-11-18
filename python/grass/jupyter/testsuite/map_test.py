@@ -8,16 +8,13 @@
 #
 # PURPOSE:   This is a test script for grass.jupyter's Map
 #
-# COPYRIGHT: (C) 2021 by Caitlin Haedrich and the GRASS Development Team
-#
-#            This program is free software under the GNU General Public
-#            License (>=v2). Read the file COPYING that comes with GRASS
-#            for details.
+# SPDX-FileCopyrightText: 2021 Caitlin Haedrich
+# SPDX-FileCopyrightText: GRASS Development Team
+# SPDX-License-Identifier: GPL-2.0-or-later
 #
 #############################################################################
 
 import os
-import sys
 import unittest
 from pathlib import Path
 
@@ -61,13 +58,7 @@ class TestMap(TestCase):
         """
         for f in self.files:
             f = Path(f)
-            if sys.version_info < (3, 8):
-                try:
-                    os.remove(f)
-                except FileNotFoundError:
-                    pass
-            else:
-                f.unlink(missing_ok=True)
+            f.unlink(missing_ok=True)
 
     def test_defaults(self):
         """Test that Map can create a map with default settings."""

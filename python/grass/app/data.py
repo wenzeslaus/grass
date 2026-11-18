@@ -1,10 +1,8 @@
 """Provides functions for the main GRASS executable
 
-(C) 2020-2025 by Vaclav Petras and the GRASS Development Team
-
-This program is free software under the GNU General Public
-License (>=v2). Read the file COPYING that comes with GRASS
-for details.
+SPDX-FileCopyrightText: 2020-2025 Vaclav Petras
+SPDX-FileCopyrightText: GRASS Development Team
+SPDX-License-Identifier: GPL-2.0-or-later
 
 .. sectionauthor:: Vaclav Petras <wenzeslaus gmail com>
 .. sectionauthor:: Linda Kladivova <l.kladivova seznam cz>
@@ -43,7 +41,7 @@ def get_possible_database_path():
 
     # find possible database path
     for candidate in candidates:
-        if os.path.exists(candidate):
+        if Path(candidate).exists():
             for subdir in next(os.walk(candidate))[1]:
                 if "grassdata" in subdir.lower():
                     return os.path.join(candidate, subdir)
@@ -67,7 +65,7 @@ def create_database_directory():
 
     # Create "grassdata" directory
     try:
-        os.mkdir(path)
+        Path(path).mkdir()
         return path
     except OSError:
         pass
@@ -83,10 +81,10 @@ def create_database_directory():
     # another GRASS instance will find the data created by the first
     # one which is desired in the "try out GRASS" use case we are
     # aiming towards."
-    if os.path.exists(path):
+    if Path(path).exists():
         return path
     try:
-        os.mkdir(path)
+        Path(path).mkdir()
         return path
     except OSError:
         pass
@@ -99,11 +97,10 @@ def _get_startup_location_in_distribution():
 
     Returns startup location if found or None if nothing was found.
     """
-    gisbase = os.getenv("GISBASE")
-    startup_location = os.path.join(gisbase, "demolocation")
+    startup_location = os.path.join(os.getenv("GRASS_MISCDIR"), "demolocation")
 
     # Find out if startup location exists
-    if os.path.exists(startup_location):
+    if Path(startup_location).exists():
         return startup_location
     return None
 
@@ -206,16 +203,16 @@ def acquire_mapset_lock(
     :param message_callback: callback to show messages when locked
     :param env: system environment variables
 
-    The function assumes the `GISBASE` variable is in the environment. The variable is
-    used to find the lock program. If *env* is not provided,
-    :external:py:data:`os.environ` is used.
+    The function assumes the `GRASS_ETCBINDIR` variable is in the environment.
+    The variable is used to find the lock program. If *env* is not provided,
+    `os.environ` is used.
     """
     if process_id is None:
         process_id = os.getpid()
     if not env:
         env = os.environ
     lock_file = os.path.join(mapset_path, ".gislock")
-    locker_path = os.path.join(env["GISBASE"], "etc", "lock")
+    locker_path = os.path.join(env["GRASS_ETCBINDIR"], "lock")
     total_sleep = 0
     try_number = 0
     initial_sleep = min(initial_sleep, timeout)
@@ -292,7 +289,7 @@ def lock_mapset(
         process_id = os.getpid()
     if not env:
         env = os.environ
-    if not os.path.exists(mapset_path):
+    if not Path(mapset_path).exists():
         raise MapsetLockingException(_("Path '{}' doesn't exist").format(mapset_path))
     if not os.access(mapset_path, os.W_OK):
         error = _("Path '{}' not accessible.").format(mapset_path)

@@ -8,10 +8,9 @@
 #               Vaclav Petras <wenzeslaus gmail com> (aggregate statistics)
 # PURPOSE:      Dissolve adjacent or overlapping features
 #               with common cat (frontend to v.extract -d)
-# COPYRIGHT:    (c) 2006-2024 Hamish Bowman, and the GRASS Development Team
-#               This program is free software under the GNU General Public
-#               License (>=v2). Read the file COPYING that comes with GRASS
-#               for details.
+# SPDX-FileCopyrightText: 2006-2024 Hamish Bowman
+# SPDX-FileCopyrightText: GRASS Development Team
+# SPDX-License-Identifier: GPL-2.0-or-later
 #
 #############################################################################
 
@@ -311,7 +310,9 @@ def create_or_check_result_columns_or_fatal(
     if not result_columns:
         return [
             f"{gs.legalize_vector_name(aggregate_column)}_{method}"
-            for aggregate_column, method in zip(columns_to_aggregate, methods)
+            for aggregate_column, method in zip(
+                columns_to_aggregate, methods, strict=True
+            )
         ]
 
     if methods and len(columns_to_aggregate) != len(methods):
@@ -402,11 +403,11 @@ def aggregate_attributes_sql(
     if methods:
         select_columns = [
             f"{method}({agg_column})"
-            for method, agg_column in zip(methods, columns_to_aggregate)
+            for method, agg_column in zip(methods, columns_to_aggregate, strict=True)
         ]
         column_types = [
             "INTEGER" if method == "count" else "DOUBLE" for method in methods
-        ] * len(columns_to_aggregate)
+        ]
     else:
         select_columns = columns_to_aggregate
         column_types = None
@@ -424,7 +425,9 @@ def aggregate_attributes_sql(
     updates = []
     add_columns = []
     if column_types:
-        for result_column, column_type in zip(result_columns, column_types):
+        for result_column, column_type in zip(
+            result_columns, column_types, strict=True
+        ):
             add_columns.append(f"{result_column} {column_type}")
     else:
         # Column types are part of the result column name list.
@@ -442,7 +445,7 @@ def aggregate_attributes_sql(
             result_column,
             column_type,
             key,
-        ) in zip(result_columns, column_types, select_column_names):
+        ) in zip(result_columns, column_types, select_column_names, strict=True):
             updates.append(
                 {
                     "column": result_column,
@@ -480,14 +483,12 @@ def aggregate_attributes_univar(
     )["records"]
     columns = defaultdict(list)
     for agg_column, method, result in zip(
-        columns_to_aggregate, methods, result_columns
+        columns_to_aggregate, methods, result_columns, strict=True
     ):
         columns[agg_column].append((method, result))
-    column_types = [
-        "INTEGER" if method == "n" else "DOUBLE" for method in methods
-    ] * len(columns_to_aggregate)
+    column_types = ["INTEGER" if method == "n" else "DOUBLE" for method in methods]
     add_columns = []
-    for result_column, column_type in zip(result_columns, column_types):
+    for result_column, column_type in zip(result_columns, column_types, strict=True):
         add_columns.append(f"{result_column} {column_type}")
     unique_values = [record[column] for record in records]
     updates = []

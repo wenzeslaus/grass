@@ -5,11 +5,9 @@
 # PURPOSE:   This module contains functions for non-interactive display
 #            in Jupyter Notebooks
 #
-# COPYRIGHT: (C) 2021-2022 Caitlin Haedrich, and by the GRASS Development Team
-#
-#           This program is free software under the GNU General Public
-#           License (>=v2). Read the file COPYING that comes with GRASS
-#           for details.
+# SPDX-FileCopyrightText: 2021-2022 Caitlin Haedrich
+# SPDX-FileCopyrightText: GRASS Development Team
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 """2D rendering and display functionality"""
 
@@ -17,6 +15,7 @@ import os
 import shutil
 import tempfile
 import weakref
+from pathlib import Path
 
 from grass.tools import Tools
 from grass.tools.support import ToolFunctionResolver
@@ -120,7 +119,7 @@ class Map:
 
         if filename:
             self._filename = filename
-            if not read_file and os.path.exists(self._filename):
+            if not read_file and Path(self._filename).exists():
                 os.remove(self._filename)
         else:
             self._filename = os.path.join(self._tmpdir.name, "map.png")

@@ -1,10 +1,8 @@
 """
 GRASS Python testing framework module for running from command line
 
-Copyright (C) 2014-2021 by the GRASS Development Team
-This program is free software under the GNU General Public
-License (>=v2). Read the file COPYING that comes with GRASS
-for details.
+SPDX-FileCopyrightText: 2014-2021 GRASS Development Team
+SPDX-License-Identifier: GPL-2.0-or-later
 
 :authors: Vaclav Petras
 """
@@ -232,9 +230,9 @@ def main():
 
     if not gisdbase:
         return "GISDBASE (grassdata directory) cannot be empty string\n"
-    if not os.path.exists(gisdbase):
+    if not Path(gisdbase).exists():
         return f"GISDBASE (grassdata directory) <{gisdbase}> does not exist\n"
-    if not os.path.exists(os.path.join(gisdbase, location)):
+    if not Path(gisdbase, location).exists():
         return (
             f"GRASS Location <{location}>"
             f" does not exist in GRASS Database <{gisdbase}>\n"

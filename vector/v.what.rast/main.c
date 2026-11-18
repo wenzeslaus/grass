@@ -9,11 +9,8 @@
  *
  *  PURPOSE:     Query raster map
  *
- *  COPYRIGHT:   (C) 2001-2015 by the GRASS Development Team
- *
- *               This program is free software under the GNU General
- *               Public License (>=v2).  Read the file COPYING that
- *               comes with GRASS for details.
+ *  SPDX-FileCopyrightText: 2001-2015 GRASS Development Team
+ *  SPDX-License-Identifier: GPL-2.0-or-later
  *
  * * TODO: fix user notification if where= is used
  ***************************************************************/
@@ -67,9 +64,9 @@ int main(int argc, char *argv[])
 
     char *sep;
     enum OutputFormat format;
-    JSON_Value *root_value = NULL, *cat_value = NULL;
-    JSON_Array *root_array = NULL;
-    JSON_Object *cat_object = NULL;
+    G_JSON_Value *root_value = NULL, *cat_value = NULL;
+    G_JSON_Array *root_array = NULL;
+    G_JSON_Object *cat_object = NULL;
 
     G_gisinit(argv[0]);
 

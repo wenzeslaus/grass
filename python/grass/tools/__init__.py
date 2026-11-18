@@ -7,6 +7,10 @@ def __getattr__(name):
         from .standalone_tools import StandaloneTools
 
         return StandaloneTools
+    if name == "ToolError":
+        from .session_tools import ToolError
+
+        return ToolError
     msg = f"module {__name__} has no attribute {name}"
     raise AttributeError(msg)
 

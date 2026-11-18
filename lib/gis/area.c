@@ -3,10 +3,8 @@
  *
  * \brief GIS Library - Area calculation functions.
  *
- * (C) 2001-2009 by the GRASS Development Team
- *
- * This program is free software under the GNU General Public License
- * (>=v2). Read the file COPYING that comes with GRASS for details.
+ * SPDX-FileCopyrightText: 2001-2009 GRASS Development Team
+ * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * \author Original author CERL
  */
@@ -20,10 +18,7 @@ static struct state {
 
     double units_to_meters_squared;
 
-    /* these next are for lat-long only */
-    int next_row;
-    double north_value;
-    double north;
+    /* this is for lat-long only */
     double (*darea0)(double);
 } state;
 
@@ -48,8 +43,7 @@ int G_begin_cell_area_calculations(void)
     double factor;
 
     G_get_set_window(&st->window);
-    switch (st->projection = st->window.proj) {
-    case PROJECTION_LL:
+    if ((st->projection = st->window.proj) == PROJECTION_LL) {
         G_get_ellipsoid_parameters(&a, &e2);
         if (e2) {
             G_begin_zone_area_on_ellipsoid(a, e2, st->window.ew_res / 360.0);
@@ -59,15 +53,15 @@ int G_begin_cell_area_calculations(void)
             G_begin_zone_area_on_sphere(a, st->window.ew_res / 360.0);
             st->darea0 = G_darea0_on_sphere;
         }
-        st->next_row = 0;
-        st->north = st->window.north;
-        st->north_value = st->darea0(st->north);
+
         return 2;
-    default:
+    }
+    else {
         st->square_meters = st->window.ns_res * st->window.ew_res;
         factor = G_database_units_to_meters_factor();
         if (factor > 0.0)
             st->square_meters *= (factor * factor);
+
         return (factor > 0.0);
     }
 }
@@ -79,31 +73,24 @@ int G_begin_cell_area_calculations(void)
  * specified <i>row</i>. This value is constant for planimetric grids
  * and varies with the row if the projection is latitude-longitude.
  *
+ * It can be called from multiple threads at the same time once
+ * G_begin_cell_area_calculations() has returned, as long as no thread
+ * calls G_begin_cell_area_calculations(),
+ * G_begin_polygon_area_calculations(), or G_begin_zone_area_on_*().
+ *
  * \param row row number
  *
  * \return cell area
  */
 double G_area_of_cell_at_row(int row)
 {
-    double south_value;
-    double cell_area;
-
     if (st->projection != PROJECTION_LL)
         return st->square_meters;
 
-    if (row != st->next_row) {
-        st->north = st->window.north - row * st->window.ns_res;
-        st->north_value = st->darea0(st->north);
-    }
+    double north = st->window.north - row * st->window.ns_res;
+    double south = st->window.north - (row + 1) * st->window.ns_res;
 
-    st->north -= st->window.ns_res;
-    south_value = st->darea0(st->north);
-    cell_area = st->north_value - south_value;
-
-    st->next_row = row + 1;
-    st->north_value = south_value;
-
-    return cell_area;
+    return st->darea0(north) - st->darea0(south);
 }
 
 /*!
@@ -124,14 +111,18 @@ int G_begin_polygon_area_calculations(void)
     if ((st->projection = G_projection()) == PROJECTION_LL) {
         G_get_ellipsoid_parameters(&a, &e2);
         G_begin_ellipsoid_polygon_area(a, e2);
+
         return 2;
     }
+
     factor = G_database_units_to_meters_factor();
     if (factor > 0.0) {
         st->units_to_meters_squared = factor * factor;
+
         return 1;
     }
     st->units_to_meters_squared = 1.0;
+
     return 0;
 }
 
@@ -157,13 +148,15 @@ int G_begin_polygon_area_calculations(void)
  */
 double G_area_of_polygon(const double *x, const double *y, int n)
 {
-    double area;
+    double area = 0;
 
-    if (st->projection == PROJECTION_LL)
+    if (st->projection == PROJECTION_LL) {
         area = G_ellipsoid_polygon_area(x, y, n);
-    else
+    }
+    else {
         area =
             G_planimetric_polygon_area(x, y, n) * st->units_to_meters_squared;
+    }
 
     return area;
 }

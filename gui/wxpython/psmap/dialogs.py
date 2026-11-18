@@ -25,10 +25,9 @@ Classes:
  - dialogs::PointDialog
  - dialogs::RectangleDialog
 
-(C) 2011-2012 by Anna Kratochvilova, and the GRASS Development Team
-
-This program is free software under the GNU General Public License
-(>=v2). Read the file COPYING that comes with GRASS for details.
+SPDX-FileCopyrightText: 2011-2012 Anna Kratochvilova
+SPDX-FileCopyrightText: GRASS Development Team
+SPDX-License-Identifier: GPL-2.0-or-later
 
 @author Anna Kratochvilova <kratochanna gmail.com> (bachelor's project)
 @author Martin Landa <landa.martin gmail.com> (mentor)
@@ -183,7 +182,7 @@ class TCValidator(Validator):
         if self.flag == "ZERO_AND_ONE_ONLY" and chr(key) in "01":
             event.Skip()
             return
-        if not wx.Validator_IsSilent():
+        if not wx.Validator.IsSilent():
             wx.Bell()
         # Returning without calling even.Skip eats the event before it
         # gets to the text control
@@ -644,7 +643,7 @@ class PageSetupDialog(PsmapDialog):
             _("Top"),
             _("Bottom"),
         ]
-        self.catsLabels = dict(zip(self.cat, labels))
+        self.catsLabels = dict(zip(self.cat, labels, strict=True))
         paperString = RunCommand("ps.map", flags="p", read=True, quiet=True)
         self.paperTable = self._toList(paperString)
         self.unitsList = self.unitConv.getPageUnitsNames()
@@ -820,7 +819,7 @@ class PageSetupDialog(PsmapDialog):
     def _toList(self, paperStr):
         sizeList = []
         for line in paperStr.strip().split("\n"):
-            d = dict(zip([self.cat[1]] + self.cat[3:], line.split()))
+            d = dict(zip([self.cat[1]] + self.cat[3:], line.split(), strict=False))
             sizeList.append(d)
         d = {}.fromkeys([self.cat[1]] + self.cat[3:], 100)
         d.update(Format=_("custom"))
@@ -2203,13 +2202,13 @@ class VPropertiesDialog(Dialog):
         self.currLayer = self.vPropertiesDict["layer"]
 
         # path to symbols, patterns
-        gisbase = os.getenv("GISBASE")
-        self.symbolPath = os.path.join(gisbase, "etc", "symbol")
+        g_etc_dir = os.getenv("GRASS_ETCDIR")
+        self.symbolPath = os.path.join(g_etc_dir, "symbol")
         self.symbols = []
         for dir in Path(self.symbolPath).iterdir():
             for symbol in Path(self.symbolPath).joinpath(dir.name).iterdir():
                 self.symbols.append(os.path.join(dir.name, symbol.name))
-        self.patternPath = os.path.join(gisbase, "etc", "paint", "patterns")
+        self.patternPath = os.path.join(g_etc_dir, "paint", "patterns")
 
         # notebook
         notebook = Notebook(parent=self, id=wx.ID_ANY, style=wx.BK_DEFAULT)
@@ -4334,7 +4333,7 @@ class LegendDialog(PsmapDialog):
                     vList[i][3] = self.vectorListCtrl.GetItemData(item)
                     vList[i][4] = self.vectorListCtrl.GetItem(item, 1).GetText()
                 vmaps = self.instruction.FindInstructionByType("vProperties", list=True)
-                for vmap, vector in zip(vmaps, vList):
+                for vmap, vector in zip(vmaps, vList, strict=False):
                     self.instruction[vmap.id]["lpos"] = vector[3]
                     self.instruction[vmap.id]["label"] = vector[4]
                 # units
@@ -4971,8 +4970,8 @@ class ScalebarDialog(PsmapDialog):
             os.path.join(globalvar.IMGDIR, "scalebar-fancy.png"),
             os.path.join(globalvar.IMGDIR, "scalebar-simple.png"),
         )
-        for item, path in zip(["fancy", "simple"], imagePath):
-            bitmap = EmptyBitmap(0, 0) if not os.path.exists(path) else wx.Bitmap(path)
+        for item, path in zip(["fancy", "simple"], imagePath, strict=True):
+            bitmap = EmptyBitmap(0, 0) if not Path(path).exists() else wx.Bitmap(path)
             self.sbCombo.Append(item="", bitmap=bitmap, clientData=item[0])
         # self.sbCombo.Append(
         #     item="simple",
@@ -4988,7 +4987,7 @@ class ScalebarDialog(PsmapDialog):
         self.sbSegmentsCtrl = SpinCtrl(panel, id=wx.ID_ANY, min=1, max=30, initial=4)
         self.sbSegmentsCtrl.SetValue(self.scalebarDict["segment"])
 
-        sbLabelsText1 = StaticText(panel, id=wx.ID_ANY, label=_("Label every "))
+        sbLabelsText1 = StaticText(panel, id=wx.ID_ANY, label=_("Label every"))
         sbLabelsText2 = StaticText(panel, id=wx.ID_ANY, label=_("segments"))
         self.sbLabelsCtrl = SpinCtrl(panel, id=wx.ID_ANY, min=1, max=30, initial=1)
         self.sbLabelsCtrl.SetValue(self.scalebarDict["numbers"])
@@ -5988,7 +5987,7 @@ class ImageDialog(PsmapDialog):
             return
         basePath = self.imagePanel.image["dir"].GetValue()
         file = os.path.join(basePath, imageName)
-        if not os.path.exists(file):
+        if not Path(file).exists():
             return
 
         if os.path.splitext(file)[1].lower() == ".eps":
@@ -6193,8 +6192,8 @@ class NorthArrowDialog(ImageDialog):
         return NorthArrow(self.id, self.instruction, env=self.env)
 
     def _getImageDirectory(self):
-        gisbase = os.getenv("GISBASE")
-        return os.path.join(gisbase, "etc", "paint", "decorations")
+        g_etc_dir = os.getenv("GRASS_ETCDIR")
+        return os.path.join(g_etc_dir, "paint", "decorations")
 
     def _addConvergence(self, panel, gridBagSizer):
         convergence = Button(parent=panel, id=wx.ID_ANY, label=_("Compute convergence"))

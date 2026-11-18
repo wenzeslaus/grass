@@ -14,11 +14,8 @@
  * PURPOSE:      Makes each cell category value a function of the category
  *               values assigned to the cells around it, and stores new cell
  *               values in an output raster map layer
- * COPYRIGHT:    (C) 1999-2022 by the GRASS Development Team
- *
- *               This program is free software under the GNU General Public
- *               License (>=v2). Read the file COPYING that comes with GRASS
- *               for details.
+ * SPDX-FileCopyrightText: 1999-2022 GRASS Development Team
+ * SPDX-License-Identifier: GPL-2.0-or-later
  *
  *****************************************************************************/
 
@@ -166,7 +163,7 @@ int main(int argc, char *argv[])
         struct Option *memory;
     } parm;
     struct {
-        struct Flag *align, *circle;
+        struct Flag *align, *circle, *nulls;
     } flag;
 
     DCELL **values;     /* list of neighborhood values */
@@ -288,8 +285,14 @@ int main(int argc, char *argv[])
     flag.circle->description = _("Use circular neighborhood");
     flag.circle->guisection = _("Neighborhood");
 
+    flag.nulls = G_define_flag();
+    flag.nulls->key = 'n';
+    flag.nulls->description = _("Keep null values in output raster map");
+
     if (G_parser(argc, argv))
         exit(EXIT_FAILURE);
+
+    const int preserve_nulls = flag.nulls->answer;
 
     sscanf(parm.size->answer, "%d", &ncb.nsize);
     if (ncb.nsize <= 0)
@@ -532,7 +535,10 @@ int main(int argc, char *argv[])
 
                 for (col = 0; col < ncols; col++) {
 
-                    if (selection && selection[t][col]) {
+                    if ((selection && selection[t][col]) ||
+                        (preserve_nulls &&
+                         Rast_is_d_null_value(
+                             &ncb.buf[t][ncb.dist][col + ncb.dist]))) {
                         /* ncb.buf length is region row length + 2 * ncb.dist
                          * (eq. floor(neighborhood/2)) Thus original data start
                          * is shifted by ncb.dist! */
