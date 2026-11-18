@@ -83,13 +83,9 @@ def has_openmp(xy_session_for_module):
 
 
 @needs_known_cores
-@pytest.mark.parametrize("value", [None, "0", "abc", "-2", "3x", ""])
+@pytest.mark.parametrize("value", [None, ""])
 def test_cores_are_the_default(xy_session_for_module, value):
-    """0 gives the cores without a positive OMP_NUM_THREADS, negative values count down
-
-    Ten digits, which do not count as set either, are left out because the
-    OpenMP runtime of LLVM aborts the process with them.
-    """
+    """0 gives the cores without OMP_NUM_THREADS, negative values count down"""
     cores = G_available_cores()
     for answer, expected in [("0", cores), ("-1", max(1, cores - 1))]:
         returncode, output, stderr = nprocs_from_option(
@@ -101,25 +97,11 @@ def test_cores_are_the_default(xy_session_for_module, value):
     assert int(output.split()[0]) == 1
 
 
-@pytest.mark.parametrize(
-    ("value", "answer", "expected"),
-    [
-        ("6", "0", 6),
-        ("6", "-2", 4),
-        ("6", "3", 3),
-        ("6,abc", "0", 6),
-        (" 6\n", "0", 6),
-    ],
-)
-def test_omp_num_threads(xy_session_for_module, has_openmp, value, answer, expected):
-    """The first value of a positive OMP_NUM_THREADS is the default
-
-    Whatever follows the first value is ignored. A list of valid values,
-    such as 6,2, is left out because it also turns on nested parallelism
-    in the OpenMP runtime. Without OpenMP, G_set_omp_num_threads() returns 1.
-    """
-    returncode, output, stderr = nprocs_from_option(
-        xy_session_for_module, answer, value
-    )
+@pytest.mark.parametrize(("answer", "expected"), [("0", 6), ("-2", 4), ("3", 3)])
+def test_omp_num_threads(xy_session_for_module, has_openmp, answer, expected):
+    """With OMP_NUM_THREADS=6, which only OpenMP reads, the default is 6"""
+    if not has_openmp:
+        pytest.skip("GRASS is built without OpenMP")
+    returncode, output, stderr = nprocs_from_option(xy_session_for_module, answer, "6")
     assert returncode == 0, stderr
-    assert output == f"{expected} {expected if has_openmp else 1}"
+    assert output == f"{expected} {expected}"

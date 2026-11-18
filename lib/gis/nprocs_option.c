@@ -20,40 +20,20 @@
 #include <grass/gis.h>
 #include <grass/glocale.h>
 
-/* The first value of OMP_NUM_THREADS when it is a positive number of at
- * most nine digits, 0 otherwise. */
-static int omp_num_threads_env(void)
-{
-    const char *env = getenv("OMP_NUM_THREADS");
-    int value = 0;
-    int digits = 0;
-
-    if (!env)
-        return 0;
-    while (isspace((unsigned char)*env))
-        env++;
-    for (; *env >= '0' && *env <= '9'; env++) {
-        if (++digits > 9)
-            return 0;
-        value = 10 * value + (*env - '0');
-    }
-    while (isspace((unsigned char)*env))
-        env++;
-    return *env == '\0' || *env == ',' ? value : 0;
-}
-
 static int default_threads(void)
 {
     static int threads = 0;
 
     if (threads < 1) {
-        threads = omp_num_threads_env();
-        if (threads < 1)
-            threads = G_available_cores();
 #if defined(_OPENMP)
+        /* OpenMP reads OMP_NUM_THREADS, so its default is used when set. */
+        const char *env = getenv("OMP_NUM_THREADS");
+
+        threads = env && *env ? 0 : G_available_cores();
         if (threads < 1)
             threads = omp_get_max_threads();
 #else
+        threads = G_available_cores();
         if (threads < 1)
             threads = 1;
 #endif
@@ -66,12 +46,10 @@ static int default_threads(void)
  *
  * A positive value is the number of threads. 0 means the default, which
  * is the number of physical cores available to the process (see
- * G_available_cores()). When the first value of the OMP_NUM_THREADS
- * environment variable is a positive number of at most nine digits, that
- * value is the default instead, also without OpenMP. When the number of
- * cores is unknown, the default is the OpenMP default, or 1 without
- * OpenMP. A negative value is that many threads fewer than the default,
- * at least one.
+ * G_available_cores()), or 1 when that is unknown. With OpenMP, it is the
+ * OpenMP default when the OMP_NUM_THREADS environment variable is set or
+ * the number of cores is unknown. A negative value is that many threads
+ * fewer than the default, at least one.
  *
  * The default is determined once per process, on the first call of this
  * function or of G_nprocs_from_option(), whatever the value of nprocs.
