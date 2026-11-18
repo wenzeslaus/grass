@@ -412,10 +412,9 @@ class GridModule:
     :type height: int
     :param overlap: overlap between tiles, in pixel.
     :type overlap: int
-    :param processes: number of tiles processed at the same time, resolved
-                      like nprocs with :func:`grass.script.utils.resolve_nprocs`
-                      (None is 0). The nprocs of the module, if it has one,
-                      sets the threads of each.
+    :param processes: number of tiles processed at the same time, used like
+                      nprocs (None is 0). The nprocs of the module, if it has
+                      one, sets the threads of each.
     :param split: if True use r.tile to split all the inputs.
     :type split: bool
     :param mapset_prefix: if specified created mapsets start with this prefix
