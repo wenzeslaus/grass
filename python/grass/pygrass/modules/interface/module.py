@@ -299,7 +299,7 @@ class ParallelModuleQueue:
                        run in parallel
         :type nprocs: int
         """
-        self._num_procs = int(nprocs)
+        self._num_procs = resolve_nprocs(nprocs or 0)
         self.wait()
 
     def get_finished_modules(self):

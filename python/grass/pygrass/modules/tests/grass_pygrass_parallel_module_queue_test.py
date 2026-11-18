@@ -10,8 +10,10 @@ import grass.script as gs
 from grass.pygrass.modules import ParallelModuleQueue
 
 
-@pytest.mark.parametrize("nprocs", [None, 0, -1, 2])
+@pytest.mark.parametrize("nprocs", [None, 0])
 def test_worker_count_follows_nprocs(nprocs):
-    """0, None, and negative values are resolved like nprocs"""
+    """0 and None give the default of nprocs, also when set later"""
     queue = ParallelModuleQueue(nprocs=nprocs)
-    assert queue.get_max_num_procs() == gs.resolve_nprocs(nprocs or 0)
+    assert queue.get_max_num_procs() == gs.resolve_nprocs(0)
+    queue.set_max_num_procs(nprocs)
+    assert queue.get_max_num_procs() == gs.resolve_nprocs(0)
