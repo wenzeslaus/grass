@@ -163,23 +163,21 @@ def available_cores() -> int:
 def resolve_nprocs(nprocs: int | str) -> int:
     """Resolve G_OPT_M_NPROCS into a worker count.
 
-    A positive number is used as is. 0 means the default, which is the
-    first value of OMP_NUM_THREADS when that is a positive number and
-    :func:`available_cores` otherwise. A negative number means the default
-    plus nprocs, at least 1.
+    Mirrors the semantics of ``G_set_omp_num_threads()`` in
+    ``lib/gis/omp_threads.c``: 0 means use all available cores, a positive
+    number is used as-is, a negative number means the number of cores plus
+    nprocs (clamped to at least 1). The cores are counted by
+    :func:`available_cores`.
 
     .. versionadded:: 8.6
     """
     n = int(nprocs)
     if n > 0:
         return n
-    threads = os.environ.get("OMP_NUM_THREADS", "").split(",")[0].strip()
-    # Up to nine ASCII digits fit a C int.
-    if re.fullmatch(r"[0-9]{1,9}", threads) and int(threads) > 0:
-        default = int(threads)
-    else:
-        default = available_cores()
-    return max(1, default + n)
+    available = available_cores()
+    if n == 0:
+        return available
+    return max(1, available + n)
 
 
 def _get_multiprocessing_context() -> BaseContext:
