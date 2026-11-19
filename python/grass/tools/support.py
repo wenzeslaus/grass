@@ -136,7 +136,8 @@ class ParameterConverter:
         return False
 
     def input_rows_columns(self):
-        if not len(self._numpy_inputs):
+        """Return rows and columns of the first NumPy array input or None if there is none"""
+        if not self._numpy_inputs:
             return None
         # We use first item in the dictionary (which is in insertion order).
         shape = next(iter(self._numpy_inputs.values()))[1].shape

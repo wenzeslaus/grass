@@ -3,11 +3,9 @@
 #
 # PURPOSE:   API to call GRASS tools as Python functions without a session
 #
-# COPYRIGHT: (C) 2025 Vaclav Petras and the GRASS Development Team
-#
-#            This program is free software under the GNU General Public
-#            License (>=v2). Read the file COPYING that comes with GRASS
-#            for details.
+# SPDX-FileCopyrightText: 2025-2026 Vaclav Petras
+# SPDX-FileCopyrightText: GRASS Development Team
+# SPDX-License-Identifier: GPL-2.0-or-later
 ##############################################################################
 
 """
@@ -25,14 +23,28 @@ from pathlib import Path
 
 import grass.script as gs
 from grass.grassdb.create import set_project_crs_from_pack
+from .importexport import ImporterExporter
 from .session_tools import Tools
 from .support import ParameterConverter, ToolFunctionResolver
-from grass.tools.importexport import ImporterExporter
 
 
-# Using inheritance to get the getattr behavior and other functionality,
-# but the session and env really make it more seem like a case for composition.
 class StandaloneTools:
+    """Use GRASS tools through function calls without a session (experimental)
+
+    On first use, the object creates a temporary XY project and a session in it.
+    The first native raster file (raster pack) given as an input sets the CRS of
+    the project and, unless the region was set with *g.region*, the computational
+    region. Inputs are imported with *r.unpack* and outputs are written with
+    *r.pack*.
+
+    .. code-block:: python
+
+        tools = StandaloneTools()
+        tools.r_slope_aspect(elevation="dem.grass_raster", slope="slope.grass_raster")
+
+    This class is experimental and its behavior may change.
+    """
+
     def __init__(
         self, session=None, env=None, work_dir=None, errors=None, capture_output=True
     ):
@@ -56,15 +68,10 @@ class StandaloneTools:
             self._original_env = env
         else:
             self._original_env = os.environ
-        # Because we don't setup a session here, we don't have runtime available for
-        # tools to be called through method calls. Should we just start session here
-        # to have the runtime?
         self._region_is_set = False
         self._project_path = None
         self._region_file = None
         self._region_modified_time = None
-        self._errors = errors
-        self._capture_output = capture_output
         self._name_helper = None
 
     def _process_parameters(self, command, popen_options):
@@ -103,11 +110,6 @@ class StandaloneTools:
 
         rows_columns = object_parameter_handler.input_rows_columns()
         if not self._is_region_modified() and rows_columns:
-            # Reset the region for every run or keep it persistent?
-            # Also, we now set that even for an existing session, this is
-            # consistent with behavior without a provided session.
-            # We could use env to pass the regions which would allow for the change
-            # while not touching the underlying session.
             rows, cols = rows_columns
             self.no_nonsense_run(
                 "g.region",
@@ -136,8 +138,6 @@ class StandaloneTools:
             result = object_parameter_handler.result
         return result
 
-    # Make this an overload of run.
-    # Or at least use the same signature as the parent class.
     def run_from_list(
         self,
         command,
@@ -146,10 +146,7 @@ class StandaloneTools:
         processed_parameters=None,
         **popen_options,
     ):
-        """
-
-        Passing --help to this function will not work.
-        """
+        """Run a tool given as a list of strings (--help is not supported)"""
         if not self._session:
             # We create session and an empty XY project in one step.
             self._create_session()
@@ -167,14 +164,9 @@ class StandaloneTools:
         pack_importer_exporter.import_data(env=self._session.env)
 
         if not self._is_region_modified() and pack_importer_exporter.input_rasters:
-            # Reset the region for every run or keep it persistent?
-            # Also, we now set that even for an existing session, this is
-            # consistent with behavior without a provided session.
-            # We could use env to pass the regions which would allow for the change
-            # while not touching the underlying session.
             self.no_nonsense_run(
                 "g.region",
-                raster=pack_importer_exporter.input_rasters[0][0].stem,
+                raster=pack_importer_exporter.input_rasters[0][1],
                 env=self._session.env,
             )
             self._region_is_set = True
@@ -274,8 +266,6 @@ class StandaloneTools:
     def __enter__(self):
         """Enter the context manager context.
 
-        Notably, the session is activated using the *init* function.
-
         :returns: reference to the object (self)
         """
         return self
@@ -283,14 +273,12 @@ class StandaloneTools:
     def __exit__(self, type, value, traceback):
         """Exit the context manager context.
 
-        Finishes the existing session.
+        Removes the temporary project, see :meth:`cleanup`.
         """
         self.cleanup()
 
     def __getattr__(self, name):
-        """Parse attribute to GRASS display module. Attribute should be in
-        the form 'd_module_name'. For example, 'd.rast' is called with 'd_rast'.
-        """
+        """Return a function which runs the tool, e.g., r_slope_aspect for r.slope.aspect"""
         if not self._session:
             # We create session and an empty XY project in one step.
             self._create_session()
