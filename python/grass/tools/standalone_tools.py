@@ -20,11 +20,11 @@ import os
 import tempfile
 import json
 import subprocess
-import tarfile
 import weakref
 from pathlib import Path
 
 import grass.script as gs
+from grass.grassdb.create import set_project_crs_from_pack
 from .session_tools import Tools
 from .support import ParameterConverter, ToolFunctionResolver
 from grass.tools.importexport import ImporterExporter
@@ -60,6 +60,7 @@ class StandaloneTools:
         # tools to be called through method calls. Should we just start session here
         # to have the runtime?
         self._region_is_set = False
+        self._project_path = None
         self._region_file = None
         self._region_modified_time = None
         self._errors = errors
@@ -225,33 +226,28 @@ class StandaloneTools:
         project_name = "project"
         project_path = Path(base_dir) / project_name
         gs.create_project(project_path)
+        self._project_path = project_path
         self._region_file = project_path / "PERMANENT" / "WIND"
         self._region_modified_time = self._region_file.stat().st_mtime
         self._session = gs.setup.init(project_path, env=self._original_env.copy())
 
     def _initialize_crs(self, rasters):
-        # Get the mapset path
-        mapset_path = self.no_nonsense_run(
-            "g.gisenv", get="GISDBASE,LOCATION_NAME,MAPSET", sep="/"
-        ).text
-        mapset_path = Path(mapset_path)
-
-        if rasters:
-            with tarfile.TarFile(rasters[0][0]) as tar:
-                for name in [
-                    "PROJ_UNITS",
-                    "PROJ_INFO",
-                    "PROJ_EPSG",
-                    "PROJ_SRID",
-                    "PROJ_WKT",
-                ]:
-                    try:
-                        tar_info = tar.getmember(name)
-                    except KeyError:
-                        continue
-                    Path(mapset_path / name).write_bytes(
-                        tar.extractfile(tar_info).read()
-                    )
+        if not rasters:
+            return
+        # Setting the CRS resets the computational region, so we keep the region
+        # the user may have set, except for the first two lines of the file which
+        # have the CRS type and zone.
+        user_region = None
+        if self._is_region_modified():
+            user_region = self._region_file.read_text().splitlines()[2:]
+        set_project_crs_from_pack(self._project_path, rasters[0][0])
+        if user_region:
+            crs_lines = self._region_file.read_text().splitlines()[:2]
+            self._region_file.write_text("\n".join([*crs_lines, *user_region]) + "\n")
+        else:
+            self._region_modified_time = self._region_file.stat().st_mtime
+        # Later inputs are checked against this CRS when they are imported.
+        self._crs_initialized = True
 
     def _is_region_modified(self):
         if self._region_is_set:

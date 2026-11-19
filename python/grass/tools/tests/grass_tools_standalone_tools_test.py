@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from grass.experimental import MapsetSession
-from grass.tools import StandaloneTools, Tools
+from grass.tools import StandaloneTools, ToolError, Tools
 
 
 @pytest.fixture(autouse=True)
@@ -171,6 +171,31 @@ def test_pack_region_manually_changed(rows_raster_file3x2, rows_raster_file4x5):
     region = tools.g_region(flags="p", format="json")
     assert region["rows"] == 2
     assert region["cols"] == 2
+
+
+def test_pack_crs_from_first_input(ones_raster_file_epsg3358):
+    """Check that the CRS and the region come from the first input raster"""
+    tools = StandaloneTools()
+    assert tools.r_univar(map=ones_raster_file_epsg3358, format="json")["n"] == 20
+    assert tools.g_proj(flags="p", format="projjson")["id"]["code"] == 3358
+
+
+def test_pack_crs_region_set_before_first_input_preserved(ones_raster_file_epsg3358):
+    """Check that a region set before the CRS is known is kept"""
+    tools = StandaloneTools()
+    tools.g_region(n=20, s=0, e=30, w=0, res=10)
+    assert tools.r_univar(map=ones_raster_file_epsg3358, format="json")["cells"] == 6
+    region = tools.g_region(flags="p", format="json")
+    assert region["rows"] == 2
+    assert region["cols"] == 3
+
+
+def test_pack_crs_mismatch(ones_raster_file_epsg3358, ones_raster_file_epsg4326):
+    """Check that an input with a CRS different from the first one is an error"""
+    tools = StandaloneTools()
+    tools.r_univar(map=ones_raster_file_epsg3358, format="json")
+    with pytest.raises(ToolError, match="does not appear to match"):
+        tools.r_univar(map=ones_raster_file_epsg4326, format="json")
 
 
 def test_pack_workflow(rows_raster_file4x5):
