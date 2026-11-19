@@ -32,6 +32,7 @@ def crs_session_for_module(tmp_path_factory):
     """Module-scoped session in a project with EPSG:3358
 
     Linking a file with r.external needs a project with a CRS.
+    The project has only the default region of one cell.
     """
     project = tmp_path_factory.mktemp("crs") / "project"
     gs.create_project(project, epsg=3358)
@@ -41,6 +42,10 @@ def crs_session_for_module(tmp_path_factory):
 
 @pytest.fixture
 def crs_session(crs_session_for_module):
-    """A session in a temporary mapset of the project with a CRS"""
+    """A session in a temporary mapset of the project with a CRS
+
+    The mapset starts with the default region of one cell, so a test
+    needs to set the region it works in.
+    """
     with TemporaryMapsetSession(env=crs_session_for_module.env) as session:
         yield session
