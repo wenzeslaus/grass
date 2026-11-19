@@ -413,8 +413,8 @@ class GridModule:
     :param overlap: overlap between tiles, in pixel.
     :type overlap: int
     :param processes: number of tiles processed at the same time, used like
-                      nprocs (None is 0). The nprocs of the module, if it has
-                      one, sets the threads of each.
+                      nprocs (None means NPROCS set with g.gisenv). The nprocs
+                      of the module, if it has one, sets the threads of each.
     :param split: if True use r.tile to split all the inputs.
     :type split: bool
     :param mapset_prefix: if specified created mapsets start with this prefix
@@ -476,7 +476,7 @@ class GridModule:
         self.width = width
         self.height = height
         self.overlap = overlap
-        self.processes = resolve_nprocs(processes or 0)
+        self.processes = resolve_nprocs(processes)
         self.region = region or Region()
         self.start_row = start_row
         self.start_col = start_col

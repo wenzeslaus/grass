@@ -233,12 +233,13 @@ class ParallelModuleQueue:
 
         :param nprocs: The maximum number of Module processes that can be
                        run in parallel. A positive value is used as-is,
-                       ``0`` or ``None`` means the default as for nprocs, and
-                       a negative value reserves that many CPUs (clamped
-                       to at least 1).
+                       ``0`` means the default as for nprocs, ``None`` means
+                       NPROCS set with g.gisenv or that default, and a
+                       negative value reserves that many CPUs (clamped to at
+                       least 1).
         :type nprocs: int
         """
-        nprocs = resolve_nprocs(nprocs or 0)
+        nprocs = resolve_nprocs(nprocs)
         self._num_procs = nprocs
         self._list = nprocs * [None]
         self._proc_count = 0
@@ -299,7 +300,7 @@ class ParallelModuleQueue:
                        run in parallel
         :type nprocs: int
         """
-        self._num_procs = resolve_nprocs(nprocs or 0)
+        self._num_procs = resolve_nprocs(nprocs)
         self.wait()
 
     def get_finished_modules(self):
