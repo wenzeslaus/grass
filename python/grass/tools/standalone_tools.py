@@ -81,8 +81,18 @@ class StandaloneTools:
 
         env = popen_options.get("env", self._session.env)
 
-        return subprocess.run(
-            [*command, "--json"], text=True, capture_output=True, env=env
+        # Start the tool as grass.script does, so that it is found on the PATH
+        # of the session and a tool which is a script runs on MS Windows, too.
+        process = gs.Popen(
+            [*command, "--json"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+        )
+        stdout, stderr = process.communicate()
+        return subprocess.CompletedProcess(
+            process.args, process.returncode, stdout=stdout, stderr=stderr
         )
 
     def run(self, name, /, **kwargs):
