@@ -135,6 +135,14 @@ class ParameterConverter:
         self.result = None
         return False
 
+    def input_rows_columns(self):
+        """Return rows and columns of the first NumPy array input or None if there is none"""
+        if not self._numpy_inputs:
+            return None
+        # We use first item in the dictionary (which is in insertion order).
+        shape = next(iter(self._numpy_inputs.values()))[1].shape
+        return shape[0], shape[1]
+
 
 class ToolFunctionResolver:
     def __init__(self, *, run_function, env, allowed_prefix=None):

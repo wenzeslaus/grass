@@ -8,6 +8,7 @@ DSTDIR = $(ETC)/python/grass/tools
 MODULES = \
 	importexport \
 	session_tools \
+	standalone_tools \
 	support
 
 PYFILES := $(patsubst %,$(DSTDIR)/%.py,$(MODULES) __init__)
