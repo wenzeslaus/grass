@@ -7,7 +7,7 @@ from math import ceil
 from pathlib import Path
 
 from grass.script.setup import write_gisrc
-from grass.script import Popen, append_node_pid, available_cpus, legalize_vector_name
+from grass.script import Popen, append_node_pid, legalize_vector_name, resolve_nprocs
 
 from grass.pygrass.gis import Mapset, Location
 from grass.pygrass.gis.region import Region
@@ -412,8 +412,10 @@ class GridModule:
     :type height: int
     :param overlap: overlap between tiles, in pixel.
     :type overlap: int
-    :param processes: number of threads, default value is equal to the number
-                      of processors available.
+    :param processes: number of tiles processed at the same time. None
+                      means the default number, which respects NPROCS set
+                      with g.gisenv. To set the number of threads used for
+                      one tile, pass nprocs to the module.
     :param split: if True use r.tile to split all the inputs.
     :type split: bool
     :param mapset_prefix: if specified created mapsets start with this prefix
@@ -475,7 +477,7 @@ class GridModule:
         self.width = width
         self.height = height
         self.overlap = overlap
-        self.processes = processes
+        self.processes = resolve_nprocs(processes)
         self.region = region or Region()
         self.start_row = start_row
         self.start_col = start_col
@@ -588,11 +590,7 @@ class GridModule:
         region = Region()
         if self.width and self.height:
             return
-        # Estimation requires number of processes, but it can be None
-        # so we try to estimate the number here as number of CPUs available
         processes = self.processes
-        if processes is None:
-            processes = available_cpus()
         if self.width:
             n_tiles_x = ceil(region.cols / self.width)
             n_tiles_y = ceil(processes / n_tiles_x)

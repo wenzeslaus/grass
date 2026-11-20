@@ -4,7 +4,7 @@ from xml.etree.ElementTree import fromstring
 
 from grass.exceptions import CalledModuleError, GrassError, ParameterError
 from grass.script.core import Popen, PIPE, use_temp_region, del_temp_region
-from grass.script.utils import available_cpus, decode, resolve_nprocs
+from grass.script.utils import decode, resolve_nprocs
 from .docstring import docstring_property
 from .parameter import Parameter
 from .flag import Flag
@@ -233,12 +233,13 @@ class ParallelModuleQueue:
 
         :param nprocs: The maximum number of Module processes that can be
                        run in parallel. A positive value is used as-is,
-                       ``0`` or ``None`` means use all available CPUs, and
+                       ``0`` or ``None`` means the default number
+                       (``None`` respects NPROCS set with g.gisenv), and
                        a negative value reserves that many CPUs (clamped
                        to at least 1).
         :type nprocs: int
         """
-        nprocs = resolve_nprocs(nprocs) if nprocs else available_cpus()
+        nprocs = resolve_nprocs(nprocs)
         self._num_procs = nprocs
         self._list = nprocs * [None]
         self._proc_count = 0
@@ -299,7 +300,7 @@ class ParallelModuleQueue:
                        run in parallel
         :type nprocs: int
         """
-        self._num_procs = int(nprocs)
+        self._num_procs = resolve_nprocs(nprocs)
         self.wait()
 
     def get_finished_modules(self):

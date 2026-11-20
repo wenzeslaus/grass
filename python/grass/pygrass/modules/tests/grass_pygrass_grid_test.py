@@ -32,7 +32,7 @@ def run_in_subprocess(function):
 
 @xfail_mp_spawn
 @pytest.mark.needs_solo_run
-@pytest.mark.parametrize("processes", list(range(1, max_processes() + 1)) + [None])
+@pytest.mark.parametrize("processes", [*range(1, max_processes() + 1), None, 0, -1])
 def test_processes(tmp_path, processes):
     """Check that running with multiple processes works"""
     project = tmp_path / "test"
