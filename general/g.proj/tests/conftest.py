@@ -5,11 +5,25 @@
 """Fixtures for g.proj tests"""
 
 import os
+import sqlite3
 
 import pytest
 
 import grass.script as gs
 from grass.tools import Tools
+
+
+def _write_incompatible_proj_db(path):
+    with sqlite3.connect(path) as connection:
+        connection.execute("CREATE TABLE metadata (key TEXT, value TEXT)")
+        connection.executemany(
+            "INSERT INTO metadata VALUES (?, ?)",
+            [
+                ("DATABASE.LAYOUT.VERSION.MAJOR", "999"),
+                ("DATABASE.LAYOUT.VERSION.MINOR", "0"),
+            ],
+        )
+    connection.close()
 
 
 @pytest.fixture(scope="module")
@@ -49,3 +63,12 @@ def env_without_proj_db(session, tmp_path):
 def tools_without_proj_db(env_without_proj_db):
     """Tools which run without proj.db and do not raise on errors"""
     return Tools(env=env_without_proj_db, errors="ignore", consistent_return_value=True)
+
+
+@pytest.fixture
+def write_incompatible_proj_db():
+    """Function which writes a proj.db which PROJ rejects to the given path
+
+    The database has a layout version of a future PROJ version.
+    """
+    return _write_incompatible_proj_db

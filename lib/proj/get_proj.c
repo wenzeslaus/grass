@@ -247,6 +247,7 @@ int pj_get_kv(struct pj_info *info, const struct Key_Value *in_proj_keys,
             snprintf(err, sizeof(err), " +%s", opt_in[i]);
             strcat(buffa, err);
         }
+        GPJ_report_db_status();
         G_warning("%s", buffa);
         return -1;
     }
@@ -393,6 +394,7 @@ int pj_get_string(struct pj_info *info, char *str)
     alloc_options("type=crs");
     pjc = proj_context_create();
     if (!(pj = proj_create_argv(pjc, nopt, opt_in))) {
+        GPJ_report_db_status();
         G_warning(_("Unable to initialize pj cause: %s"),
                   proj_errno_string(proj_context_errno(pjc)));
         return -1;
