@@ -28,6 +28,9 @@ int set_datumtrans(int, int);
 void create_location(const char *);
 void modify_projinfo(void);
 
+/* proj_info.c */
+void print_proj_install_info(enum OutputFormat);
+
 /* list_codes.c */
 char *get_authority_names(void);
 void list_codes(char *);

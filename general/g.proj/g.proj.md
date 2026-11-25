@@ -113,6 +113,18 @@ specification](https://proj.org/en/stable/specifications/projjson.html)
 The maximum size of input WKT or PROJ CRS descriptions is limited to
 8000 bytes.
 
+The **-i** flag reports the PROJ installation in use instead of a CRS.
+That is the PROJ version, the PROJ database (`proj.db`) with its layout
+version, EPSG dataset version, and the PROJ version which created it,
+and the directories PROJ searches. The PROJ version which created the
+database is marked when it differs from the PROJ version in use. The
+flag works even when PROJ cannot use any `proj.db`, so it helps with
+errors which mention `proj.db`. A `proj.db` which PROJ found but cannot
+use is reported as rejected (`proj_db_rejected` in shell format), for
+example, when `PROJ_DATA` (`PROJ_LIB` before PROJ 9.1) points to the
+data of another PROJ installation. Only the *plain* and *shell* formats
+are supported with **-i**.
+
 ## EXAMPLES
 
 ### Print information
@@ -145,6 +157,37 @@ Print the CRS information for the current project in PROJ.4 format (deprecated):
 
 ```sh
 g.proj -p format=proj4
+```
+
+Print information about the PROJ installation in use:
+
+```sh
+g.proj -i
+```
+
+```text
+PROJ version:              9.4.0
+Database:                  /usr/share/proj/proj.db
+Database layout version:   1.3
+EPSG version:              v11.004
+Database created by PROJ:  9.4.0
+Search path:               /home/user/.local/share/proj:/usr/share/proj
+```
+
+The same in shell script style:
+
+```sh
+g.proj -i format=shell
+```
+
+```text
+proj_runtime=9.4.0
+proj_db=/usr/share/proj/proj.db
+proj_db_rejected=
+proj_db_layout=1.3
+proj_db_epsg=v11.004
+proj_db_created_by_proj=9.4.0
+proj_searchpath=/home/user/.local/share/proj:/usr/share/proj
 ```
 
 ### Create projection (PRJ) file
